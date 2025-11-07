@@ -1,91 +1,212 @@
 import Foundation
 import SwiftData
+import OSLog
 
 @MainActor
 final class StorageService {
     private let context: ModelContext
+    private let logger = Logger(subsystem: "com.sunny.pet", category: "StorageService")
 
     init(context: ModelContext) {
         self.context = context
     }
 
     func bootstrapIfNeeded() {
-        if (try? context.fetch(FetchDescriptor<Pet>()))?.isEmpty ?? true {
-            context.insert(Pet(name: "Sunny"))
+        do {
+            var didInsert = false
+            didInsert = try ensureSeed(for: Pet.self) { [Pet(name: "Sunny")] } || didInsert
+            didInsert = try ensureSeed(for: UserStats.self) { [UserStats()] } || didInsert
+            didInsert = try ensureItems() || didInsert
+            didInsert = try ensureTaskTemplates() || didInsert
+            if didInsert { saveContext(reason: "bootstrap seeds") }
+        } catch {
+            logger.error("Failed to bootstrap seeds: \(error.localizedDescription, privacy: .public)")
         }
-
-        if (try? context.fetch(FetchDescriptor<UserStats>()))?.isEmpty ?? true {
-            context.insert(UserStats())
-        }
-
-        if (try? context.fetch(FetchDescriptor<Item>()))?.isEmpty ?? true {
-            DefaultSeeds.items.forEach { context.insert($0) }
-        }
-
-        if (try? context.fetch(FetchDescriptor<TaskTemplate>()))?.isEmpty ?? true {
-            DefaultSeeds.taskTemplates.forEach { context.insert($0) }
-        }
-
-        try? context.save()
     }
 
     func fetchPet() -> Pet? {
-        try? context.fetch(FetchDescriptor<Pet>()).first
+        do {
+            if try ensureSeed(for: Pet.self) { [Pet(name: "Sunny")] } {
+                saveContext(reason: "ensure pet seed")
+            }
+            return try context.fetch(FetchDescriptor<Pet>(fetchLimit: 1)).first
+        } catch {
+            logger.error("Failed to fetch pet: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     func fetchStats() -> UserStats? {
-        try? context.fetch(FetchDescriptor<UserStats>()).first
+        do {
+            if try ensureSeed(for: UserStats.self) { [UserStats()] } {
+                saveContext(reason: "ensure stats seed")
+            }
+            return try context.fetch(FetchDescriptor<UserStats>(fetchLimit: 1)).first
+        } catch {
+            logger.error("Failed to fetch stats: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     func fetchShopItems() -> [Item] {
-        (try? context.fetch(FetchDescriptor<Item>())) ?? []
+        do {
+            if try ensureItems() {
+                saveContext(reason: "ensure item seeds")
+            }
+            let descriptor = FetchDescriptor<Item>(sortBy: [SortDescriptor(\Item.costEnergy, order: .forward)])
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch shop items: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
     }
 
     func fetchTemplates(for weather: WeatherType) -> [TaskTemplate] {
-        let predicate = #Predicate<TaskTemplate> { $0.weatherType == weather }
-        return (try? context.fetch(FetchDescriptor(predicate: predicate))) ?? []
+        do {
+            if try ensureTaskTemplates() {
+                saveContext(reason: "ensure template seeds")
+            }
+            let predicate = #Predicate<TaskTemplate> { $0.weatherType == weather }
+            let descriptor = FetchDescriptor<TaskTemplate>(predicate: predicate)
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch templates: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
     }
 
     func fetchTasks(for date: Date) -> [Task] {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: date)
-        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
-        let predicate = #Predicate<Task> {
-            $0.date >= start && $0.date < end
+        do {
+            let calendar = Calendar.current
+            let start = calendar.startOfDay(for: date)
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+            let predicate = #Predicate<Task> {
+                $0.date >= start && $0.date < end
+            }
+            let descriptor = FetchDescriptor<Task>(
+                predicate: predicate,
+                sortBy: [SortDescriptor(\Task.date, order: .forward)]
+            )
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
+            return []
         }
-        let descriptor = FetchDescriptor<Task>(predicate: predicate)
-        return (try? context.fetch(descriptor)) ?? []
     }
 
     func save(tasks: [Task]) {
+        guard !tasks.isEmpty else { return }
         tasks.forEach { context.insert($0) }
-        try? context.save()
+        saveContext(reason: "save tasks")
     }
 
     func persist() {
-        try? context.save()
+        saveContext(reason: "persist changes")
+    }
+
+    @discardableResult
+    private func ensureSeed<T: PersistentModel>(
+        for _: T.Type,
+        fetchDescriptor: FetchDescriptor<T> = FetchDescriptor<T>(fetchLimit: 1),
+        create: () -> [T]
+    ) throws -> Bool {
+        let existing = try context.fetch(fetchDescriptor)
+        guard existing.isEmpty else { return false }
+        create().forEach { context.insert($0) }
+        return true
+    }
+
+    @discardableResult
+    private func ensureItems() throws -> Bool {
+        let existing = try context.fetch(FetchDescriptor<Item>())
+        let existingSKUs = Set(existing.map(\.sku))
+        let missing = DefaultSeeds.makeItems().filter { !existingSKUs.contains($0.sku) }
+        missing.forEach { context.insert($0) }
+        return !missing.isEmpty
+    }
+
+    @discardableResult
+    private func ensureTaskTemplates() throws -> Bool {
+        let existing = try context.fetch(FetchDescriptor<TaskTemplate>())
+        let existingTitles = Set(existing.map(\.title))
+        let missing = DefaultSeeds.makeTaskTemplates().filter { !existingTitles.contains($0.title) }
+        missing.forEach { context.insert($0) }
+        return !missing.isEmpty
+    }
+
+    private func saveContext(reason: String) {
+        guard context.hasChanges else { return }
+        do {
+            try context.save()
+        } catch {
+            logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
 
 enum DefaultSeeds {
-    static let taskTemplates: [TaskTemplate] = [
-        TaskTemplate(title: "晒晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
-        TaskTemplate(title: "阳台瑜伽流", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
-        TaskTemplate(title: "云下冥想", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
-        TaskTemplate(title: "阴天咖啡散步", weatherType: .cloudy, difficulty: .medium, isOutdoor: true),
-        TaskTemplate(title: "雨天热饮", weatherType: .rainy, difficulty: .medium, isOutdoor: false),
-        TaskTemplate(title: "雨声伴读", weatherType: .rainy, difficulty: .easy, isOutdoor: false),
-        TaskTemplate(title: "雪地慢走", weatherType: .snowy, difficulty: .medium, isOutdoor: true),
-        TaskTemplate(title: "暖灯伸展", weatherType: .snowy, difficulty: .easy, isOutdoor: false),
-        TaskTemplate(title: "风中伸展", weatherType: .windy, difficulty: .easy, isOutdoor: true),
-        TaskTemplate(title: "室内舞动 5 分钟", weatherType: .windy, difficulty: .medium, isOutdoor: false)
+    fileprivate struct ItemSeed {
+        let sku: String
+        let type: ItemType
+        let name: String
+        let costEnergy: Int
+        let moodBoost: Int
+        let hungerBoost: Int
+
+        func make() -> Item {
+            Item(
+                sku: sku,
+                type: type,
+                name: name,
+                costEnergy: costEnergy,
+                moodBoost: moodBoost,
+                hungerBoost: hungerBoost
+            )
+        }
+    }
+
+    fileprivate struct TaskTemplateSeed {
+        let title: String
+        let weatherType: WeatherType
+        let difficulty: TaskDifficulty
+        let isOutdoor: Bool
+
+        func make() -> TaskTemplate {
+            TaskTemplate(
+                title: title,
+                weatherType: weatherType,
+                difficulty: difficulty,
+                isOutdoor: isOutdoor
+            )
+        }
+    }
+
+    private static let itemSeeds: [ItemSeed] = [
+        ItemSeed(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
+        ItemSeed(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
+        ItemSeed(sku: "toy.pillow", type: .toy, name: "抱枕", costEnergy: 18, moodBoost: 8, hungerBoost: 0),
+        ItemSeed(sku: "toy.ball", type: .toy, name: "发光球", costEnergy: 22, moodBoost: 10, hungerBoost: 0),
+        ItemSeed(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
     ]
 
-    static let items: [Item] = [
-        Item(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
-        Item(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
-        Item(sku: "toy.pillow", type: .toy, name: "抱枕", costEnergy: 18, moodBoost: 8, hungerBoost: 0),
-        Item(sku: "toy.ball", type: .toy, name: "发光球", costEnergy: 22, moodBoost: 10, hungerBoost: 0),
-        Item(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
+    private static let taskTemplateSeeds: [TaskTemplateSeed] = [
+        TaskTemplateSeed(title: "晒晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
+        TaskTemplateSeed(title: "阳台瑜伽流", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
+        TaskTemplateSeed(title: "云下冥想", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
+        TaskTemplateSeed(title: "阴天咖啡散步", weatherType: .cloudy, difficulty: .medium, isOutdoor: true),
+        TaskTemplateSeed(title: "雨天热饮", weatherType: .rainy, difficulty: .medium, isOutdoor: false),
+        TaskTemplateSeed(title: "雨声伴读", weatherType: .rainy, difficulty: .easy, isOutdoor: false),
+        TaskTemplateSeed(title: "雪地慢走", weatherType: .snowy, difficulty: .medium, isOutdoor: true),
+        TaskTemplateSeed(title: "暖灯伸展", weatherType: .snowy, difficulty: .easy, isOutdoor: false),
+        TaskTemplateSeed(title: "风中伸展", weatherType: .windy, difficulty: .easy, isOutdoor: true),
+        TaskTemplateSeed(title: "室内舞动 5 分钟", weatherType: .windy, difficulty: .medium, isOutdoor: false)
     ]
+
+    static func makeItems() -> [Item] {
+        itemSeeds.map { $0.make() }
+    }
+
+    static func makeTaskTemplates() -> [TaskTemplate] {
+        taskTemplateSeeds.map { $0.make() }
+    }
 }
