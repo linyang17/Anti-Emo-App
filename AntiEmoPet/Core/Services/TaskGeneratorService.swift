@@ -13,6 +13,7 @@ final class TaskGeneratorService {
         if templates.isEmpty {
             templates = WeatherType.allCases.flatMap { storage.fetchTemplates(for: $0) }
         }
+        // TODO(中/EN): Inject personalization weights (circadian, streak) & dedupe history per PRD §3 once analytics ready.
 
         let count = min(max(templates.count, 3), 6)
         let picked = Array(templates.shuffled().prefix(count))

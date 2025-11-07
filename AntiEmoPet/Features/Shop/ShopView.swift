@@ -17,6 +17,7 @@ struct ShopView: View {
                                 Text("消耗 \(item.costEnergy) 能量 · 心情 +\(item.moodBoost)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                // TODO(中/EN): Display coin/energy split pricing + rarity tiers (PRD 商店模块).
                             }
                             Spacer()
                             Button("购买") {

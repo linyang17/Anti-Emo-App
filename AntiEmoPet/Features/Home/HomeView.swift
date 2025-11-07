@@ -13,6 +13,7 @@ struct HomeView: View {
                     Text(viewModel.tip)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    // TODO(中/EN): Swap mock weather with WeatherKit feed + location consent (PRD §3 WeatherService).
                 }
 
                 DashboardCard(title: "任务进度", icon: "checkmark.circle") {
@@ -20,6 +21,7 @@ struct HomeView: View {
                         .tint(.green)
                     Text("完成率 \(Int(appModel.completionRate * 100))%")
                         .font(.title3.bold())
+                    // TODO(中/EN): Add streak badge + reward CTA per gamification spec once animation assets ready.
                 }
 
                 if let pet = appModel.pet {

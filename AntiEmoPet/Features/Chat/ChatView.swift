@@ -34,6 +34,7 @@ struct ChatView: View {
             HStack {
                 TextField("输入想说的话…", text: $viewModel.currentInput)
                     .textFieldStyle(.roundedBorder)
+                    // TODO(中/EN): Hook to real LLM endpoint (ChatService) with typing indicator + personas.
                 Button("发送") {
                     appModel.sendChat(viewModel.currentInput)
                     viewModel.currentInput = ""

@@ -10,6 +10,7 @@ struct OnboardingView: View {
             Image(systemName: "sun.max.fill")
                 .font(.system(size: 72))
                 .foregroundStyle(.yellow)
+                // TODO(中/EN): Replace icon with illustrated mascot per PRD onboarding storyboard.
             Text("欢迎来到 SunnyPet")
                 .font(.largeTitle.weight(.bold))
                 .multilineTextAlignment(.center)
@@ -39,5 +40,6 @@ struct OnboardingView: View {
             Spacer()
         }
         .padding()
+        // TODO(中/EN): Stage 2 of onboarding should ask for mood baseline + daylight sensitivity (PRD §4).
     }
 }
