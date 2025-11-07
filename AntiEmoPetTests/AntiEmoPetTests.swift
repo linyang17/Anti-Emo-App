@@ -74,4 +74,49 @@ struct AntiEmoPetTests {
         #expect(reply.contains("雨声陪你"))
         #expect(reply.contains("开心"))
     }
+
+    @Test("Default seeds create fresh model instances") func defaultSeedsAreCopyable() {
+        let firstBatch = DefaultSeeds.makeItems()
+        let secondBatch = DefaultSeeds.makeItems()
+
+        let zipped = zip(firstBatch, secondBatch)
+        #expect(!zipped.contains { $0.0 === $0.1 })
+        #expect(zipped.allSatisfy { $0.0.sku == $0.1.sku && $0.0.id != $0.1.id })
+    }
+
+    @Test("Bootstrapping twice does not duplicate records") func bootstrapIsIdempotent() throws {
+        let container = try makeInMemoryContainer()
+        let storage = StorageService(context: container.mainContext)
+
+        storage.bootstrapIfNeeded()
+        let firstItems = storage.fetchShopItems()
+        let firstTemplates = storage.fetchTemplates(for: .sunny)
+
+        storage.bootstrapIfNeeded()
+        let secondItems = storage.fetchShopItems()
+        let secondTemplates = storage.fetchTemplates(for: .sunny)
+
+        #expect(firstItems.count == secondItems.count)
+        #expect(firstTemplates.count == secondTemplates.count)
+        let energyCosts = firstItems.map(\.costEnergy)
+        #expect(energyCosts == energyCosts.sorted())
+    }
+
+    @Test("Storage returns tasks sorted by date") func fetchTasksReturnsChronologicalOrder() throws {
+        let container = try makeInMemoryContainer()
+        let storage = StorageService(context: container.mainContext)
+
+        let calendar = Calendar(identifier: .gregorian)
+        let baseDate = calendar.startOfDay(for: .now)
+        let morning = calendar.date(byAdding: .hour, value: 8, to: baseDate) ?? baseDate
+        let evening = calendar.date(byAdding: .hour, value: 20, to: baseDate) ?? baseDate
+
+        storage.save(tasks: [
+            Task(title: "Evening", weatherType: .cloudy, difficulty: .medium, date: evening),
+            Task(title: "Morning", weatherType: .sunny, difficulty: .easy, date: morning)
+        ])
+
+        let tasks = storage.fetchTasks(for: baseDate)
+        #expect(tasks.map(\.title) == ["Morning", "Evening"])
+    }
 }
