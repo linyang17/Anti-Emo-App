@@ -1,61 +1,64 @@
-//
-//  ContentView.swift
-//  AntiEmoPet
-//
-//  Created by Selena Yang on 07/11/2025.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var appModel: AppViewModel?
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        Group {
+            if let appModel {
+                MainTabView()
+                    .environmentObject(appModel)
+            } else {
+                ProgressView("加载中…")
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+        }
+        .task {
+            await initializeAppModelIfNeeded()
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+    @MainActor
+    private func initializeAppModelIfNeeded() {
+        guard appModel == nil else { return }
+        let viewModel = AppViewModel(modelContext: modelContext)
+        viewModel.load()
+        appModel = viewModel
     }
 }
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+struct MainTabView: View {
+    @EnvironmentObject private var appModel: AppViewModel
+
+    var body: some View {
+        TabView {
+            NavigationStack { HomeView() }
+                .tabItem { Label("Home", systemImage: "house") }
+            NavigationStack { TasksView() }
+                .tabItem { Label("Tasks", systemImage: "checklist") }
+            NavigationStack { PetView() }
+                .tabItem { Label("Pet", systemImage: "pawprint") }
+            NavigationStack { ShopView() }
+                .tabItem { Label("Shop", systemImage: "cart") }
+            NavigationStack { ChatView() }
+                .tabItem { Label("Chat", systemImage: "message") }
+            NavigationStack { ProfileView() }
+                .tabItem { Label("Profile", systemImage: "person") }
+        }
+        .sheet(isPresented: Binding(
+            get: { appModel.showOnboarding },
+            set: { appModel.showOnboarding = $0 }
+        )) {
+            OnboardingView()
+                .environmentObject(appModel)
+        }
+        .onAppear {
+            if appModel.chatMessages.isEmpty {
+                appModel.chatMessages = [
+                    ChatMessage(role: .pet, content: "Hi，我是 Sunny，随时陪你聊天 ☀️")
+                ]
+            }
+        }
+    }
 }
