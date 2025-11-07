@@ -3,10 +3,14 @@
 Weather-driven daily quests + virtual pet companion. MVP implements the closed loop described in `PRD/SunnyPet_iOS_TechSpec_MVP.md`: (任务 → 奖励 → 宠物反馈 → 商店消费) with SwiftUI + SwiftData + MVVM.
 
 ### Quick Start
-1. Requirements: Xcode 15.4+, iOS 17 simulator/device, SwiftData enabled.
+1. Requirements: Xcode 16+, iOS 26.1 SDK (verified on iPhone 17 simulator), SwiftData enabled.
 2. Open `AntiEmoPet.xcodeproj`.
-3. Run target **AntiEmoPet** on an iOS 17 simulator.
+3. Run target **AntiEmoPet** on `iPhone 17 (iOS 26.1)` to preview the MVP shell.
 4. 首次启动按照 Onboarding 输入昵称与地区，并授权通知（可选）。
+5. Run unit tests:  
+   ```bash
+   xcodebuild -project AntiEmoPet.xcodeproj -scheme AntiEmoPet -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' test
+   ```
 
 ### Architecture
 
@@ -37,6 +41,7 @@ Weather-driven daily quests + virtual pet companion. MVP implements the closed l
 - `WeatherService` randomizes weather type for MVP.
 - `ChatService` returns deterministic replies; swap with real AI later.
 - `AnalyticsService` logs core events via `os.Logger`.
+- `PetCorgi` asset reuses `PRD/corgi.webp` as the interim pet visual (可在后续替换为 3D/Live Render).
 
 ### Extending the MVP
 1. Replace `WeatherService` with WeatherKit and attach location from Onboarding region.
@@ -44,6 +49,7 @@ Weather-driven daily quests + virtual pet companion. MVP implements the closed l
 3. Introduce SwiftData relationships (e.g., `UserStats` ↔️ `Task`) for richer analytics.
 4. Hook `ChatService` into OpenAI/Vertex APIs; stream results to `ChatView`.
 5. Build `NotificationService` fallback UI when permission denied.
+6. Hook corgi placeholder to animated sprite sheet once插画完成。
 
 ### Branch & Commit Workflow
 Create a topic branch before committing:

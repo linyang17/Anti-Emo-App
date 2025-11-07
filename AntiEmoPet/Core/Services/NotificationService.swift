@@ -11,6 +11,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             }
         }
         center.delegate = self
+        // TODO(中/EN): Surface in-app banner when用户拒绝权限, guiding them to Settings per PRD 通知 fallback.
     }
 
     func scheduleDailyReminders() {
