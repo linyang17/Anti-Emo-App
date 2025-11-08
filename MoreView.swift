@@ -6,18 +6,28 @@ struct MoreView: View {
 
     var body: some View {
         List {
-            Section("情绪趋势") {
-                if appModel.moodEntries.isEmpty {
+            Section("情绪 / 能量趋势") {
+                if appModel.moodEntries.isEmpty && appModel.energyHistory.isEmpty {
                     Text("暂无记录")
                         .foregroundStyle(.secondary)
                 } else {
-                    Chart(appModel.moodEntries.prefix(30).reversed(), id: \.id) { entry in
-                        LineMark(
-                            x: .value("日期", entry.date),
-                            y: .value("情绪", entry.value)
-                        )
+                    Chart {
+                        ForEach(appModel.moodEntries.prefix(30).reversed()) { entry in
+                            LineMark(
+                                x: .value("日期", entry.date),
+                                y: .value("情绪", entry.value)
+                            )
+                            .symbol(by: .value("类型", "情绪"))
+                        }
+                        ForEach(appModel.energyHistory.suffix(30)) { entry in
+                            LineMark(
+                                x: .value("日期", entry.date),
+                                y: .value("能量", entry.totalEnergy)
+                            )
+                            .symbol(by: .value("类型", "能量"))
+                        }
                     }
-                    .frame(height: 180)
+                    .frame(height: 220)
                 }
             }
 
@@ -26,12 +36,24 @@ struct MoreView: View {
                     HStack {
                         Text(entry.date.formatted(date: .abbreviated, time: .shortened))
                         Spacer()
-                        Text("\(entry.value)")
-                            .font(.headline)
+                        HStack(spacing: 6) {
+                            ProgressView(value: Double(entry.value) / 100.0)
+                                .frame(width: 120)
+                                .progressViewStyle(LinearProgressViewStyle())
+                            Text("\(entry.value)")
+                                .font(.caption)
+                        }
                     }
                 }
             }
         }
-        .navigationTitle("More")
+        .navigationTitle("记录")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Text("Energy: \(appModel.totalEnergy)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }

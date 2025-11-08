@@ -33,8 +33,17 @@ struct TasksView: View {
                     .padding(.vertical, 4)
                 }
             }
+            if appModel.todayTasks.isEmpty {
+                Section {
+                    Text("暂无任务，稍后再试或检查网络")
+                }
+            }
+        }
+        .onAppear {
+            appModel.ensureInitialTasks()
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Tasks")
+        .energyToolbar(appModel: appModel)
     }
 }

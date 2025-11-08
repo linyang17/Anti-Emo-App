@@ -2,15 +2,16 @@ import Foundation
 import SwiftData
 
 enum PetMood: String, Codable, CaseIterable {
-    case ecstatic, happy, calm, sleepy, grumpy
+    case ecstatic, happy, calm, sleepy, anxious, grumpy
 
     var displayName: String {
         switch self {
-        case .ecstatic: return "超开心"
-        case .happy: return "开心"
-        case .calm: return "平静"
-        case .sleepy: return "犯困"
-        case .grumpy: return "不爽"
+        case .ecstatic: return "活力满满"
+        case .happy: return "开心得摇尾巴"
+        case .calm: return "有点无聊"
+        case .sleepy: return "困困"
+        case .anxious: return "开始焦虑"
+        case .grumpy: return "好想好想你"
         }
     }
 }
@@ -28,7 +29,7 @@ final class Pet: Identifiable {
     init(
         id: UUID = UUID(),
         name: String,
-        mood: PetMood = .happy,
+        mood: PetMood = .calm,
         hunger: Int = 60,
         level: Int = 1,
         xp: Int = 0,

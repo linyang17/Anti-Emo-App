@@ -9,33 +9,16 @@ final class TaskGeneratorService {
     }
 
     func generateTasks(for date: Date, weather: WeatherType) -> [Task] {
+        // Prefer templates for current weather; supplement from other weathers to ensure 3 tasks.
         var templates = storage.fetchTemplates(for: weather)
-        if templates.isEmpty {
-            templates = WeatherType.allCases.flatMap { storage.fetchTemplates(for: $0) }
-        }
-
-        // Ensure we can build at least 3 tasks by supplementing from other weather templates if needed
         if templates.count < 3 {
-            let supplement = WeatherType.allCases
+            let fallback = WeatherType.allCases
                 .filter { $0 != weather }
                 .flatMap { storage.fetchTemplates(for: $0) }
-            templates.append(contentsOf: supplement)
+            templates.append(contentsOf: fallback)
         }
 
-        let targetCount = 3
-        var picked: [TaskTemplate] = []
-        if templates.isEmpty {
-            picked = []
-        } else if templates.count >= targetCount {
-            picked = Array(templates.shuffled().prefix(targetCount))
-        } else {
-            // Cycle through templates to reach target count
-            var idx = 0
-            while picked.count < targetCount {
-                picked.append(templates[idx % templates.count])
-                idx += 1
-            }
-        }
+        let picked = Array(templates.shuffled().prefix(3))
 
         let tasks = picked.map { template in
             Task(

@@ -20,7 +20,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         times.forEach { hour, minute in
             let content = UNMutableNotificationContent()
             content.title = "SunnyPet 提醒"
-            content.body = "来看看你今天的阳光任务吧！"
+            content.body = "来看看sunny吧！"
             content.sound = .default
 
             var components = DateComponents()

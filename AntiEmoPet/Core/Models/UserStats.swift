@@ -15,8 +15,8 @@ final class UserStats: Identifiable {
 
     init(
         id: UUID = UUID(),
-        totalEnergy: Int = 80,
-        coins: Int = 120,
+        totalEnergy: Int = 100,
+        coins: Int = 10,
         streakDays: Int = 0,
         lastActiveDate: Date = .now,
         completedTasksCount: Int = 0,

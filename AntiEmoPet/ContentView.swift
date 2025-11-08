@@ -14,8 +14,8 @@ struct ContentView: View {
                 ProgressView("加载中…")
             }
         }
-        .task {
-            await initializeAppModelIfNeeded()
+        .task { @MainActor in
+            initializeAppModelIfNeeded()
         }
     }
 
@@ -34,7 +34,7 @@ struct MainTabView: View {
     var body: some View {
         TabView {
             NavigationStack { HomeView() }
-                .tabItem { Label("Home", systemImage: "house") }
+                .tabItem { Label("Weather", systemImage: "sun.max") }
             NavigationStack { TasksView() }
                 .tabItem { Label("Tasks", systemImage: "checklist") }
             NavigationStack { PetView() }
@@ -47,6 +47,8 @@ struct MainTabView: View {
                 .tabItem { Label("Statistics", systemImage: "chart.line.uptrend.xyaxis") }
             NavigationStack { ProfileView() }
                 .tabItem { Label("Profile", systemImage: "person") }
+            NavigationStack { MoreView() }
+                .tabItem { Label("More", systemImage: "ellipsis") }
         }
         .sheet(isPresented: Binding(
             get: { appModel.showOnboarding },
@@ -58,7 +60,7 @@ struct MainTabView: View {
         .onAppear {
             if appModel.chatMessages.isEmpty {
                 appModel.chatMessages = [
-                    ChatMessage(role: .pet, content: "Hi，我是 Sunny，随时陪你聊天 ☀️")
+                    ChatMessage(role: .pet, content: "Hi，我是Sunny，你现在感觉怎么样？要不要和我聊一聊？")
                 ]
             }
         }

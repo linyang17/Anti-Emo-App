@@ -16,18 +16,13 @@ final class PetEngine {
             pet.hunger = min(100, pet.hunger + item.hungerBoost)
             pet.mood = nextMood(from: pet.mood, boost: item.moodBoost / 4)
         }
-        pet.xp += 5
-        if pet.xp >= 100 {
-            pet.level += 1
-            pet.xp = 0
-        }
     }
 
     func applyTaskCompletion(pet: Pet) {
         pet.mood = nextMood(from: pet.mood, boost: 2)
         pet.hunger = max(0, pet.hunger - 5)
-        pet.xp += 10
-        if pet.xp >= 100 {
+        pet.xp += 1
+        if pet.xp >= 10 {
             pet.level += 1
             pet.xp = 0
         }

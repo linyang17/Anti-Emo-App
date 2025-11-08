@@ -24,7 +24,8 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-                .onChange(of: appModel.chatMessages.count) { _ in
+                .onChange(of: appModel.chatMessages.count) { oldValue, newValue in
+                    guard newValue != oldValue else { return }
                     if let last = appModel.chatMessages.last {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
@@ -43,6 +44,8 @@ struct ChatView: View {
             }
             .padding()
         }
+        .energyToolbar(appModel: appModel)
         .navigationTitle("Chat")
     }
 }
+
