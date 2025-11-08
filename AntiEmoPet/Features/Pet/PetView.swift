@@ -45,15 +45,20 @@ struct PetView: View {
                         appModel.petting()
                     }
 
-                    if let snack = appModel.shopItems.first(where: { $0.type == .snack }) {
-                        PrimaryButton(title: "喂零食：\(snack.name) 🍪") {
-                            _ = appModel.purchase(item: snack)
+                    HStack(spacing: 12) {
+                        NavigationLink(destination: BackpackView().environmentObject(appModel)) {
+                            Label("打开背包", systemImage: "bag")
                         }
-                    } else {
-                        Text("🍪 还没有可用的零食，先去商店补货吧")
-                            .font(.callout)
-                            .foregroundColor(.secondary)
-                            // TODO(中/EN): Replace with inventory carousel once store module ships multiple SKUs.
+                        if let snack = appModel.shopItems.first(where: { $0.type == .snack }),
+                           appModel.inventory.first(where: { $0.sku == snack.sku && $0.quantity > 0 }) != nil {
+                            PrimaryButton(title: "喂零食：\(snack.name) 🍪") {
+                                appModel.useItem(sku: snack.sku)
+                            }
+                        } else {
+                            Text("🍪 背包没有零食，先去商店购买吧")
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 .padding()
@@ -63,5 +68,12 @@ struct PetView: View {
             }
         }
         .navigationTitle("Pet")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(destination: BackpackView().environmentObject(appModel)) {
+                    Image(systemName: "bag")
+                }
+            }
+        }
     }
 }

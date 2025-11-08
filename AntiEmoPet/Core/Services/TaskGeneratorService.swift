@@ -13,10 +13,29 @@ final class TaskGeneratorService {
         if templates.isEmpty {
             templates = WeatherType.allCases.flatMap { storage.fetchTemplates(for: $0) }
         }
-        // TODO(中/EN): Inject personalization weights (circadian, streak) & dedupe history per PRD §3 once analytics ready.
 
-        let count = min(max(templates.count, 3), 6)
-        let picked = Array(templates.shuffled().prefix(count))
+        // Ensure we can build at least 3 tasks by supplementing from other weather templates if needed
+        if templates.count < 3 {
+            let supplement = WeatherType.allCases
+                .filter { $0 != weather }
+                .flatMap { storage.fetchTemplates(for: $0) }
+            templates.append(contentsOf: supplement)
+        }
+
+        let targetCount = 3
+        var picked: [TaskTemplate] = []
+        if templates.isEmpty {
+            picked = []
+        } else if templates.count >= targetCount {
+            picked = Array(templates.shuffled().prefix(targetCount))
+        } else {
+            // Cycle through templates to reach target count
+            var idx = 0
+            while picked.count < targetCount {
+                picked.append(templates[idx % templates.count])
+                idx += 1
+            }
+        }
 
         let tasks = picked.map { template in
             Task(

@@ -29,7 +29,9 @@ final class StorageService {
             if try ensureSeed(for: Pet.self) { [Pet(name: "Sunny")] } {
                 saveContext(reason: "ensure pet seed")
             }
-            return try context.fetch(FetchDescriptor<Pet>(fetchLimit: 1)).first
+            var descriptor = FetchDescriptor<Pet>()
+            descriptor.fetchLimit = 1
+            return try context.fetch(descriptor).first
         } catch {
             logger.error("Failed to fetch pet: \(error.localizedDescription, privacy: .public)")
             return nil
@@ -41,7 +43,9 @@ final class StorageService {
             if try ensureSeed(for: UserStats.self) { [UserStats()] } {
                 saveContext(reason: "ensure stats seed")
             }
-            return try context.fetch(FetchDescriptor<UserStats>(fetchLimit: 1)).first
+            var descriptor = FetchDescriptor<UserStats>()
+            descriptor.fetchLimit = 1
+            return try context.fetch(descriptor).first
         } catch {
             logger.error("Failed to fetch stats: \(error.localizedDescription, privacy: .public)")
             return nil
@@ -107,10 +111,12 @@ final class StorageService {
     @discardableResult
     private func ensureSeed<T: PersistentModel>(
         for _: T.Type,
-        fetchDescriptor: FetchDescriptor<T> = FetchDescriptor<T>(fetchLimit: 1),
+        fetchDescriptor: FetchDescriptor<T> = FetchDescriptor<T>(),
         create: () -> [T]
     ) throws -> Bool {
-        let existing = try context.fetch(fetchDescriptor)
+        var descriptor = fetchDescriptor
+        descriptor.fetchLimit = 1
+        let existing = try context.fetch(descriptor)
         guard existing.isEmpty else { return false }
         create().forEach { context.insert($0) }
         return true
@@ -142,10 +148,88 @@ final class StorageService {
             logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
+
+    // MARK: - Inventory
+
+    func fetchInventory() -> [InventoryEntry] {
+        do {
+            return try context.fetch(FetchDescriptor<InventoryEntry>())
+        } catch {
+            logger.error("Failed to fetch inventory: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    func addToInventory(item: Item, quantity: Int = 1) {
+        do {
+            let predicate = #Predicate<InventoryEntry> { $0.sku == item.sku }
+            let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
+            let existing = try context.fetch(descriptor).first
+            if let entry = existing {
+                entry.quantity += quantity
+            } else {
+                context.insert(InventoryEntry(sku: item.sku, name: item.name, type: item.type, quantity: quantity))
+            }
+            saveContext(reason: "add to inventory")
+        } catch {
+            logger.error("Failed to add to inventory: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    @discardableResult
+    func consumeFromInventory(sku: String, quantity: Int = 1) -> Bool {
+        do {
+            let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
+            let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
+            if let entry = try context.fetch(descriptor).first, entry.quantity >= quantity {
+                entry.quantity -= quantity
+                if entry.quantity == 0 {
+                    context.delete(entry)
+                }
+                saveContext(reason: "consume inventory")
+                return true
+            }
+            return false
+        } catch {
+            logger.error("Failed to consume inventory: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    // MARK: - Mood Entries / Statistics
+
+    func fetchMoodEntries(limit: Int? = nil) -> [MoodEntry] {
+        do {
+            var descriptor = FetchDescriptor<MoodEntry>(sortBy: [SortDescriptor(\MoodEntry.date, order: .reverse)])
+            if let limit { descriptor.fetchLimit = limit }
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch mood entries: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    func ensureTodayMoodEntry(weather: WeatherType, mood: PetMood) {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: .now)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? .now
+        let predicate = #Predicate<MoodEntry> { $0.date >= start && $0.date < end }
+        let descriptor = FetchDescriptor<MoodEntry>(predicate: predicate)
+        do {
+            let existing = try context.fetch(descriptor)
+            if existing.isEmpty {
+                let entry = MoodEntry(date: .now, weather: weather, mood: mood)
+                context.insert(entry)
+                saveContext(reason: "ensure today mood entry")
+            }
+        } catch {
+            logger.error("Failed to ensure today mood entry: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 }
 
 enum DefaultSeeds {
-    fileprivate struct ItemSeed {
+    fileprivate struct ItemSeed: Codable {
         let sku: String
         let type: ItemType
         let name: String
@@ -165,7 +249,7 @@ enum DefaultSeeds {
         }
     }
 
-    fileprivate struct TaskTemplateSeed {
+    fileprivate struct TaskTemplateSeed: Codable {
         let title: String
         let weatherType: WeatherType
         let difficulty: TaskDifficulty
@@ -181,7 +265,19 @@ enum DefaultSeeds {
         }
     }
 
-    private static let itemSeeds: [ItemSeed] = [
+    private static func loadJSON<T: Decodable>(_ filename: String) -> T? {
+        guard let url = Bundle.main.url(forResource: filename, withExtension: "json", subdirectory: "Static") else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            Logger(subsystem: "com.sunny.pet", category: "DefaultSeeds").error("Failed to decode \(filename, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    private static let fallbackItemSeeds: [ItemSeed] = [
         ItemSeed(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
         ItemSeed(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
         ItemSeed(sku: "toy.pillow", type: .toy, name: "抱枕", costEnergy: 18, moodBoost: 8, hungerBoost: 0),
@@ -189,7 +285,7 @@ enum DefaultSeeds {
         ItemSeed(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
     ]
 
-    private static let taskTemplateSeeds: [TaskTemplateSeed] = [
+    private static let fallbackTaskTemplateSeeds: [TaskTemplateSeed] = [
         TaskTemplateSeed(title: "晒晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
         TaskTemplateSeed(title: "阳台瑜伽流", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
         TaskTemplateSeed(title: "云下冥想", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
@@ -203,10 +299,12 @@ enum DefaultSeeds {
     ]
 
     static func makeItems() -> [Item] {
-        itemSeeds.map { $0.make() }
+        let seeds: [ItemSeed] = loadJSON("items") ?? fallbackItemSeeds
+        return seeds.map { $0.make() }
     }
 
     static func makeTaskTemplates() -> [TaskTemplate] {
-        taskTemplateSeeds.map { $0.make() }
+        let seeds: [TaskTemplateSeed] = loadJSON("task_templates") ?? fallbackTaskTemplateSeeds
+        return seeds.map { $0.make() }
     }
 }

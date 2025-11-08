@@ -1,0 +1,1697 @@
+diff --git a/.DS_Store b/.DS_Store
+index c53c9bd..360997a 100644
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --git a/AntiEmoPet.xcodeproj/project.pbxproj b/AntiEmoPet.xcodeproj/project.pbxproj
+index 6b2a5a8..47b1c82 100644
+--- a/AntiEmoPet.xcodeproj/project.pbxproj
++++ b/AntiEmoPet.xcodeproj/project.pbxproj
+@@ -6,6 +6,13 @@
+ 	objectVersion = 77;
+ 	objects = {
+ 
++/* Begin PBXBuildFile section */
++		5A643E412EBE3BDE0072F005 /* MoodEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E402EBE3BDE0072F005 /* MoodEntry.swift */; };
++		5A643E432EBE3C100072F005 /* InventoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E422EBE3C100072F005 /* InventoryEntry.swift */; };
++		5A643E472EBE3DD00072F005 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E462EBE3DD00072F005 /* MoreView.swift */; };
++		5A927D342EBE52E600CD2167 /* ToolbarEnergyModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */; };
++/* End PBXBuildFile section */
++
+ /* Begin PBXContainerItemProxy section */
+ 		5A4F407C2EBDAB6500F41BD7 /* PBXContainerItemProxy */ = {
+ 			isa = PBXContainerItemProxy;
+@@ -27,6 +34,10 @@
+ 		5A4F406C2EBDAB6500F41BD7 /* AntiEmoPet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AntiEmoPet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		5A4F407B2EBDAB6500F41BD7 /* AntiEmoPetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AntiEmoPetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		5A4F40852EBDAB6600F41BD7 /* AntiEmoPetUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AntiEmoPetUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
++		5A643E402EBE3BDE0072F005 /* MoodEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodEntry.swift; sourceTree = "<group>"; };
++		5A643E422EBE3C100072F005 /* InventoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryEntry.swift; sourceTree = "<group>"; };
++		5A643E462EBE3DD00072F005 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
++		5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarEnergyModifier.swift; sourceTree = "<group>"; };
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFileSystemSynchronizedRootGroup section */
+@@ -79,6 +90,10 @@
+ 				5A4F407E2EBDAB6500F41BD7 /* AntiEmoPetTests */,
+ 				5A4F40882EBDAB6600F41BD7 /* AntiEmoPetUITests */,
+ 				5A4F406D2EBDAB6500F41BD7 /* Products */,
++				5A643E402EBE3BDE0072F005 /* MoodEntry.swift */,
++				5A643E422EBE3C100072F005 /* InventoryEntry.swift */,
++				5A643E462EBE3DD00072F005 /* MoreView.swift */,
++				5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */,
+ 			);
+ 			sourceTree = "<group>";
+ 		};
+@@ -236,6 +251,10 @@
+ 			isa = PBXSourcesBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
++				5A927D342EBE52E600CD2167 /* ToolbarEnergyModifier.swift in Sources */,
++				5A643E412EBE3BDE0072F005 /* MoodEntry.swift in Sources */,
++				5A643E432EBE3C100072F005 /* InventoryEntry.swift in Sources */,
++				5A643E472EBE3DD00072F005 /* MoreView.swift in Sources */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+diff --git a/AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate b/AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate
+index 2062f25..616c9e7 100644
+Binary files a/AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate and b/AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate differ
+diff --git a/AntiEmoPet/ContentView.swift b/AntiEmoPet/ContentView.swift
+index 04d78b0..0b63629 100644
+--- a/AntiEmoPet/ContentView.swift
++++ b/AntiEmoPet/ContentView.swift
+@@ -14,8 +14,8 @@ struct ContentView: View {
+                 ProgressView("加载中…")
+             }
+         }
+-        .task {
+-            await initializeAppModelIfNeeded()
++        .task { @MainActor in
++            initializeAppModelIfNeeded()
+         }
+     }
+ 
+@@ -34,7 +34,7 @@ struct MainTabView: View {
+     var body: some View {
+         TabView {
+             NavigationStack { HomeView() }
+-                .tabItem { Label("Home", systemImage: "house") }
++                .tabItem { Label("Weather", systemImage: "sun.max") }
+             NavigationStack { TasksView() }
+                 .tabItem { Label("Tasks", systemImage: "checklist") }
+             NavigationStack { PetView() }
+@@ -45,6 +45,8 @@ struct MainTabView: View {
+                 .tabItem { Label("Chat", systemImage: "message") }
+             NavigationStack { ProfileView() }
+                 .tabItem { Label("Profile", systemImage: "person") }
++            NavigationStack { MoreView() }
++                .tabItem { Label("More", systemImage: "ellipsis") }
+         }
+         .sheet(isPresented: Binding(
+             get: { appModel.showOnboarding },
+@@ -56,7 +58,7 @@ struct MainTabView: View {
+         .onAppear {
+             if appModel.chatMessages.isEmpty {
+                 appModel.chatMessages = [
+-                    ChatMessage(role: .pet, content: "Hi，我是 Sunny，随时陪你聊天 ☀️")
++                    ChatMessage(role: .pet, content: "Hi，我是Sunny，你现在感觉怎么样？要不要和我聊一聊？")
+                 ]
+             }
+         }
+diff --git a/AntiEmoPet/Core/App/AppViewModel.swift b/AntiEmoPet/Core/App/AppViewModel.swift
+index 39d6720..e9d877e 100644
+--- a/AntiEmoPet/Core/App/AppViewModel.swift
++++ b/AntiEmoPet/Core/App/AppViewModel.swift
+@@ -3,123 +3,247 @@ import SwiftUI
+ import SwiftData
+ import Combine
+ 
++struct EnergyHistoryEntry: Identifiable, Codable {
++	let id: UUID
++	let date: Date
++	var totalEnergy: Int
++}
++
+ @MainActor
+ final class AppViewModel: ObservableObject {
+-    @Published var todayTasks: [Task] = []
+-    @Published var pet: Pet?
+-    @Published var userStats: UserStats?
+-    @Published var shopItems: [Item] = []
+-    @Published var weather: WeatherType = .sunny
+-    @Published var chatMessages: [ChatMessage] = []
+-    @Published var isLoading = true
+-    @Published var showOnboarding = false
+-
+-    private let storage: StorageService
+-    private let taskGenerator: TaskGeneratorService
+-    private let rewardEngine = RewardEngine()
+-    private let petEngine = PetEngine()
+-    private let notificationService = NotificationService()
+-    private let weatherService = WeatherService()
+-    private let chatService = ChatService()
+-    private let analytics = AnalyticsService()
+-
+-    init(modelContext: ModelContext) {
+-        storage = StorageService(context: modelContext)
+-        taskGenerator = TaskGeneratorService(storage: storage)
+-    }
+-
+-    func load() {
+-        storage.bootstrapIfNeeded()
+-        weather = weatherService.fetchWeather()
+-        pet = storage.fetchPet()
+-        userStats = storage.fetchStats()
+-        shopItems = storage.fetchShopItems()
+-
+-        todayTasks = storage.fetchTasks(for: .now)
+-        if todayTasks.isEmpty {
+-            todayTasks = taskGenerator.generateTasks(for: .now, weather: weather)
+-        }
+-
+-        showOnboarding = (userStats?.nickname ?? "").isEmpty
+-        isLoading = false
+-    }
+-
+-    func toggleTask(_ task: Task) {
+-        guard let stats = userStats, let pet else { return }
+-        task.status = task.status == .completed ? .pending : .completed
+-        if task.status == .completed {
+-            _ = rewardEngine.applyTaskReward(for: task, stats: stats)
+-            petEngine.applyTaskCompletion(pet: pet)
+-            analytics.log(event: "task_completed", metadata: ["title": task.title])
+-            if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
+-                analytics.log(event: "streak_up", metadata: ["streak": "\(stats.streakDays)"])
+-            }
+-        }
+-        storage.persist()
+-        todayTasks = storage.fetchTasks(for: .now)
+-    }
+-
+-    func petting() {
+-        guard let pet else { return }
+-        petEngine.handleAction(.pat, pet: pet)
+-        storage.persist()
+-        objectWillChange.send()
+-        analytics.log(event: "pet_pat")
+-    }
+-
+-    func feed(item: Item) {
+-        guard let pet else { return }
+-        petEngine.handleAction(.feed(item: item), pet: pet)
+-        storage.persist()
+-    }
+-
+-    func purchase(item: Item) -> Bool {
+-        guard let stats = userStats else { return false }
+-        let success = rewardEngine.purchase(item: item, stats: stats)
+-        guard success else { return false }
+-        feed(item: item)
+-        analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
+-        return true
+-    }
+-
+-    func updateProfile(nickname: String, region: String) {
+-        userStats?.nickname = nickname
+-        userStats?.region = region
+-        showOnboarding = false
+-        storage.persist()
+-        analytics.log(event: "onboarding_done", metadata: ["region": region])
+-    }
+-
+-    func requestNotifications() {
+-        notificationService.requestAuthorization { [weak self] granted in
+-            guard let self, let stats = self.userStats else { return }
+-            stats.notificationsEnabled = granted
+-            if granted {
+-                self.notificationService.scheduleDailyReminders()
+-            }
+-            self.storage.persist()
+-        }
+-    }
+-
+-    func sendChat(_ text: String) {
+-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+-        chatMessages.append(ChatMessage(role: .user, content: text))
+-        let reply = chatService.reply(
+-            to: text,
+-            weather: weather,
+-            mood: pet?.mood ?? .calm
+-        )
+-        chatMessages.append(ChatMessage(role: .pet, content: reply))
+-        analytics.log(event: "chat_message")
+-    }
+-
+-    func persistState() {
+-        storage.persist()
+-    }
+-
+-    var completionRate: Double {
+-        guard !todayTasks.isEmpty else { return 0 }
+-        let completed = todayTasks.filter { $0.status == .completed }.count
+-        return Double(completed) / Double(todayTasks.count)
+-    }
++	// MARK: - Published State
++	@Published var todayTasks: [Task] = []
++	@Published var pet: Pet?
++	@Published var userStats: UserStats?
++	@Published var shopItems: [Item] = []
++	@Published var weather: WeatherType = .sunny
++	@Published var chatMessages: [ChatMessage] = []
++	@Published var isLoading = true
++	@Published var showOnboarding = false
++	@Published var moodEntries: [MoodEntry] = []
++	@Published var energyHistory: [EnergyHistoryEntry] = []
++	@Published var inventory: [InventoryEntry] = []
++	// MARK: - Dependencies
++	private let storage: StorageService
++	private let taskGenerator: TaskGeneratorService
++	private let rewardEngine = RewardEngine()
++	private let petEngine = PetEngine()
++	private let notificationService = NotificationService()
++	private let weatherService = WeatherService()
++	private let chatService = ChatService()
++	private let analytics = AnalyticsService()
++	
++	init(modelContext: ModelContext) {
++		storage = StorageService(context: modelContext)
++		taskGenerator = TaskGeneratorService(storage: storage)
++	}
++	
++	var totalEnergy: Int {
++		userStats?.totalEnergy ?? 0
++	}
++	
++	var allTasks: [Task] {
++			// MVP 阶段：全部任务等于今日任务列表
++			// 未来如加入历史/模板任务库，只需在此改为从 StorageService / TaskGenerator 获取
++		todayTasks
++	}
++	
++	func load() {
++		storage.bootstrapIfNeeded()
++		weather = weatherService.fetchWeather()
++		pet = storage.fetchPet()
++		userStats = storage.fetchStats()
++		
++			// Ensure initial defaults per MVP PRD
++		if let stats = userStats, stats.totalEnergy <= 0 {
++			stats.totalEnergy = 50
++		}
++		
++			// Load stored energy history (for daily totalEnergy snapshots)
++		if let data = UserDefaults.standard.data(forKey: "energyHistory"),
++		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
++			energyHistory = decoded
++		} else {
++				// Initialize today's snapshot with current energy
++			logTodayEnergySnapshot()
++		}
++		
++		if let pet = pet {
++				// Ensure reasonable initial hunger baseline at least 50
++			if pet.hunger < 50 { pet.hunger = 50 }
++				// XP baseline should start at 0 if negative
++			if pet.xp < 0 { pet.xp = 0 }
++		}
++		
++		shopItems = storage.fetchShopItems()
++		
++		moodEntries = storage.fetchMoodEntries()
++		if moodEntries.isEmpty {
++			addMoodEntry(value: 50) // 心情一般 baseline 50/100
++		}
++		inventory = storage.fetchInventory()
++		
++		todayTasks = storage.fetchTasks(for: .now)
++		
++		if todayTasks.isEmpty {
++			todayTasks = taskGenerator.generateTasks(for: .now, weather: weather)
++		}
++		
++		ensureInitialTasks(minimum: 3)
++		
++		showOnboarding = (userStats?.nickname ?? "").isEmpty
++		isLoading = false
++	}
++	
++	func toggleTask(_ task: Task) {
++		guard let stats = userStats, let pet else { return }
++		task.status = task.status == .completed ? .pending : .completed
++		if task.status == .completed {
++			_ = rewardEngine.applyTaskReward(for: task, stats: stats)
++			petEngine.applyTaskCompletion(pet: pet)
++			analytics.log(event: "task_completed", metadata: ["title": task.title])
++			if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
++				analytics.log(event: "streak_up", metadata: ["streak": "\(stats.streakDays)"])
++			}
++			logTodayEnergySnapshot()
++		}
++		storage.persist()
++		todayTasks = storage.fetchTasks(for: .now)
++	}
++	
++	func petting() {
++		guard let pet else { return }
++		petEngine.handleAction(.pat, pet: pet)
++		storage.persist()
++		objectWillChange.send()
++		analytics.log(event: "pet_pat")
++	}
++	
++	func feed(item: Item) {
++		guard let pet else { return }
++		petEngine.handleAction(.feed(item: item), pet: pet)
++		storage.persist()
++	}
++	
++	func purchase(item: Item) -> Bool {
++		guard let stats = userStats else { return false }
++		let success = rewardEngine.purchase(item: item, stats: stats)
++		guard success else { return false }
++		incrementInventory(for: item)
++		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
++		logTodayEnergySnapshot()
++		return true
++	}
++	
++	func updateProfile(nickname: String, region: String) {
++		userStats?.nickname = nickname
++		userStats?.region = region
++		showOnboarding = false
++		storage.persist()
++		analytics.log(event: "onboarding_done", metadata: ["region": region])
++	}
++	
++	func requestNotifications() {
++		notificationService.requestAuthorization { [weak self] granted in
++			guard let self, let stats = self.userStats else { return }
++			stats.notificationsEnabled = granted
++			if granted {
++				self.notificationService.scheduleDailyReminders()
++			}
++			self.storage.persist()
++		}
++	}
++	
++	func sendChat(_ text: String) {
++		guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
++		chatMessages.append(ChatMessage(role: .user, content: text))
++		let reply = chatService.reply(
++			to: text,
++			weather: weather,
++			mood: pet?.mood ?? .calm
++		)
++		chatMessages.append(ChatMessage(role: .pet, content: reply))
++		analytics.log(event: "chat_message")
++	}
++	
++	func persistState() {
++		storage.persist()
++	}
++	
++	func addMoodEntry(value: Int) {
++		let entry = MoodEntry(value: value)
++		storage.saveMoodEntry(entry)
++		moodEntries = storage.fetchMoodEntries()
++	}
++	
++	func incrementInventory(for item: Item) {
++		storage.incrementInventory(forSKU: item.sku)
++		inventory = storage.fetchInventory()
++	}
++	
++	func useItem(sku: String) -> Bool {
++		guard let pet else { return false }
++			// Check inventory count first
++		if let entry = inventory.first(where: { $0.sku == sku }), entry.count > 0,
++		   let item = shopItems.first(where: { $0.sku == sku }) {
++			storage.decrementInventory(forSKU: sku)
++			inventory = storage.fetchInventory()
++			petEngine.handleAction(.feed(item: item), pet: pet)
++			storage.persist()
++			analytics.log(event: "item_used", metadata: ["sku": sku])
++			logTodayEnergySnapshot()
++			return true
++		} else {
++			return false
++		}
++	}
++	
++	var completionRate: Double {
++		guard !todayTasks.isEmpty else { return 0 }
++		let completed = todayTasks.filter { $0.status == .completed }.count
++		return Double(completed) / Double(todayTasks.count)
++	}
++	
++	private func logTodayEnergySnapshot() {
++		guard userStats != nil else { return }
++		let calendar = Calendar.current
++		let dayStart = calendar.startOfDay(for: Date())
++		
++		if let index = energyHistory.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: dayStart) }) {
++			energyHistory[index].totalEnergy = totalEnergy
++		} else {
++			let entry = EnergyHistoryEntry(id: UUID(), date: dayStart, totalEnergy: totalEnergy)
++			energyHistory.append(entry)
++		}
++		
++		energyHistory.sort { $0.date < $1.date }
++		
++		if let data = try? JSONEncoder().encode(energyHistory) {
++			UserDefaults.standard.set(data, forKey: "energyHistory")
++		}
++	}
++	func ensureInitialTasks(minimum: Int = 3) {
++		guard minimum > 0 else { return }
++		
++			// 已经满足数量要求则直接返回
++		if todayTasks.count >= minimum { return }
++		
++			// 使用统一的 TaskGeneratorService / 任务配置作为唯一来源补足任务
++		let generated = taskGenerator.generateTasks(for: .now, weather: weather)
++		
++		guard !generated.isEmpty else {
++			storage.persist()
++			return
++		}
++		
++			// 避免重复：保留已存在的 todayTasks，只从生成结果中补足缺口
++		let existingIDs = Set(todayTasks.map { $0.id })
++		let remaining = minimum - todayTasks.count
++		if remaining > 0 {
++			let extras = generated.filter { !existingIDs.contains($0.id) }
++			todayTasks.append(contentsOf: extras.prefix(remaining))
++		}
++		
++		storage.persist()
++	}
+ }
+diff --git a/AntiEmoPet/Core/Models/Pet.swift b/AntiEmoPet/Core/Models/Pet.swift
+index a85669d..1bcad7a 100644
+--- a/AntiEmoPet/Core/Models/Pet.swift
++++ b/AntiEmoPet/Core/Models/Pet.swift
+@@ -2,15 +2,16 @@ import Foundation
+ import SwiftData
+ 
+ enum PetMood: String, Codable, CaseIterable {
+-    case ecstatic, happy, calm, sleepy, grumpy
++    case ecstatic, happy, calm, sleepy, anxious, grumpy
+ 
+     var displayName: String {
+         switch self {
+-        case .ecstatic: return "超开心"
+-        case .happy: return "开心"
+-        case .calm: return "平静"
+-        case .sleepy: return "犯困"
+-        case .grumpy: return "不爽"
++        case .ecstatic: return "活力满满"
++        case .happy: return "开心得摇尾巴"
++        case .calm: return "有点无聊"
++        case .sleepy: return "困困"
++		case .anxious: return "开始焦虑"
++        case .grumpy: return "好想好想你"
+         }
+     }
+ }
+@@ -28,7 +29,7 @@ final class Pet: Identifiable {
+     init(
+         id: UUID = UUID(),
+         name: String,
+-        mood: PetMood = .happy,
++        mood: PetMood = .calm,
+         hunger: Int = 60,
+         level: Int = 1,
+         xp: Int = 0,
+diff --git a/AntiEmoPet/Core/Models/Task.swift b/AntiEmoPet/Core/Models/Task.swift
+index ed34e2c..17adf4d 100644
+--- a/AntiEmoPet/Core/Models/Task.swift
++++ b/AntiEmoPet/Core/Models/Task.swift
+@@ -32,9 +32,9 @@ enum TaskDifficulty: String, Codable, CaseIterable {
+ 
+     var energyReward: Int {
+         switch self {
+-        case .easy: return 8
++        case .easy: return 5
+         case .medium: return 10
+-        case .hard: return 12
++        case .hard: return 15
+         }
+     }
+ }
+diff --git a/AntiEmoPet/Core/Models/UserStats.swift b/AntiEmoPet/Core/Models/UserStats.swift
+index 8122c56..f9d845b 100644
+--- a/AntiEmoPet/Core/Models/UserStats.swift
++++ b/AntiEmoPet/Core/Models/UserStats.swift
+@@ -15,8 +15,8 @@ final class UserStats: Identifiable {
+ 
+     init(
+         id: UUID = UUID(),
+-        totalEnergy: Int = 80,
+-        coins: Int = 120,
++        totalEnergy: Int = 100,
++        coins: Int = 10,
+         streakDays: Int = 0,
+         lastActiveDate: Date = .now,
+         completedTasksCount: Int = 0,
+diff --git a/AntiEmoPet/Core/Services/NotificationService.swift b/AntiEmoPet/Core/Services/NotificationService.swift
+index 223fe6a..721c7e1 100644
+--- a/AntiEmoPet/Core/Services/NotificationService.swift
++++ b/AntiEmoPet/Core/Services/NotificationService.swift
+@@ -20,7 +20,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+         times.forEach { hour, minute in
+             let content = UNMutableNotificationContent()
+             content.title = "SunnyPet 提醒"
+-            content.body = "来看看你今天的阳光任务吧！"
++            content.body = "来看看sunny吧！"
+             content.sound = .default
+ 
+             var components = DateComponents()
+diff --git a/AntiEmoPet/Core/Services/PetEngine.swift b/AntiEmoPet/Core/Services/PetEngine.swift
+index 16b3cbc..43b3629 100644
+--- a/AntiEmoPet/Core/Services/PetEngine.swift
++++ b/AntiEmoPet/Core/Services/PetEngine.swift
+@@ -16,18 +16,13 @@ final class PetEngine {
+             pet.hunger = min(100, pet.hunger + item.hungerBoost)
+             pet.mood = nextMood(from: pet.mood, boost: item.moodBoost / 4)
+         }
+-        pet.xp += 5
+-        if pet.xp >= 100 {
+-            pet.level += 1
+-            pet.xp = 0
+-        }
+     }
+ 
+     func applyTaskCompletion(pet: Pet) {
+         pet.mood = nextMood(from: pet.mood, boost: 2)
+         pet.hunger = max(0, pet.hunger - 5)
+-        pet.xp += 10
+-        if pet.xp >= 100 {
++        pet.xp += 1
++        if pet.xp >= 10 {
+             pet.level += 1
+             pet.xp = 0
+         }
+diff --git a/AntiEmoPet/Core/Services/RewardEngine.swift b/AntiEmoPet/Core/Services/RewardEngine.swift
+index 733fba9..cc5b738 100644
+--- a/AntiEmoPet/Core/Services/RewardEngine.swift
++++ b/AntiEmoPet/Core/Services/RewardEngine.swift
+@@ -5,7 +5,7 @@ final class RewardEngine {
+     func applyTaskReward(for task: Task, stats: UserStats) -> Int {
+         guard task.status == .completed else { return 0 }
+         let energy = task.difficulty.energyReward
+-        stats.totalEnergy += energy
++        EnergyEngine.add(energy, to: stats)
+         stats.coins += 5
+         stats.completedTasksCount += 1
+         stats.lastActiveDate = .now
+@@ -19,8 +19,7 @@ final class RewardEngine {
+     }
+ 
+     func purchase(item: Item, stats: UserStats) -> Bool {
+-        guard stats.totalEnergy >= item.costEnergy else { return false }
+-        stats.totalEnergy -= item.costEnergy
++        guard EnergyEngine.spend(item.costEnergy, from: stats) else { return false }
+         stats.coins = max(0, stats.coins - 2)
+         stats.lastActiveDate = .now
+         return true
+diff --git a/AntiEmoPet/Core/Services/StorageService.swift b/AntiEmoPet/Core/Services/StorageService.swift
+index 7f51654..de8e03c 100644
+--- a/AntiEmoPet/Core/Services/StorageService.swift
++++ b/AntiEmoPet/Core/Services/StorageService.swift
+@@ -4,209 +4,279 @@ import OSLog
+ 
+ @MainActor
+ final class StorageService {
+-    private let context: ModelContext
+-    private let logger = Logger(subsystem: "com.sunny.pet", category: "StorageService")
+-
+-    init(context: ModelContext) {
+-        self.context = context
+-    }
+-
+-    func bootstrapIfNeeded() {
+-        do {
+-            var didInsert = false
+-            didInsert = try ensureSeed(for: Pet.self) { [Pet(name: "Sunny")] } || didInsert
+-            didInsert = try ensureSeed(for: UserStats.self) { [UserStats()] } || didInsert
+-            didInsert = try ensureItems() || didInsert
+-            didInsert = try ensureTaskTemplates() || didInsert
+-            if didInsert { saveContext(reason: "bootstrap seeds") }
+-        } catch {
+-            logger.error("Failed to bootstrap seeds: \(error.localizedDescription, privacy: .public)")
+-        }
+-    }
+-
+-    func fetchPet() -> Pet? {
+-        do {
+-            if try ensureSeed(for: Pet.self) { [Pet(name: "Sunny")] } {
+-                saveContext(reason: "ensure pet seed")
+-            }
+-            return try context.fetch(FetchDescriptor<Pet>(fetchLimit: 1)).first
+-        } catch {
+-            logger.error("Failed to fetch pet: \(error.localizedDescription, privacy: .public)")
+-            return nil
+-        }
+-    }
+-
+-    func fetchStats() -> UserStats? {
+-        do {
+-            if try ensureSeed(for: UserStats.self) { [UserStats()] } {
+-                saveContext(reason: "ensure stats seed")
+-            }
+-            return try context.fetch(FetchDescriptor<UserStats>(fetchLimit: 1)).first
+-        } catch {
+-            logger.error("Failed to fetch stats: \(error.localizedDescription, privacy: .public)")
+-            return nil
+-        }
+-    }
+-
+-    func fetchShopItems() -> [Item] {
+-        do {
+-            if try ensureItems() {
+-                saveContext(reason: "ensure item seeds")
+-            }
+-            let descriptor = FetchDescriptor<Item>(sortBy: [SortDescriptor(\Item.costEnergy, order: .forward)])
+-            return try context.fetch(descriptor)
+-        } catch {
+-            logger.error("Failed to fetch shop items: \(error.localizedDescription, privacy: .public)")
+-            return []
+-        }
+-    }
+-
+-    func fetchTemplates(for weather: WeatherType) -> [TaskTemplate] {
+-        do {
+-            if try ensureTaskTemplates() {
+-                saveContext(reason: "ensure template seeds")
+-            }
+-            let predicate = #Predicate<TaskTemplate> { $0.weatherType == weather }
+-            let descriptor = FetchDescriptor<TaskTemplate>(predicate: predicate)
+-            return try context.fetch(descriptor)
+-        } catch {
+-            logger.error("Failed to fetch templates: \(error.localizedDescription, privacy: .public)")
+-            return []
+-        }
+-    }
+-
+-    func fetchTasks(for date: Date) -> [Task] {
+-        do {
+-            let calendar = Calendar.current
+-            let start = calendar.startOfDay(for: date)
+-            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+-            let predicate = #Predicate<Task> {
+-                $0.date >= start && $0.date < end
+-            }
+-            let descriptor = FetchDescriptor<Task>(
+-                predicate: predicate,
+-                sortBy: [SortDescriptor(\Task.date, order: .forward)]
+-            )
+-            return try context.fetch(descriptor)
+-        } catch {
+-            logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
+-            return []
+-        }
+-    }
+-
+-    func save(tasks: [Task]) {
+-        guard !tasks.isEmpty else { return }
+-        tasks.forEach { context.insert($0) }
+-        saveContext(reason: "save tasks")
+-    }
+-
+-    func persist() {
+-        saveContext(reason: "persist changes")
+-    }
+-
+-    @discardableResult
+-    private func ensureSeed<T: PersistentModel>(
+-        for _: T.Type,
+-        fetchDescriptor: FetchDescriptor<T> = FetchDescriptor<T>(fetchLimit: 1),
+-        create: () -> [T]
+-    ) throws -> Bool {
+-        let existing = try context.fetch(fetchDescriptor)
+-        guard existing.isEmpty else { return false }
+-        create().forEach { context.insert($0) }
+-        return true
+-    }
+-
+-    @discardableResult
+-    private func ensureItems() throws -> Bool {
+-        let existing = try context.fetch(FetchDescriptor<Item>())
+-        let existingSKUs = Set(existing.map(\.sku))
+-        let missing = DefaultSeeds.makeItems().filter { !existingSKUs.contains($0.sku) }
+-        missing.forEach { context.insert($0) }
+-        return !missing.isEmpty
+-    }
+-
+-    @discardableResult
+-    private func ensureTaskTemplates() throws -> Bool {
+-        let existing = try context.fetch(FetchDescriptor<TaskTemplate>())
+-        let existingTitles = Set(existing.map(\.title))
+-        let missing = DefaultSeeds.makeTaskTemplates().filter { !existingTitles.contains($0.title) }
+-        missing.forEach { context.insert($0) }
+-        return !missing.isEmpty
+-    }
+-
+-    private func saveContext(reason: String) {
+-        guard context.hasChanges else { return }
+-        do {
+-            try context.save()
+-        } catch {
+-            logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
+-        }
+-    }
++	private let context: ModelContext
++	private let logger = Logger(subsystem: "com.sunny.pet", category: "StorageService")
++	
++	init(context: ModelContext) {
++		self.context = context
++	}
++	
++	func bootstrapIfNeeded() {
++		do {
++			var didInsert = false
++			didInsert = try ensureSeed(for: Pet.self, create: { [Pet(name: "Sunny")] }) || didInsert
++			didInsert = try ensureSeed(for: UserStats.self, create: { [UserStats()] }) || didInsert
++			didInsert = try ensureItems() || didInsert
++			didInsert = try ensureTaskTemplates() || didInsert
++			if didInsert { saveContext(reason: "bootstrap seeds") }
++		} catch {
++			logger.error("Failed to bootstrap seeds: \(error.localizedDescription, privacy: .public)")
++		}
++	}
++	
++	func fetchPet() -> Pet? {
++		do {
++			if try ensureSeed(for: Pet.self, create: { [Pet(name: "Sunny")] }) {
++				saveContext(reason: "ensure pet seed")
++			}
++			let descriptor = FetchDescriptor<Pet>()
++			return try context.fetch(descriptor).first
++		} catch {
++			logger.error("Failed to fetch pet: \(error.localizedDescription, privacy: .public)")
++			return nil
++		}
++	}
++	
++	func fetchStats() -> UserStats? {
++		do {
++			if try ensureSeed(for: UserStats.self, create: { [UserStats()] }) {
++				saveContext(reason: "ensure stats seed")
++			}
++			let descriptor = FetchDescriptor<UserStats>()
++			return try context.fetch(descriptor).first
++		} catch {
++			logger.error("Failed to fetch stats: \(error.localizedDescription, privacy: .public)")
++			return nil
++		}
++	}
++	
++	func fetchShopItems() -> [Item] {
++		do {
++			if try ensureItems() {
++				saveContext(reason: "ensure item seeds")
++			}
++			let descriptor = FetchDescriptor<Item>(sortBy: [SortDescriptor(\Item.costEnergy, order: .forward)])
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch shop items: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func fetchAllTaskTemplates() -> [TaskTemplate] {
++		do {
++			if try ensureTaskTemplates() {
++				saveContext(reason: "ensure template seeds")
++			}
++			let descriptor = FetchDescriptor<TaskTemplate>(sortBy: [SortDescriptor(\TaskTemplate.title, order: .forward)])
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch all task templates: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func fetchTemplates(for weather: WeatherType) -> [TaskTemplate] {
++		do {
++			if try ensureTaskTemplates() {
++				saveContext(reason: "ensure template seeds")
++			}
++			let predicate = #Predicate<TaskTemplate> { $0.weatherType == weather }
++			let descriptor = FetchDescriptor<TaskTemplate>(predicate: predicate)
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch templates: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func fetchTasks(for date: Date) -> [Task] {
++		do {
++			let calendar = Calendar.current
++			let start = calendar.startOfDay(for: date)
++			let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
++			let predicate = #Predicate<Task> {
++				$0.date >= start && $0.date < end
++			}
++			let descriptor = FetchDescriptor<Task>(
++				predicate: predicate,
++				sortBy: [SortDescriptor(\Task.date, order: .forward)]
++			)
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func save(tasks: [Task]) {
++		guard !tasks.isEmpty else { return }
++		tasks.forEach { context.insert($0) }
++		saveContext(reason: "save tasks")
++	}
++	
++	func persist() {
++		saveContext(reason: "persist changes")
++	}
++	
++	func fetchMoodEntries() -> [MoodEntry] {
++		do {
++			let descriptor = FetchDescriptor<MoodEntry>(sortBy: [SortDescriptor(\MoodEntry.date, order: .reverse)])
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch mood entries: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func saveMoodEntry(_ entry: MoodEntry) {
++		context.insert(entry)
++		saveContext(reason: "save mood entry")
++	}
++	
++	func fetchInventory() -> [InventoryEntry] {
++		do {
++			let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])
++			return try context.fetch(descriptor)
++		} catch {
++			logger.error("Failed to fetch inventory: \(error.localizedDescription, privacy: .public)")
++			return []
++		}
++	}
++	
++	func incrementInventory(forSKU sku: String) {
++		do {
++			let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
++			let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
++			let existing = try context.fetch(descriptor).first
++			if let entry = existing {
++				entry.count += 1
++			} else {
++				let entry = InventoryEntry(sku: sku, count: 1)
++				context.insert(entry)
++			}
++			saveContext(reason: "increment inventory")
++		} catch {
++			logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
++		}
++	}
++	
++	func decrementInventory(forSKU sku: String) {
++		do {
++			let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
++			let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
++			if let entry = try context.fetch(descriptor).first {
++				entry.count = max(0, entry.count - 1)
++				saveContext(reason: "decrement inventory")
++			}
++		} catch {
++			logger.error("Failed to decrement inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
++		}
++	}
++	
++	@discardableResult
++	private func ensureSeed<T: PersistentModel>(
++		for _: T.Type,
++		fetchDescriptor: FetchDescriptor<T> = FetchDescriptor<T>(),
++		create: () -> [T]
++	) throws -> Bool {
++		let existing = try context.fetch(fetchDescriptor)
++		guard existing.isEmpty else { return false }
++		create().forEach { context.insert($0) }
++		return true
++	}
++	
++	@discardableResult
++	private func ensureItems() throws -> Bool {
++		let existing = try context.fetch(FetchDescriptor<Item>())
++		let existingSKUs = Set(existing.map(\.sku))
++		let missing = DefaultSeeds.makeItems().filter { !existingSKUs.contains($0.sku) }
++		missing.forEach { context.insert($0) }
++		return !missing.isEmpty
++	}
++	
++	@discardableResult
++	private func ensureTaskTemplates() throws -> Bool {
++		let existing = try context.fetch(FetchDescriptor<TaskTemplate>())
++		let existingTitles = Set(existing.map(\.title))
++		let missing = DefaultSeeds.makeTaskTemplates().filter { !existingTitles.contains($0.title) }
++		missing.forEach { context.insert($0) }
++		return !missing.isEmpty
++	}
++	
++	private func saveContext(reason: String) {
++		guard context.hasChanges else { return }
++		do {
++			try context.save()
++		} catch {
++			logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
++		}
++	}
+ }
+ 
+ enum DefaultSeeds {
+-    fileprivate struct ItemSeed {
+-        let sku: String
+-        let type: ItemType
+-        let name: String
+-        let costEnergy: Int
+-        let moodBoost: Int
+-        let hungerBoost: Int
+-
+-        func make() -> Item {
+-            Item(
+-                sku: sku,
+-                type: type,
+-                name: name,
+-                costEnergy: costEnergy,
+-                moodBoost: moodBoost,
+-                hungerBoost: hungerBoost
+-            )
+-        }
+-    }
+-
+-    fileprivate struct TaskTemplateSeed {
+-        let title: String
+-        let weatherType: WeatherType
+-        let difficulty: TaskDifficulty
+-        let isOutdoor: Bool
+-
+-        func make() -> TaskTemplate {
+-            TaskTemplate(
+-                title: title,
+-                weatherType: weatherType,
+-                difficulty: difficulty,
+-                isOutdoor: isOutdoor
+-            )
+-        }
+-    }
+-
+-    private static let itemSeeds: [ItemSeed] = [
+-        ItemSeed(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
+-        ItemSeed(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
+-        ItemSeed(sku: "toy.pillow", type: .toy, name: "抱枕", costEnergy: 18, moodBoost: 8, hungerBoost: 0),
+-        ItemSeed(sku: "toy.ball", type: .toy, name: "发光球", costEnergy: 22, moodBoost: 10, hungerBoost: 0),
+-        ItemSeed(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
+-    ]
+-
+-    private static let taskTemplateSeeds: [TaskTemplateSeed] = [
+-        TaskTemplateSeed(title: "晒晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
+-        TaskTemplateSeed(title: "阳台瑜伽流", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
+-        TaskTemplateSeed(title: "云下冥想", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
+-        TaskTemplateSeed(title: "阴天咖啡散步", weatherType: .cloudy, difficulty: .medium, isOutdoor: true),
+-        TaskTemplateSeed(title: "雨天热饮", weatherType: .rainy, difficulty: .medium, isOutdoor: false),
+-        TaskTemplateSeed(title: "雨声伴读", weatherType: .rainy, difficulty: .easy, isOutdoor: false),
+-        TaskTemplateSeed(title: "雪地慢走", weatherType: .snowy, difficulty: .medium, isOutdoor: true),
+-        TaskTemplateSeed(title: "暖灯伸展", weatherType: .snowy, difficulty: .easy, isOutdoor: false),
+-        TaskTemplateSeed(title: "风中伸展", weatherType: .windy, difficulty: .easy, isOutdoor: true),
+-        TaskTemplateSeed(title: "室内舞动 5 分钟", weatherType: .windy, difficulty: .medium, isOutdoor: false)
+-    ]
+-
+-    static func makeItems() -> [Item] {
+-        itemSeeds.map { $0.make() }
+-    }
+-
+-    static func makeTaskTemplates() -> [TaskTemplate] {
+-        taskTemplateSeeds.map { $0.make() }
+-    }
++	fileprivate struct ItemSeed {
++		let sku: String
++		let type: ItemType
++		let name: String
++		let costEnergy: Int
++		let moodBoost: Int
++		let hungerBoost: Int
++		
++		func make() -> Item {
++			Item(
++				sku: sku,
++				type: type,
++				name: name,
++				costEnergy: costEnergy,
++				moodBoost: moodBoost,
++				hungerBoost: hungerBoost
++			)
++		}
++	}
++	
++	fileprivate struct TaskTemplateSeed {
++		let title: String
++		let weatherType: WeatherType
++		let difficulty: TaskDifficulty
++		let isOutdoor: Bool
++		
++		func make() -> TaskTemplate {
++			TaskTemplate(
++				title: title,
++				weatherType: weatherType,
++				difficulty: difficulty,
++				isOutdoor: isOutdoor
++			)
++		}
++	}
++	
++	private static let itemSeeds: [ItemSeed] = [
++		ItemSeed(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
++		ItemSeed(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
++		ItemSeed(sku: "toy.pillow", type: .toy, name: "围巾", costEnergy: 15, moodBoost: 8, hungerBoost: 0),
++		ItemSeed(sku: "toy.ball", type: .toy, name: "发光球", costEnergy: 25, moodBoost: 12, hungerBoost: 0),
++		ItemSeed(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
++	]
++	
++	private static let taskTemplateSeeds: [TaskTemplateSeed] = [
++		TaskTemplateSeed(title: "晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
++		TaskTemplateSeed(title: "做一组瑜伽", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
++		TaskTemplateSeed(title: "冥想3分钟", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
++		TaskTemplateSeed(title: "买个水果散散步", weatherType: .cloudy, difficulty: .medium, isOutdoor: true),
++		TaskTemplateSeed(title: "出门买一杯热饮", weatherType: .rainy, difficulty: .medium, isOutdoor: false),
++		TaskTemplateSeed(title: "雨声伴读", weatherType: .rainy, difficulty: .easy, isOutdoor: false),
++		TaskTemplateSeed(title: "室内打太极", weatherType: .snowy, difficulty: .medium, isOutdoor: true),
++		TaskTemplateSeed(title: "室内伸展", weatherType: .snowy, difficulty: .easy, isOutdoor: false),
++		TaskTemplateSeed(title: "室内运动", weatherType: .windy, difficulty: .easy, isOutdoor: true),
++		TaskTemplateSeed(title: "跳操5分钟", weatherType: .windy, difficulty: .medium, isOutdoor: false)
++	]
++	
++	static func makeItems() -> [Item] {
++		itemSeeds.map { $0.make() }
++	}
++	
++	static func makeTaskTemplates() -> [TaskTemplate] {
++		taskTemplateSeeds.map { $0.make() }
++	}
+ }
+diff --git a/AntiEmoPet/Core/Services/TaskGeneratorService.swift b/AntiEmoPet/Core/Services/TaskGeneratorService.swift
+index b7b0dc9..a3ea3d1 100644
+--- a/AntiEmoPet/Core/Services/TaskGeneratorService.swift
++++ b/AntiEmoPet/Core/Services/TaskGeneratorService.swift
+@@ -9,14 +9,16 @@ final class TaskGeneratorService {
+     }
+ 
+     func generateTasks(for date: Date, weather: WeatherType) -> [Task] {
++        // Prefer templates for current weather; supplement from other weathers to ensure 3 tasks.
+         var templates = storage.fetchTemplates(for: weather)
+-        if templates.isEmpty {
+-            templates = WeatherType.allCases.flatMap { storage.fetchTemplates(for: $0) }
++        if templates.count < 3 {
++            let fallback = WeatherType.allCases
++                .filter { $0 != weather }
++                .flatMap { storage.fetchTemplates(for: $0) }
++            templates.append(contentsOf: fallback)
+         }
+-        // TODO(中/EN): Inject personalization weights (circadian, streak) & dedupe history per PRD §3 once analytics ready.
+ 
+-        let count = min(max(templates.count, 3), 6)
+-        let picked = Array(templates.shuffled().prefix(count))
++        let picked = Array(templates.shuffled().prefix(3))
+ 
+         let tasks = picked.map { template in
+             Task(
+diff --git a/AntiEmoPet/Features/Chat/ChatView.swift b/AntiEmoPet/Features/Chat/ChatView.swift
+index 3f79ed4..5981d2d 100644
+--- a/AntiEmoPet/Features/Chat/ChatView.swift
++++ b/AntiEmoPet/Features/Chat/ChatView.swift
+@@ -24,7 +24,8 @@ struct ChatView: View {
+                     }
+                     .padding()
+                 }
+-                .onChange(of: appModel.chatMessages.count) { _ in
++                .onChange(of: appModel.chatMessages.count) { oldValue, newValue in
++                    guard newValue != oldValue else { return }
+                     if let last = appModel.chatMessages.last {
+                         proxy.scrollTo(last.id, anchor: .bottom)
+                     }
+@@ -43,6 +44,8 @@ struct ChatView: View {
+             }
+             .padding()
+         }
++        .energyToolbar(appModel: appModel)
+         .navigationTitle("Chat")
+     }
+ }
++
+diff --git a/AntiEmoPet/Features/Home/BackpackView.swift b/AntiEmoPet/Features/Home/BackpackView.swift
+index 02159fc..a0902a7 100644
+--- a/AntiEmoPet/Features/Home/BackpackView.swift
++++ b/AntiEmoPet/Features/Home/BackpackView.swift
+@@ -11,10 +11,14 @@ struct BackpackView: View {
+                         .foregroundStyle(.secondary)
+                 } else {
+                     ForEach(appModel.inventory) { entry in
++                        let item = appModel.shopItems.first(where: { $0.sku == entry.sku })
+                         HStack {
+                             VStack(alignment: .leading) {
+-                                Text(entry.sku)
++                                Text(item?.name ?? entry.sku)
+                                     .font(.headline)
++                                Text(item?.type.rawValue.capitalized ?? "")
++                                    .font(.caption2)
++                                    .foregroundStyle(.secondary)
+                                 Text("数量：\(entry.count)")
+                                     .font(.caption)
+                                     .foregroundStyle(.secondary)
+@@ -33,11 +37,9 @@ struct BackpackView: View {
+         .navigationTitle("Backpack")
+         .toolbar {
+             ToolbarItem(placement: .topBarTrailing) {
+-                if let energy = appModel.userStats?.totalEnergy {
+-                    Label("\(energy)", systemImage: "bolt")
+-                        .labelStyle(.titleAndIcon)
+-                        .foregroundStyle(.yellow)
+-                }
++				Label("\(appModel.totalEnergy)", systemImage: "bolt")
++					.labelStyle(.titleAndIcon)
++					.foregroundStyle(.yellow)
+             }
+         }
+     }
+diff --git a/AntiEmoPet/Features/Home/EnergyEngine.swift b/AntiEmoPet/Features/Home/EnergyEngine.swift
+index ae3044b..44cc03f 100644
+--- a/AntiEmoPet/Features/Home/EnergyEngine.swift
++++ b/AntiEmoPet/Features/Home/EnergyEngine.swift
+@@ -14,6 +14,6 @@ struct EnergyEngine {
+     }
+ 
+     static func clamp(_ value: Int) -> Int {
+-        return max(0, min(9999, value))
++        return max(0, min(999, value))
+     }
+ }
+diff --git a/AntiEmoPet/Features/Home/HomeView.swift b/AntiEmoPet/Features/Home/HomeView.swift
+index 092f989..f63d99a 100644
+--- a/AntiEmoPet/Features/Home/HomeView.swift
++++ b/AntiEmoPet/Features/Home/HomeView.swift
+@@ -3,48 +3,103 @@ import SwiftUI
+ struct HomeView: View {
+     @EnvironmentObject private var appModel: AppViewModel
+     @StateObject private var viewModel = HomeViewModel()
++    @State private var saveToast: (String, Date)? = nil
+ 
+     var body: some View {
+         ScrollView {
+-            VStack(spacing: 16) {
+-                DashboardCard(title: "今日天气", icon: appModel.weather.icon) {
++            VStack(spacing: 20) {
++                DashboardCard(title: "今日天气详情", icon: appModel.weather.icon) {
+                     Text(appModel.weather.title)
+-                        .font(.largeTitle.bold())
++                        .font(.system(size: 64, weight: .black, design: .rounded))
+                     Text(viewModel.tip)
+-                        .font(.subheadline)
++                        .font(.headline)
+                         .foregroundStyle(.secondary)
+-                    // TODO(中/EN): Swap mock weather with WeatherKit feed + location consent (PRD §3 WeatherService).
+                 }
+ 
+-                DashboardCard(title: "任务进度", icon: "checkmark.circle") {
+-                    ProgressView(value: appModel.completionRate)
+-                        .tint(.green)
+-                    Text("完成率 \(Int(appModel.completionRate * 100))%")
+-                        .font(.title3.bold())
+-                    // TODO(中/EN): Add streak badge + reward CTA per gamification spec once animation assets ready.
+-                }
+-
+-                if let pet = appModel.pet {
+-                    DashboardCard(title: "Sunny 状态", icon: "pawprint") {
+-                        Text("心情：\(pet.mood.displayName)")
+-                        Text("饱食度：\(pet.hunger)%")
+-                        Text("Level \(pet.level) · XP \(pet.xp)/100")
+-                            .font(.subheadline)
++                VStack(alignment: .leading, spacing: 12) {
++                    Label("当前情绪", systemImage: "face.smiling")
++                        .font(.headline)
++                        .foregroundStyle(.secondary)
++                    HStack {
++                        Text("0")
++                            .foregroundStyle(.secondary)
++                        Slider(value: Binding(
++                            get: { Double(viewModel.moodValue) },
++                            set: { viewModel.moodValue = Int($0) }
++                        ), in: 0...100, step: 1)
++                        Text("100")
+                             .foregroundStyle(.secondary)
+                     }
+-                    PrimaryButton(title: "摸摸 Sunny") {
+-                        appModel.petting()
++                    HStack {
++                        Text("当前：\(viewModel.moodValue)")
++                        Spacer()
++                        Button("保存") {
++                            appModel.addMoodEntry(value: viewModel.moodValue)
++                            saveToast = ("已保存", .now)
++                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
++                                if case let (_, t)? = saveToast, Date().timeIntervalSince(t) > 1.0 {
++                                    saveToast = nil
++                                }
++                            }
++                        }
++                        .buttonStyle(.borderedProminent)
+                     }
+                 }
++                .padding()
++                .frame(maxWidth: .infinity, alignment: .leading)
++                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
++
++                VStack(alignment: .leading, spacing: 12) {
++                    Label("体感建议", systemImage: "figure.walk")
++                        .font(.headline)
++                        .foregroundStyle(.secondary)
++                    Text(suggestionText(for: appModel.weather))
++                        .font(.body)
++                }
++                .padding()
++                .frame(maxWidth: .infinity, alignment: .leading)
++                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+             }
+             .padding()
++            .overlay(alignment: .top) {
++                if let energy = appModel.userStats?.totalEnergy {
++                    EmptyView()
++                }
++            }
++        }
++        .overlay(alignment: .top) {
++            if let toast = saveToast {
++                Text(toast.0)
++                    .padding(8)
++                    .background(.ultraThinMaterial, in: Capsule())
++                    .padding(.top, 8)
++                    .transition(.move(edge: .top).combined(with: .opacity))
++            }
+         }
+-        .navigationTitle("Home")
++        .animation(.spring(duration: 0.3), value: saveToast != nil)
++        .energyToolbar(appModel: appModel)
++        .navigationTitle("Weather")
+         .onAppear {
+             viewModel.updateTip(weather: appModel.weather)
++            viewModel.loadLatestMood(from: appModel)
+         }
+         .onChange(of: appModel.weather) { newValue in
+             viewModel.updateTip(weather: newValue)
+         }
+     }
++
++    private func suggestionText(for weather: WeatherType) -> String {
++        switch weather {
++        case .sunny:
++            return "阳光明媚，适合户外运动和补充维生素 D。"
++        case .cloudy:
++            return "现在多云，出门散步或者做些轻运动很不错。"
++        case .rainy:
++            return "雨天适合室内冥想、阅读或热饮放松。"
++        case .snowy:
++            return "注意保暖，可选择室内伸展或短时户外活动。"
++        case .windy:
++            return "风大时注意防风，优先安排室内活动。"
++        }
++    }
+ }
+diff --git a/AntiEmoPet/Features/Home/HomeViewModel.swift b/AntiEmoPet/Features/Home/HomeViewModel.swift
+index 55d11cd..a3cb4db 100644
+--- a/AntiEmoPet/Features/Home/HomeViewModel.swift
++++ b/AntiEmoPet/Features/Home/HomeViewModel.swift
+@@ -4,19 +4,28 @@ import Combine
+ @MainActor
+ final class HomeViewModel: ObservableObject {
+     @Published var tip: String = ""
++    @Published var moodValue: Int = 50
++    
++    var saveMood: () -> Void = {}
+ 
+     func updateTip(weather: WeatherType) {
+         switch weather {
+         case .sunny:
+-            tip = "外面阳光正好，完成户外任务能获得更多心情值。"
++            tip = "外面阳光正好，去外面晒晒太阳有助于心情哦。"
+         case .cloudy:
+             tip = "多云也适合出门走走，注意补充维生素 D。"
+         case .rainy:
+-            tip = "雨声是最好的白噪音，安排个室内放松任务。"
++            tip = "雨声是最好的白噪音，安排个室内放松吧。"
+         case .snowy:
+             tip = "注意保暖，喝杯热饮再出发。"
+         case .windy:
+-            tip = "风有点大，先在室内热身再行动。"
++            tip = "风有点大，先在室内热身再出门吧。"
++        }
++    }
++
++    func loadLatestMood(from appModel: AppViewModel) {
++        if let latest = appModel.moodEntries.first {
++            moodValue = latest.value
+         }
+     }
+ }
+diff --git a/AntiEmoPet/Features/Onboarding/OnboardingView.swift b/AntiEmoPet/Features/Onboarding/OnboardingView.swift
+index e41e393..e6b3f7f 100644
+--- a/AntiEmoPet/Features/Onboarding/OnboardingView.swift
++++ b/AntiEmoPet/Features/Onboarding/OnboardingView.swift
+@@ -19,7 +19,7 @@ struct OnboardingView: View {
+                 .foregroundStyle(.secondary)
+ 
+             VStack(alignment: .leading, spacing: 12) {
+-                TextField("我的昵称", text: $viewModel.nickname)
++                TextField("昵称", text: $viewModel.nickname)
+                     .textFieldStyle(.roundedBorder)
+                 TextField("所在城市", text: $viewModel.region)
+                     .textFieldStyle(.roundedBorder)
+diff --git a/AntiEmoPet/Features/Pet/PetView.swift b/AntiEmoPet/Features/Pet/PetView.swift
+index cb7e911..b0acd36 100644
+--- a/AntiEmoPet/Features/Pet/PetView.swift
++++ b/AntiEmoPet/Features/Pet/PetView.swift
+@@ -3,6 +3,7 @@ import SwiftUI
+ struct PetView: View {
+     @EnvironmentObject private var appModel: AppViewModel
+     @StateObject private var viewModel = PetViewModel()
++    @StateObject private var weatherVM = HomeViewModel()
+ 
+     var body: some View {
+         ScrollView {
+@@ -15,13 +16,22 @@ struct PetView: View {
+                             .frame(height: 180)
+                             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                             .shadow(color: .orange.opacity(0.25), radius: 12, x: 0, y: 6)
+-                            // TODO(中/EN): Replace with animated 3D pet once art team ships sprites; keep corgi.webp placeholder 🐶.
++                            // TODO(中/EN): Replace with animated 3D pet once art team ships sprites; keep corgi.jpeg placeholder 🐶.
+                         Text(pet.name)
+                             .font(.largeTitle.bold())
+                         Text(viewModel.moodDescription(for: pet))
+                             .foregroundStyle(.secondary)
+                     }
+ 
++                    DashboardCard(title: "现在天气", icon: appModel.weather.icon) {
++                        Text(appModel.weather.title)
++                            .font(.title.bold())
++                        Text(weatherVM.tip)
++                            .font(.subheadline)
++                            .foregroundStyle(.secondary)
++                    }
++
++
+                     VStack(alignment: .leading, spacing: 12) {
+                         Label("心情 Mood", systemImage: "sparkles")
+                         ProgressView(value: Double(pet.level) / 10.0) {
+@@ -63,5 +73,13 @@ struct PetView: View {
+             }
+         }
+         .navigationTitle("Pet")
++        .energyToolbar(appModel: appModel)
++        .onAppear {
++            weatherVM.updateTip(weather: appModel.weather)
++        }
++        .onChange(of: appModel.weather) { newValue in
++            weatherVM.updateTip(weather: newValue)
++        }
+     }
+ }
++
+diff --git a/AntiEmoPet/Features/Profile/ProfileView.swift b/AntiEmoPet/Features/Profile/ProfileView.swift
+index da168de..7e3b646 100644
+--- a/AntiEmoPet/Features/Profile/ProfileView.swift
++++ b/AntiEmoPet/Features/Profile/ProfileView.swift
+@@ -12,7 +12,7 @@ struct ProfileView: View {
+                     Label("地区：\(stats.region.isEmpty ? "星球" : stats.region)", systemImage: "mappin.and.ellipse")
+                     Label(viewModel.streakDescription(for: stats), systemImage: "flame")
+                     Label("完成任务：\(stats.completedTasksCount)", systemImage: "list.clipboard")
+-                    Label("能量：\(stats.totalEnergy)", systemImage: "bolt")
++                    Label("当前能量：\(stats.totalEnergy)", systemImage: "bolt")
+                 }
+ 
+                 Section("通知") {
+@@ -30,5 +30,12 @@ struct ProfileView: View {
+             }
+         }
+         .navigationTitle("Profile")
++        .toolbar {
++            ToolbarItem(placement: .navigationBarTrailing) {
++                if let energy = appModel.userStats?.totalEnergy {
++                    Label("\(energy)", systemImage: "bolt")
++                }
++            }
++        }
+     }
+ }
+diff --git a/AntiEmoPet/Features/Profile/ProfileViewModel.swift b/AntiEmoPet/Features/Profile/ProfileViewModel.swift
+index ae1f831..68231c5 100644
+--- a/AntiEmoPet/Features/Profile/ProfileViewModel.swift
++++ b/AntiEmoPet/Features/Profile/ProfileViewModel.swift
+@@ -4,6 +4,6 @@ import Combine
+ @MainActor
+ final class ProfileViewModel: ObservableObject {
+     func streakDescription(for stats: UserStats) -> String {
+-        "连续打卡 \(stats.streakDays) 天"
++        "你已经陪伴Sunny\(stats.streakDays) 天"
+     }
+ }
+diff --git a/AntiEmoPet/Features/Shop/ShopView.swift b/AntiEmoPet/Features/Shop/ShopView.swift
+index 7c56394..378fc17 100644
+--- a/AntiEmoPet/Features/Shop/ShopView.swift
++++ b/AntiEmoPet/Features/Shop/ShopView.swift
+@@ -4,6 +4,7 @@ struct ShopView: View {
+     @EnvironmentObject private var appModel: AppViewModel
+     @StateObject private var viewModel = ShopViewModel()
+     @State private var alertMessage: String?
++    @State private var purchaseToast: (String, Date)? = nil
+ 
+     var body: some View {
+         List {
+@@ -14,14 +15,25 @@ struct ShopView: View {
+                             VStack(alignment: .leading) {
+                                 Text(item.name)
+                                     .font(.headline)
+-                                Text("消耗 \(item.costEnergy) 能量 · 心情 +\(item.moodBoost)")
++                                Text("已有数量：\(appModel.inventory.first(where: { $0.sku == item.sku })?.count ?? 0)")
++                                    .font(.caption2)
++                                    .foregroundStyle(.secondary)
++                                Text("消耗 \(item.costEnergy) 能量 · 心情 +\(item.moodBoost) ")
+                                     .font(.caption)
+                                     .foregroundStyle(.secondary)
+                                 // TODO(中/EN): Display coin/energy split pricing + rarity tiers (PRD 商店模块).
+                             }
+                             Spacer()
+                             Button("购买") {
+-                                if !appModel.purchase(item: item) {
++                                if appModel.purchase(item: item) {
++                                    alertMessage = "已购买：\(item.name)\n心情 +\(item.moodBoost) · 饱食度 +\(item.hungerBoost)\n消耗能量 \(item.costEnergy)"
++                                    purchaseToast = ("能量 -\(item.costEnergy)", .now)
++                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
++                                        if case let (_, t)? = purchaseToast, Date().timeIntervalSince(t) > 1.0 {
++                                            purchaseToast = nil
++                                        }
++                                    }
++                                } else {
+                                     alertMessage = "能量不足，完成任务可获得能量哦"
+                                 }
+                             }
+@@ -32,7 +44,23 @@ struct ShopView: View {
+             }
+         }
+         .listStyle(.insetGrouped)
++        .overlay(alignment: .top) {
++            if let toast = purchaseToast {
++                Text(toast.0)
++                    .padding(8)
++                    .background(.ultraThinMaterial, in: Capsule())
++                    .padding(.top, 8)
++                    .transition(.move(edge: .top).combined(with: .opacity))
++            }
++        }
++        .animation(.spring(duration: 0.3), value: purchaseToast != nil)
+         .navigationTitle("Shop")
++        .toolbar {
++            NavigationLink(destination: BackpackView()) {
++                Label("背包", systemImage: "bag")
++            }
++        }
++        .energyToolbar(appModel: appModel)
+         .alert("提示", isPresented: Binding(
+             get: { alertMessage != nil },
+             set: { _ in alertMessage = nil }
+diff --git a/AntiEmoPet/Features/Tasks/TasksView.swift b/AntiEmoPet/Features/Tasks/TasksView.swift
+index 388b6c5..5aa8dfe 100644
+--- a/AntiEmoPet/Features/Tasks/TasksView.swift
++++ b/AntiEmoPet/Features/Tasks/TasksView.swift
+@@ -1,40 +1,49 @@
+ import SwiftUI
+ 
+ struct TasksView: View {
+-    @EnvironmentObject private var appModel: AppViewModel
+-    @StateObject private var viewModel = TasksViewModel()
+-
+-    var body: some View {
+-        List {
+-            Section(header: Text("今日任务")) {
+-                ForEach(appModel.todayTasks) { task in
+-                    HStack {
+-                        VStack(alignment: .leading, spacing: 6) {
+-                            Text(task.title)
+-                                .font(.headline)
+-                            Text(viewModel.subtitle(for: task))
+-                                .font(.caption)
+-                                .foregroundStyle(.secondary)
+-                        }
+-                        Spacer()
+-                        Text(viewModel.badge(for: task))
+-                            .font(.caption.bold())
+-                            .padding(6)
+-                            .background(Capsule().fill(Color.blue.opacity(0.15)))
+-                        Button {
+-                            appModel.toggleTask(task)
+-                        } label: {
+-                            Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
+-                                .foregroundStyle(task.status == .completed ? .green : .secondary)
+-                                .imageScale(.large)
+-                        }
+-                        .buttonStyle(.plain)
+-                    }
+-                    .padding(.vertical, 4)
+-                }
+-            }
+-        }
+-        .listStyle(.insetGrouped)
+-        .navigationTitle("Tasks")
+-    }
++	@EnvironmentObject private var appModel: AppViewModel
++	@StateObject private var viewModel = TasksViewModel()
++	
++	var body: some View {
++		List {
++			Section(header: Text("今日任务")) {
++				ForEach(appModel.todayTasks) { task in
++					HStack {
++						VStack(alignment: .leading, spacing: 6) {
++							Text(task.title)
++								.font(.headline)
++							Text(viewModel.subtitle(for: task))
++								.font(.caption)
++								.foregroundStyle(.secondary)
++						}
++						Spacer()
++						Text(viewModel.badge(for: task))
++							.font(.caption.bold())
++							.padding(6)
++							.background(Capsule().fill(Color.blue.opacity(0.15)))
++						Button {
++							appModel.toggleTask(task)
++						} label: {
++							Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
++								.foregroundStyle(task.status == .completed ? .green : .secondary)
++								.imageScale(.large)
++						}
++						.buttonStyle(.plain)
++					}
++					.padding(.vertical, 4)
++				}
++			}
++			if appModel.todayTasks.isEmpty {
++				Section {
++					Text("暂无任务，稍后再试或检查网络")
++				}
++			}
++		}
++		.onAppear {
++			appModel.ensureInitialTasks()
++		}
++		.listStyle(.insetGrouped)
++		.navigationTitle("Tasks")
++		.energyToolbar(appModel: appModel)
++	}
+ }
+diff --git a/MoreView.swift b/MoreView.swift
+index 9e89855..4f3a7ab 100644
+--- a/MoreView.swift
++++ b/MoreView.swift
+@@ -2,36 +2,58 @@ import SwiftUI
+ import Charts
+ 
+ struct MoreView: View {
+-    @EnvironmentObject private var appModel: AppViewModel
+-
+-    var body: some View {
+-        List {
+-            Section("情绪趋势") {
+-                if appModel.moodEntries.isEmpty {
+-                    Text("暂无记录")
+-                        .foregroundStyle(.secondary)
+-                } else {
+-                    Chart(appModel.moodEntries.prefix(30).reversed(), id: \.id) { entry in
+-                        LineMark(
+-                            x: .value("日期", entry.date),
+-                            y: .value("情绪", entry.value)
+-                        )
+-                    }
+-                    .frame(height: 180)
+-                }
+-            }
+-
+-            Section("历史记录") {
+-                ForEach(appModel.moodEntries) { entry in
+-                    HStack {
+-                        Text(entry.date.formatted(date: .abbreviated, time: .shortened))
+-                        Spacer()
+-                        Text("\(entry.value)")
+-                            .font(.headline)
+-                    }
+-                }
+-            }
+-        }
+-        .navigationTitle("More")
+-    }
++	@EnvironmentObject private var appModel: AppViewModel
++	
++	var body: some View {
++		List {
++			Section("情绪 / 能量趋势") {
++				if appModel.moodEntries.isEmpty && appModel.energyHistory.isEmpty {
++					Text("暂无记录")
++						.foregroundStyle(.secondary)
++				} else {
++					Chart {
++						ForEach(appModel.moodEntries.prefix(30).reversed()) { entry in
++							LineMark(
++								x: .value("日期", entry.date),
++								y: .value("情绪", entry.value)
++							)
++							.symbol(by: .value("类型", "情绪"))
++						}
++						ForEach(appModel.energyHistory.suffix(30)) { entry in
++							LineMark(
++								x: .value("日期", entry.date),
++								y: .value("能量", entry.totalEnergy)
++							)
++							.symbol(by: .value("类型", "能量"))
++						}
++					}
++					.frame(height: 220)
++				}
++			}
++			
++			Section("历史记录") {
++				ForEach(appModel.moodEntries) { entry in
++					HStack {
++						Text(entry.date.formatted(date: .abbreviated, time: .shortened))
++						Spacer()
++						HStack(spacing: 6) {
++							ProgressView(value: Double(entry.value) / 100.0)
++								.frame(width: 120)
++								.progressViewStyle(LinearProgressViewStyle())
++							Text("\(entry.value)")
++								.font(.caption)
++						}
++					}
++				}
++			}
++		}
++		.navigationTitle("记录")
++		.toolbar {
++			ToolbarItem(placement: .navigationBarTrailing) {
++				Text("Energy: \(appModel.totalEnergy)")
++					.font(.subheadline)
++					.foregroundStyle(.secondary)
++			}
++		}
++	}
+ }
+diff --git a/PRD/.DS_Store b/PRD/.DS_Store
+index 32a2713..a1b9fb5 100644
+Binary files a/PRD/.DS_Store and b/PRD/.DS_Store differ

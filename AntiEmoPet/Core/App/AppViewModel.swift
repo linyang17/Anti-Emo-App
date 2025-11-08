@@ -9,6 +9,8 @@ final class AppViewModel: ObservableObject {
 	@Published var pet: Pet?
 	@Published var userStats: UserStats?
 	@Published var shopItems: [Item] = []
+	@Published var inventory: [InventoryEntry] = []
+	@Published var moodEntries: [MoodEntry] = []
 	@Published var weather: WeatherType = .sunny
 	@Published var chatMessages: [ChatMessage] = []
 	@Published var isLoading = true
@@ -32,8 +34,11 @@ final class AppViewModel: ObservableObject {
 		storage.bootstrapIfNeeded()
 		weather = weatherService.fetchWeather()
 		pet = storage.fetchPet()
+		if let pet { storage.ensureTodayMoodEntry(weather: weather, mood: pet.mood) }
 		userStats = storage.fetchStats()
 		shopItems = storage.fetchShopItems()
+		inventory = storage.fetchInventory()
+		moodEntries = storage.fetchMoodEntries(limit: 60)
 
 		todayTasks = storage.fetchTasks(for: .now)
 		if todayTasks.isEmpty {
@@ -57,27 +62,41 @@ final class AppViewModel: ObservableObject {
 		}
 		storage.persist()
 		todayTasks = storage.fetchTasks(for: .now)
+		moodEntries = storage.fetchMoodEntries(limit: 60)
 	}
 
 	func petting() {
 		guard let pet else { return }
 		petEngine.handleAction(.pat, pet: pet)
 		storage.persist()
+		moodEntries = storage.fetchMoodEntries(limit: 60)
 		objectWillChange.send()
 		analytics.log(event: "pet_pat")
 	}
 
 	func feed(item: Item) {
 		guard let pet else { return }
-		petEngine.handleAction(.feed(item: item), pet: pet)
-		storage.persist()
+		// If we have the item in inventory, consume one; otherwise, do nothing
+		if storage.consumeFromInventory(sku: item.sku, quantity: 1) {
+			petEngine.handleAction(.feed(item: item), pet: pet)
+			storage.persist()
+			inventory = storage.fetchInventory()
+		}
+	}
+
+	func useItem(sku: String) -> Bool {
+		guard let item = shopItems.first(where: { $0.sku == sku }) else { return false }
+		// feed(item:) will attempt to consume from inventory and update state
+		feed(item: item)
+		return true
 	}
 
 	func purchase(item: Item) -> Bool {
 		guard let stats = userStats else { return false }
 		let success = rewardEngine.purchase(item: item, stats: stats)
 		guard success else { return false }
-		feed(item: item)
+		storage.addToInventory(item: item, quantity: 1)
+		inventory = storage.fetchInventory()
 		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
 		return true
 	}

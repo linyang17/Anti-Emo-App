@@ -13,18 +13,18 @@ struct BackpackView: View {
                     ForEach(appModel.inventory) { entry in
                         HStack {
                             VStack(alignment: .leading) {
-                                Text(entry.sku)
+                                HStack { Image(systemName: entry.type.icon); Text(entry.name) }
                                     .font(.headline)
-                                Text("数量：\(entry.count)")
+                                Text("数量：\(entry.quantity)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
                             Button("使用") {
-                                _ = appModel.useItem(sku: entry.sku)
+                                appModel.useItem(sku: entry.sku)
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(entry.count <= 0)
+                            .disabled(entry.quantity <= 0)
                         }
                     }
                 }
@@ -42,3 +42,4 @@ struct BackpackView: View {
         }
     }
 }
+

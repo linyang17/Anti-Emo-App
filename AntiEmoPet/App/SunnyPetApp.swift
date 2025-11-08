@@ -12,7 +12,9 @@ struct SunnyPetApp: App {
 			TaskTemplate.self,
 			Pet.self,
 			Item.self,
-			UserStats.self
+			UserStats.self,
+			InventoryEntry.self,
+			MoodEntry.self
 		])
 
 		// 开发环境可改为 isStoredInMemoryOnly: true 方便每次重置

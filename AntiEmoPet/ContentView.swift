@@ -43,6 +43,8 @@ struct MainTabView: View {
                 .tabItem { Label("Shop", systemImage: "cart") }
             NavigationStack { ChatView() }
                 .tabItem { Label("Chat", systemImage: "message") }
+            NavigationStack { StatisticsView() }
+                .tabItem { Label("Statistics", systemImage: "chart.line.uptrend.xyaxis") }
             NavigationStack { ProfileView() }
                 .tabItem { Label("Profile", systemImage: "person") }
         }
