@@ -6,29 +6,26 @@ struct SunnyPetApp: App {
 
 	// MARK: - Shared Model Container
 
-	static var sharedModelContainer: ModelContainer = {
-		let schema = Schema([
-			Task.self,
-			TaskTemplate.self,
-			Pet.self,
-			Item.self,
-			UserStats.self,
-			InventoryEntry.self,
-			MoodEntry.self
-		])
+        static var sharedModelContainer: ModelContainer = {
+                let schema = Schema([
+                        Task.self,
+                        TaskTemplate.self,
+                        Pet.self,
+                        Item.self,
+                        UserStats.self,
+                        InventoryEntry.self,
+                        MoodEntry.self
+                ])
 
-		// 开发环境可改为 isStoredInMemoryOnly: true 方便每次重置
-		let configuration = ModelConfiguration(
-			schema: schema,
-			isStoredInMemoryOnly: true
-		)
+                // 默认使用持久化存储，确保 MVP 满足 “重启后数据一致” 的 PRD 要求
+                let configuration = ModelConfiguration(schema: schema)
 
-		do {
-			return try ModelContainer(for: schema, configurations: [configuration])
-		} catch {
-			fatalError("无法创建 ModelContainer: \(error)")
-		}
-	}()
+                do {
+                        return try ModelContainer(for: schema, configurations: [configuration])
+                } catch {
+                        fatalError("无法创建 ModelContainer: \(error)")
+                }
+        }()
 
 	// MARK: - App ViewModel
 
