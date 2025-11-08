@@ -14,6 +14,6 @@ struct EnergyEngine {
     }
 
     static func clamp(_ value: Int) -> Int {
-        return max(0, min(9999, value))
+        return max(0, min(999, value))
     }
 }

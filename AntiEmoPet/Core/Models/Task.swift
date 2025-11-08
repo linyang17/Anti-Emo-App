@@ -32,9 +32,9 @@ enum TaskDifficulty: String, Codable, CaseIterable {
 
     var energyReward: Int {
         switch self {
-        case .easy: return 8
+        case .easy: return 5
         case .medium: return 10
-        case .hard: return 12
+        case .hard: return 15
         }
     }
 }

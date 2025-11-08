@@ -13,9 +13,17 @@ struct BackpackView: View {
                     ForEach(appModel.inventory) { entry in
                         HStack {
                             VStack(alignment: .leading) {
-                                HStack { Image(systemName: entry.type.icon); Text(entry.name) }
-                                    .font(.headline)
-                                Text("数量：\(entry.quantity)")
+                                if let item = appModel.shopItems.first(where: { $0.sku == entry.sku }) {
+                                    Text(item.name)
+                                        .font(.headline)
+                                    Text(item.type.rawValue.capitalized)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text(entry.sku)
+                                        .font(.headline)
+                                }
+                                Text("数量：\(entry.count)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -24,7 +32,7 @@ struct BackpackView: View {
                                 appModel.useItem(sku: entry.sku)
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(entry.quantity <= 0)
+                            .disabled(entry.count <= 0)
                         }
                     }
                 }
@@ -33,11 +41,9 @@ struct BackpackView: View {
         .navigationTitle("Backpack")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if let energy = appModel.userStats?.totalEnergy {
-                    Label("\(energy)", systemImage: "bolt")
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(.yellow)
-                }
+                Label("\(appModel.totalEnergy)", systemImage: "bolt")
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(.yellow)
             }
         }
     }

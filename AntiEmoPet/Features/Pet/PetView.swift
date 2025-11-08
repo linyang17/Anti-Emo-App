@@ -3,6 +3,7 @@ import SwiftUI
 struct PetView: View {
     @EnvironmentObject private var appModel: AppViewModel
     @StateObject private var viewModel = PetViewModel()
+    @StateObject private var weatherVM = HomeViewModel()
 
     var body: some View {
         ScrollView {
@@ -15,12 +16,21 @@ struct PetView: View {
                             .frame(height: 180)
                             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
                             .shadow(color: .orange.opacity(0.25), radius: 12, x: 0, y: 6)
-                            // TODO(中/EN): Replace with animated 3D pet once art team ships sprites; keep corgi.webp placeholder 🐶.
+                            // TODO(中/EN): Replace with animated 3D pet once art team ships sprites; keep corgi.jpeg placeholder 🐶.
                         Text(pet.name)
                             .font(.largeTitle.bold())
                         Text(viewModel.moodDescription(for: pet))
                             .foregroundStyle(.secondary)
                     }
+
+                    DashboardCard(title: "现在天气", icon: appModel.weather.icon) {
+                        Text(appModel.weather.title)
+                            .font(.title.bold())
+                        Text(weatherVM.tip)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
 
                     VStack(alignment: .leading, spacing: 12) {
                         Label("心情 Mood", systemImage: "sparkles")
@@ -50,7 +60,7 @@ struct PetView: View {
                             Label("打开背包", systemImage: "bag")
                         }
                         if let snack = appModel.shopItems.first(where: { $0.type == .snack }),
-                           appModel.inventory.first(where: { $0.sku == snack.sku && $0.quantity > 0 }) != nil {
+                           appModel.inventory.first(where: { $0.sku == snack.sku && $0.count > 0 }) != nil {
                             PrimaryButton(title: "喂零食：\(snack.name) 🍪") {
                                 appModel.useItem(sku: snack.sku)
                             }
@@ -68,12 +78,19 @@ struct PetView: View {
             }
         }
         .navigationTitle("Pet")
+        .energyToolbar(appModel: appModel)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink(destination: BackpackView().environmentObject(appModel)) {
                     Image(systemName: "bag")
                 }
             }
+        }
+        .onAppear {
+            weatherVM.updateTip(weather: appModel.weather)
+        }
+        .onChange(of: appModel.weather) { newValue in
+            weatherVM.updateTip(weather: newValue)
         }
     }
 }

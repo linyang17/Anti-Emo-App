@@ -12,7 +12,7 @@ struct ProfileView: View {
                     Label("地区：\(stats.region.isEmpty ? "星球" : stats.region)", systemImage: "mappin.and.ellipse")
                     Label(viewModel.streakDescription(for: stats), systemImage: "flame")
                     Label("完成任务：\(stats.completedTasksCount)", systemImage: "list.clipboard")
-                    Label("能量：\(stats.totalEnergy)", systemImage: "bolt")
+                    Label("当前能量：\(stats.totalEnergy)", systemImage: "bolt")
                 }
 
                 Section("通知") {
@@ -30,5 +30,12 @@ struct ProfileView: View {
             }
         }
         .navigationTitle("Profile")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if let energy = appModel.userStats?.totalEnergy {
+                    Label("\(energy)", systemImage: "bolt")
+                }
+            }
+        }
     }
 }

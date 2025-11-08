@@ -19,7 +19,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 12) {
-                TextField("我的昵称", text: $viewModel.nickname)
+                TextField("昵称", text: $viewModel.nickname)
                     .textFieldStyle(.roundedBorder)
                 TextField("所在城市", text: $viewModel.region)
                     .textFieldStyle(.roundedBorder)

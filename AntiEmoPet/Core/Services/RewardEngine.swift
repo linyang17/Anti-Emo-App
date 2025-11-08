@@ -5,7 +5,7 @@ final class RewardEngine {
     func applyTaskReward(for task: Task, stats: UserStats) -> Int {
         guard task.status == .completed else { return 0 }
         let energy = task.difficulty.energyReward
-        stats.totalEnergy += energy
+        EnergyEngine.add(energy, to: stats)
         stats.coins += 5
         stats.completedTasksCount += 1
         stats.lastActiveDate = .now
@@ -19,8 +19,7 @@ final class RewardEngine {
     }
 
     func purchase(item: Item, stats: UserStats) -> Bool {
-        guard stats.totalEnergy >= item.costEnergy else { return false }
-        stats.totalEnergy -= item.costEnergy
+        guard EnergyEngine.spend(item.costEnergy, from: stats) else { return false }
         stats.coins = max(0, stats.coins - 2)
         stats.lastActiveDate = .now
         return true

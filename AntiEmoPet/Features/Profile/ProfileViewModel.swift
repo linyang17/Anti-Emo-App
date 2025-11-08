@@ -4,6 +4,6 @@ import Combine
 @MainActor
 final class ProfileViewModel: ObservableObject {
     func streakDescription(for stats: UserStats) -> String {
-        "连续打卡 \(stats.streakDays) 天"
+        "你已经陪伴Sunny\(stats.streakDays) 天"
     }
 }
