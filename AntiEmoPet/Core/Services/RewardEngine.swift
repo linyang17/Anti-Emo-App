@@ -14,7 +14,7 @@ final class RewardEngine {
 
     func evaluateAllClear(tasks: [Task], stats: UserStats) -> Bool {
         guard tasks.allSatisfy({ $0.status == .completed }) else { return false }
-        stats.streakDays += 1
+        stats.TotalDays += 1
         return true
     }
 

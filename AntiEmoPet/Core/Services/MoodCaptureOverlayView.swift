@@ -17,7 +17,7 @@ struct MoodCaptureOverlayView: View {
                 .font(.headline)
             HStack {
                 Text("0").foregroundStyle(.secondary)
-                Slider(value: Binding(get: { Double(value) }, set: { value = Int($0) }), in: 0...100, step: 1)
+                Slider(value: Binding(get: { Double(value) }, set: { value = Int($0) }), in: 0...100, step: 5)
                 Text("100").foregroundStyle(.secondary)
             }
             HStack {

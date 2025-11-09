@@ -102,7 +102,7 @@ final class AppViewModel: ObservableObject {
             petEngine.applyTaskCompletion(pet: pet)
             analytics.log(event: "task_completed", metadata: ["title": task.title])
             if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
-                analytics.log(event: "streak_up", metadata: ["streak": "\(stats.streakDays)"])
+                analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
             }
             logTodayEnergySnapshot()
         }

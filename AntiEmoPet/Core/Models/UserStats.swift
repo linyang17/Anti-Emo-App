@@ -6,7 +6,7 @@ final class UserStats: Identifiable {
     @Attribute(.unique) var id: UUID
     var totalEnergy: Int
     var coins: Int
-    var streakDays: Int
+    var TotalDays: Int
     var lastActiveDate: Date
     var completedTasksCount: Int
     var nickname: String
@@ -27,7 +27,7 @@ final class UserStats: Identifiable {
         self.id = id
         self.totalEnergy = totalEnergy
         self.coins = coins
-        self.streakDays = streakDays
+        self.TotalDays = streakDays
         self.lastActiveDate = lastActiveDate
         self.completedTasksCount = completedTasksCount
         self.nickname = nickname
