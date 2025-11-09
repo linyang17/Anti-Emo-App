@@ -1,3 +1,5 @@
+import SwiftUI
+
 struct EnergyStatsSection: View {
 	let energy: EnergyStatisticsViewModel.EnergySummary
 
@@ -29,17 +31,6 @@ struct EnergyStatsSection: View {
 						Text("-\(energy.todayDeduct)")
 							.font(.subheadline.weight(.medium))
 					}
-
-					Spacer()
-
-					VStack(alignment: .leading, spacing: 2) {
-						Text("今日净变化")
-							.font(.caption2)
-							.foregroundStyle(.secondary)
-						Text("\(energy.todayDelta >= 0 ? "+" : "")\(energy.todayDelta)")
-							.font(.subheadline.weight(.semibold))
-							.foregroundStyle(energy.todayDelta >= 0 ? .green : .red)
-					}
 				}
 
 				Text(energy.comment)
@@ -53,7 +44,7 @@ struct EnergyStatsSection: View {
 		switch trend {
 		case .up: return "↑"
 		case .down: return "↓"
-		case .flat: return "→"
+		case .flat: return ""
 		}
 	}
 }

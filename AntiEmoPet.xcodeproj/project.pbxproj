@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5A643E412EBE3BDE0072F005 /* MoodEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E402EBE3BDE0072F005 /* MoodEntry.swift */; };
-		5A643E432EBE3C100072F005 /* InventoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E422EBE3C100072F005 /* InventoryEntry.swift */; };
-		5A643E472EBE3DD00072F005 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E462EBE3DD00072F005 /* MoreView.swift */; };
-		5A927D342EBE52E600CD2167 /* ToolbarEnergyModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */; };
+		5A643E412EBE3BDE0072F005 /* AntiEmoPet/Core/Models/MoodEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E402EBE3BDE0072F005 /* AntiEmoPet/Core/Models/MoodEntry.swift */; };
+		5A643E432EBE3C100072F005 /* AntiEmoPet/Core/Models/InventoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E422EBE3C100072F005 /* AntiEmoPet/Core/Models/InventoryEntry.swift */; };
+		5A643E472EBE3DD00072F005 /* AntiEmoPet/Features/More/MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A643E462EBE3DD00072F005 /* AntiEmoPet/Features/More/MoreView.swift */; };
+		5A927D342EBE52E600CD2167 /* AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A927D332EBE52E600CD2167 /* AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,10 +34,10 @@
 		5A4F406C2EBDAB6500F41BD7 /* AntiEmoPet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AntiEmoPet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A4F407B2EBDAB6500F41BD7 /* AntiEmoPetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AntiEmoPetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A4F40852EBDAB6600F41BD7 /* AntiEmoPetUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AntiEmoPetUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-               5A643E402EBE3BDE0072F005 /* MoodEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Core/Models/MoodEntry.swift; sourceTree = "<group>"; };
-               5A643E422EBE3C100072F005 /* InventoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Core/Models/InventoryEntry.swift; sourceTree = "<group>"; };
-               5A643E462EBE3DD00072F005 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Features/More/MoreView.swift; sourceTree = "<group>"; };
-               5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift; sourceTree = "<group>"; };
+		5A643E402EBE3BDE0072F005 /* AntiEmoPet/Core/Models/MoodEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Core/Models/MoodEntry.swift; sourceTree = "<group>"; };
+		5A643E422EBE3C100072F005 /* AntiEmoPet/Core/Models/InventoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Core/Models/InventoryEntry.swift; sourceTree = "<group>"; };
+		5A643E462EBE3DD00072F005 /* AntiEmoPet/Features/More/MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/Features/More/MoreView.swift; sourceTree = "<group>"; };
+		5A927D332EBE52E600CD2167 /* AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -90,10 +90,10 @@
 				5A4F407E2EBDAB6500F41BD7 /* AntiEmoPetTests */,
 				5A4F40882EBDAB6600F41BD7 /* AntiEmoPetUITests */,
 				5A4F406D2EBDAB6500F41BD7 /* Products */,
-				5A643E402EBE3BDE0072F005 /* MoodEntry.swift */,
-				5A643E422EBE3C100072F005 /* InventoryEntry.swift */,
-				5A643E462EBE3DD00072F005 /* MoreView.swift */,
-				5A927D332EBE52E600CD2167 /* ToolbarEnergyModifier.swift */,
+				5A643E402EBE3BDE0072F005 /* AntiEmoPet/Core/Models/MoodEntry.swift */,
+				5A643E422EBE3C100072F005 /* AntiEmoPet/Core/Models/InventoryEntry.swift */,
+				5A643E462EBE3DD00072F005 /* AntiEmoPet/Features/More/MoreView.swift */,
+				5A927D332EBE52E600CD2167 /* AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -251,10 +251,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5A927D342EBE52E600CD2167 /* ToolbarEnergyModifier.swift in Sources */,
-				5A643E412EBE3BDE0072F005 /* MoodEntry.swift in Sources */,
-				5A643E432EBE3C100072F005 /* InventoryEntry.swift in Sources */,
-				5A643E472EBE3DD00072F005 /* MoreView.swift in Sources */,
+				5A927D342EBE52E600CD2167 /* AntiEmoPet/UIComponents/ToolbarEnergyModifier.swift in Sources */,
+				5A643E412EBE3BDE0072F005 /* AntiEmoPet/Core/Models/MoodEntry.swift in Sources */,
+				5A643E432EBE3C100072F005 /* AntiEmoPet/Core/Models/InventoryEntry.swift in Sources */,
+				5A643E472EBE3DD00072F005 /* AntiEmoPet/Features/More/MoreView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
