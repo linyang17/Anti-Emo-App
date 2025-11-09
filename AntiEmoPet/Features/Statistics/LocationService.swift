@@ -1,8 +1,10 @@
 import Foundation
 import CoreLocation
 import OSLog
+import Combine
 
 final class LocationService: NSObject, ObservableObject {
+    
     private let manager = CLLocationManager()
     private let log = Logger(subsystem: "com.sunny.pet", category: "LocationService")
 

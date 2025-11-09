@@ -7,6 +7,12 @@ struct EnergyHistoryEntry: Identifiable, Codable {
     let id: UUID
     let date: Date
     var totalEnergy: Int
+
+    init(id: UUID = UUID(), date: Date, totalEnergy: Int) {
+        self.id = id
+        self.date = date
+        self.totalEnergy = totalEnergy
+    }
 }
 
 @MainActor
@@ -22,6 +28,7 @@ final class AppViewModel: ObservableObject {
     @Published var moodEntries: [MoodEntry] = []
     @Published var energyHistory: [EnergyHistoryEntry] = []
     @Published var inventory: [InventoryEntry] = []
+    @Published var dailyMetricsCache: [DailyActivityMetrics] = []
 
     private let storage: StorageService
     private let taskGenerator: TaskGeneratorService
@@ -62,10 +69,8 @@ final class AppViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "energyHistory"),
            let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
             energyHistory = decoded
-        } else {
-            // Initialize today's snapshot with current energy
-            logTodayEnergySnapshot()
         }
+        // Removed fallback else block that initialized today's snapshot
 
         if let pet = pet {
             // Ensure reasonable initial hunger baseline at least 50
@@ -92,19 +97,27 @@ final class AppViewModel: ObservableObject {
 
         showOnboarding = (userStats?.nickname ?? "").isEmpty
         isLoading = false
+
+        dailyMetricsCache = makeDailyActivityMetrics(days: 7)
     }
 
     func toggleTask(_ task: Task) {
         guard let stats = userStats, let pet else { return }
         task.status = task.status == .completed ? .pending : .completed
         if task.status == .completed {
+            task.completedAt = Date()
             _ = rewardEngine.applyTaskReward(for: task, stats: stats)
             petEngine.applyTaskCompletion(pet: pet)
             analytics.log(event: "task_completed", metadata: ["title": task.title])
+            let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+            incrementTaskCompletion(for: Date(), timeSlot: slot)
             if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
                 analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
             }
             logTodayEnergySnapshot()
+            dailyMetricsCache = makeDailyActivityMetrics()
+        } else {
+            task.completedAt = nil
         }
         storage.persist()
         todayTasks = storage.fetchTasks(for: .now)
@@ -113,15 +126,19 @@ final class AppViewModel: ObservableObject {
     func petting() {
         guard let pet else { return }
         petEngine.handleAction(.pat, pet: pet)
+        incrementPetInteractionCount()
         storage.persist()
         objectWillChange.send()
         analytics.log(event: "pet_pat")
+        dailyMetricsCache = makeDailyActivityMetrics()
     }
 
     func feed(item: Item) {
         guard let pet else { return }
         petEngine.handleAction(.feed(item: item), pet: pet)
+        incrementPetInteractionCount()
         storage.persist()
+        dailyMetricsCache = makeDailyActivityMetrics()
     }
 
     func purchase(item: Item) -> Bool {
@@ -205,15 +222,10 @@ final class AppViewModel: ObservableObject {
 
     private func logTodayEnergySnapshot() {
         guard userStats != nil else { return }
-        let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: Date())
-
-        if let index = energyHistory.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: dayStart) }) {
-            energyHistory[index].totalEnergy = totalEnergy
-        } else {
-            let entry = EnergyHistoryEntry(id: UUID(), date: dayStart, totalEnergy: totalEnergy)
-            energyHistory.append(entry)
-        }
+        let calendar = TimeZoneManager.shared.calendar
+        // Always append a new entry with exact timestamp Date()
+        let entry = EnergyHistoryEntry(date: Date(), totalEnergy: totalEnergy)
+        energyHistory.append(entry)
 
         energyHistory.sort { $0.date < $1.date }
 
@@ -245,5 +257,73 @@ final class AppViewModel: ObservableObject {
         }
 
         storage.persist()
+    }
+
+    private var interactionsKey: String { "dailyPetInteractions" }
+    private var timeSlotKey: String { "dailyTaskTimeSlots" }
+
+    private func dayKey(for date: Date) -> String {
+        let cal = TimeZoneManager.shared.calendar
+        let day = cal.startOfDay(for: date)
+        return ISO8601DateFormatter().string(from: day)
+    }
+
+    private func incrementPetInteractionCount(on date: Date = Date()) {
+        let key = interactionsKey
+        var dict = (UserDefaults.standard.dictionary(forKey: key) as? [String: Int]) ?? [:]
+        let dkey = dayKey(for: date)
+        dict[dkey, default: 0] += 1
+        UserDefaults.standard.set(dict, forKey: key)
+    }
+
+    private func incrementTaskCompletion(for date: Date = Date(), timeSlot: TimeSlot) {
+        let key = timeSlotKey
+        var outer = (UserDefaults.standard.dictionary(forKey: key) as? [String: [String: Int]]) ?? [:]
+        let dkey = dayKey(for: date)
+        var inner = outer[dkey] ?? [:]
+        inner[timeSlot.rawValue, default: 0] += 1
+        outer[dkey] = inner
+        UserDefaults.standard.set(outer, forKey: key)
+    }
+
+    func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
+        let cal = TimeZoneManager.shared.calendar
+        let now = Date()
+        let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!)
+
+        let interactions = (UserDefaults.standard.dictionary(forKey: interactionsKey) as? [String: Int]) ?? [:]
+        let timeSlots = (UserDefaults.standard.dictionary(forKey: timeSlotKey) as? [String: [String: Int]]) ?? [:]
+
+        var metricsByDay: [Date: DailyActivityMetrics] = [:]
+
+        // Merge interactions
+        for (k, v) in interactions {
+            if let date = ISO8601DateFormatter().date(from: k) {
+                let day = cal.startOfDay(for: date)
+                guard day >= start else { continue }
+                var m = metricsByDay[day] ?? DailyActivityMetrics(date: day)
+                m.petInteractionCount += v
+                metricsByDay[day] = m
+            }
+        }
+
+        // Merge time slot counts
+        for (k, inner) in timeSlots {
+            if let date = ISO8601DateFormatter().date(from: k) {
+                let day = cal.startOfDay(for: date)
+                guard day >= start else { continue }
+                var m = metricsByDay[day] ?? DailyActivityMetrics(date: day)
+                for (slotRaw, count) in inner {
+                    if let slot = TimeSlot(rawValue: slotRaw) {
+                        m.timeSlotTaskCounts[slot, default: 0] += count
+                        m.completedTaskCount += count
+                    }
+                }
+                metricsByDay[day] = m
+            }
+        }
+
+        // Only return days that have any activity
+        return metricsByDay.values.sorted { $0.date < $1.date }
     }
 }

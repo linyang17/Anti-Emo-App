@@ -1,11 +1,3 @@
-//
-//  EnergyStatisticsViewModel.swift
-//  AntiEmoPet
-//
-//  Created by Selena Yang on 09/11/2025.
-//
-
-
 import Foundation
 import Combine
 
@@ -26,24 +18,18 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		let comment: String
 	}
 
-	enum TrendDirection: String {
-		case up = "uparrow.2.fill"
-		case down = "downarrow.2.fill"
-		case flat = ""
-	}
-
 	private func rounded(_ value: Double) -> Double {
 		(value * 10).rounded() / 10
 	}
 
 	// MARK: - Energy Summary
-	func energySummary(from history: [EnergyHistoryEntry]) -> EnergySummary? {
+	func energySummary(from history: [EnergyHistoryEntry], metrics: [DailyActivityMetrics]? = nil, days: Int = 7) -> EnergySummary? {
 		guard !history.isEmpty,
 			  let last = history.max(by: { $0.date < $1.date }) else { return nil }
 
-		let cal = Calendar.current
+		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
-		let weekAgo = cal.date(byAdding: .day, value: -7, to: now)!
+		let startDate = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!)
 
 		// Sort once
 		let sorted = history.sorted { $0.date < $1.date }
@@ -68,17 +54,15 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		let todayDelta = todayAdd - todayDeduct
 		let avgToday = countToday > 0 ? rounded(Double(totalToday) / Double(countToday)) : 0.0
 
-		// --- Past 7 Days ---
+		// --- Past N Days ---
 		var addPerDay = [Date: Int]()
 		var usePerDay = [Date: Int]()
 		var sumPerDay = [Date: (total: Int, count: Int)]()
 		prevEnergy = nil
-		var lastDay: Date?
 
-		for entry in sorted where entry.date >= weekAgo {
+		for entry in sorted where entry.date >= startDate {
 			let day = cal.startOfDay(for: entry.date)
-			if day != lastDay { prevEnergy = nil }
-
+			// No reset of prevEnergy on day change
 			if let p = prevEnergy {
 				let diff = entry.totalEnergy - p
 				if diff > 0 {
@@ -91,7 +75,6 @@ final class EnergyStatisticsViewModel: ObservableObject {
 			sumPerDay[day, default: (0, 0)].total += entry.totalEnergy
 			sumPerDay[day, default: (0, 0)].count += 1
 			prevEnergy = entry.totalEnergy
-			lastDay = day
 		}
 
 		let dayCount = sumPerDay.count
@@ -103,13 +86,39 @@ final class EnergyStatisticsViewModel: ObservableObject {
 			} / Double(dayCount))
 			: 0.0
 
-		// --- Trend & comment ---
-		let trend: TrendDirection = avgToday > avgWeek ? .up : (avgToday < avgWeek ? .down : .flat)
-		let comment: String = switch trend {
-		case .up: "最近有在好好生活！继续保持～"
-		case .down: "最近很少关注自己，注意休息恢复哦。"
-		case .flat: "能量水平保持稳定。"
+		var score = avgToday > avgWeek ? 1 : (avgToday < avgWeek ? -1 : 0)
+		if let metrics {
+			let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (TimeZoneManager.shared.calendar.startOfDay(for: $0.date), $0) })
+			let daysSorted = Array(sumPerDay.keys).sorted()
+			let mid = daysSorted.count / 2
+			var firstHalfTasks = 0, secondHalfTasks = 0
+			var firstHalfInter = 0, secondHalfInter = 0
+			for (i, d) in daysSorted.enumerated() {
+				if let m = metricsByDay[d] {
+					if i < mid { firstHalfTasks += m.completedTaskCount; firstHalfInter += m.petInteractionCount }
+					else { secondHalfTasks += m.completedTaskCount; secondHalfInter += m.petInteractionCount }
+				}
+			}
+			if secondHalfTasks > firstHalfTasks { score += 1 } else if secondHalfTasks < firstHalfTasks { score -= 1 }
+			if secondHalfInter > firstHalfInter { score += 1 } else if secondHalfInter < firstHalfInter { score -= 1 }
 		}
+		let trend: TrendDirection = score > 0 ? .up : (score < 0 ? .down : .flat)
+
+		let comment: String = {
+			var parts: [String] = []
+			switch trend {
+			case .up: parts.append("最近能量在上升，做得很棒！")
+			case .down: parts.append("最近能量略有下降，注意休息恢复哦。")
+			case .flat: parts.append("能量水平保持稳定。")
+			}
+			parts.append("今日 +\(todayAdd) / -\(todayDeduct)")
+			if let metrics {
+				let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
+				let totalInter = metrics.reduce(0) { $0 + $1.petInteractionCount }
+				parts.append("近\(days)天完成任务 \(totalTasks) 次，互动 \(totalInter) 次")
+			}
+			return parts.joined(separator: " · ")
+		}()
 
 		return EnergySummary(
 			lastEnergy: last.totalEnergy,

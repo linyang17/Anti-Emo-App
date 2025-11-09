@@ -1,13 +1,13 @@
-struct EnergyStats: View {
-	let energy: StatisticsViewModel.EnergySummary
+struct EnergyStatsSection: View {
+	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
 		DashboardCard(title: "能量摘要 / Energy Stats", icon: "bolt.fill") {
 			VStack(alignment: .leading, spacing: 8) {
-				Text("今日平均能量：\(energy.averageToday) \(energy.trendText)")
+				Text("今日平均能量：\(String(format: "%.1f", energy.averageToday)) \(trendArrow(energy.trend))")
 					.font(.title3.weight(.semibold))
 
-				Text("过去7天平均：\(energy.averageAddPastWeek)")
+				Text("过去7天平均：\(String(format: "%.1f", energy.averagePastWeek))")
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
 
@@ -42,10 +42,18 @@ struct EnergyStats: View {
 					}
 				}
 
-				Text(energy.insight)
+				Text(energy.comment)
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
 			}
+		}
+	}
+
+	private func trendArrow(_ trend: TrendDirection) -> String {
+		switch trend {
+		case .up: return "↑"
+		case .down: return "↓"
+		case .flat: return "→"
 		}
 	}
 }

@@ -2,8 +2,8 @@ import SwiftUI
 
 
 struct StatisticsOverviewSection: View {
-	let mood: StatisticsViewModel.MoodSummary
-	let energy: StatisticsViewModel.EnergySummary
+	let mood: MoodStatisticsViewModel.MoodSummary
+	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
 		DashboardCard(title: "概览", icon: "heart.fill") {
@@ -49,7 +49,7 @@ struct StatisticsOverviewSection: View {
 							.foregroundStyle(.secondary)
 						Text("\(energy.lastEnergy)")
 							.font(.title3.weight(.semibold))
-						Text("今日补充 \(energy.todayAdd) · 过去7天 \(energy.averageAddPastWeek)")
+						Text("今日补充 \(energy.todayAdd) · 过去7天 \(String(format: "%.1f", energy.averageDailyAddPastWeek))")
 							.font(.caption)
 							.foregroundStyle(.secondary)
 					}

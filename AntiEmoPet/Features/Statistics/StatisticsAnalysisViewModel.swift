@@ -2,14 +2,28 @@ import Foundation
 
 @MainActor
 final class StatisticsAnalysisViewModel: ObservableObject {
+	
     private let cal: Calendar = TimeZoneManager.shared.calendar
+
+	// MARK: - Published Outputs (optional for UI binding)
+	@Published var timeSlotAverages: [TimeSlot: Double] = [:]
+	@Published var weatherAverages: [WeatherType: Double] = [:]
+	@Published var daylightHint: String = ""
+
+	// MARK: - Unified Wrapper Function
+	func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> (timeSlot: [TimeSlot: Double], weather: [WeatherType: Double], daylight: String) {
+		let slot = timeSlotMoodAverages(entries: entries)
+		let weather = weatherMoodAverages(entries: entries, tasks: tasks)
+		let text = daylightCorrelationText(entries: entries)
+		return (slot, weather, text)
+	}
 
     // 1) 时段分析：上午 vs 下午 vs 晚上平均情绪
     func timeSlotMoodAverages(entries: [MoodEntry]) -> [TimeSlot: Double] {
         guard !entries.isEmpty else { return [:] }
         var acc: [TimeSlot: (sum: Int, count: Int)] = [:]
         for e in entries {
-            let slot = TimeSlot.slot(for: e.date, calendar: cal)
+            let slot = TimeSlot.from(date: e.date, using: cal)
             var item = acc[slot] ?? (0, 0)
             item.sum += e.value
             item.count += 1
@@ -82,3 +96,4 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         return "各时段情绪较为均衡，暂无明显日照相关的波动。"
     }
 }
+

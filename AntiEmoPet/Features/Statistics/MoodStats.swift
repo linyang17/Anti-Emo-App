@@ -1,36 +1,70 @@
 import SwiftUI
 
-
 struct MoodStatsSection: View {
-	let mood: StatisticsViewModel.MoodSummary
+    let mood: MoodStatisticsViewModel.MoodSummary
 
-	var body: some View {
-		DashboardCard(title: "情绪摘要", icon: "smile.fill") {
-			VStack(alignment: .leading, spacing: 8) {
-				// 最新情绪 + 趋势
-				Text("最新情绪：\(mood.lastMood) \(mood.trendText)")
-					.font(.title3.weight(.semibold))
+    var body: some View {
+        DashboardCard(title: "情绪摘要", icon: "smile.fill") {
+            VStack(alignment: .leading, spacing: 8) {
+                // 最新情绪 + 趋势
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("最新情绪：")
+                        .font(.title3.weight(.semibold))
+                    Text("\(mood.lastMood)")
+                        .font(.title3.weight(.bold))
+                    if !mood.trend.rawValue.isEmpty {
+                        Image(systemName: mood.trend.rawValue)
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
-				HStack {
-					Text("今日平均：\(mood.averageToday)")
-					Spacer()
-					Text("过去7天平均：\(mood.averagePastWeek)")
-				}
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
+                // 平均值显示
+                HStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("今日平均")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(String(format: "%.1f", mood.averageToday))
+                            .font(.subheadline.weight(.medium))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("过去一周平均")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(String(format: "%.1f", mood.averagePastWeek))
+                            .font(.subheadline.weight(.medium))
+                    }
+                }
 
-				HStack {
-					Text("累计打卡天数：\(mood.uniqueDayCount)")
-					Spacer()
-					Text("累计记录次数：\(mood.entriesCount)")
-				}
-				.font(.caption)
-				.foregroundStyle(.secondary)
+                // 累计记录
+                HStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("累计打卡天数")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("\(mood.uniqueDayCount)")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("累计记录次数")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("\(mood.entriesCount)")
+                            .font(.subheadline.weight(.medium))
+                    }
+                }
 
-				Text(mood.insight)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-			}
-		}
-	}
+                // 心情评论
+                if !mood.comment.isEmpty {
+                    Divider().padding(.vertical, 6)
+                    Text(mood.comment)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 6)
+        }
+    }
 }

@@ -1,5 +1,4 @@
-
-struct EnergyTrend: View {
+struct EnergyTrendSection: View {
 	let energyHistory: [EnergyHistoryEntry]
 
 	var body: some View {

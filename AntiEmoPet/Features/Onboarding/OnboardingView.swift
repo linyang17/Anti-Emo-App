@@ -3,6 +3,7 @@ import SwiftUI
 struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @EnvironmentObject private var appModel: AppViewModel
+    @StateObject private var locationService = LocationService()
 
     var body: some View {
         VStack(spacing: 24) {
@@ -32,12 +33,22 @@ struct OnboardingView: View {
                     nickname: viewModel.nickname,
                     region: viewModel.region
                 )
+                locationService.stopUpdating()
                 if viewModel.notificationsOptIn {
                     appModel.requestNotifications()
                 }
             }
-            .disabled(!viewModel.canSubmit)
+            .disabled(!(viewModel.canSubmit && (locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways) && !viewModel.region.isEmpty))
             Spacer()
+        }
+        .onAppear {
+            locationService.requestAuthorization()
+            locationService.startUpdating()
+        }
+        .onChange(of: locationService.lastKnownCity) { city in
+            if let c = city, viewModel.region.isEmpty {
+                viewModel.region = c
+            }
         }
         .padding()
         // TODO(中/EN): Stage 2 of onboarding should ask for mood baseline + daylight sensitivity (PRD §4).

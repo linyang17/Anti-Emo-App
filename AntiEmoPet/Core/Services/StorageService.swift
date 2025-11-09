@@ -92,7 +92,7 @@ final class StorageService {
 
     func fetchTasks(for date: Date) -> [Task] {
         do {
-            let calendar = Calendar.current
+            let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
             let predicate = #Predicate<Task> {
@@ -280,3 +280,4 @@ enum DefaultSeeds {
         taskTemplateSeeds.map { $0.make() }
     }
 }
+
