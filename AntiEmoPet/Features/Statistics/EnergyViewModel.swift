@@ -1,7 +1,14 @@
 import Foundation
+import Combine
 
 @MainActor
 final class EnergyStatisticsViewModel: ObservableObject {
+	@Published var energySummary: EnergySummary = .empty
+
+	init() {
+		self.energySummary = .empty
+	}
+	
     struct EnergySummary {
         let lastEnergy: Int
         let delta: Int

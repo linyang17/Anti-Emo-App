@@ -1,5 +1,5 @@
 import Foundation
-import CoreLocation
+internal import CoreLocation
 import OSLog
 import Combine
 

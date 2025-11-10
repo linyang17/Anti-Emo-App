@@ -16,7 +16,6 @@ struct MoodStatsSection: View {
                         Image(systemName: mood.trend.rawValue)
                             .font(.title3)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel(mood.trend.accessibilityLabel)
                     }
                 }
 

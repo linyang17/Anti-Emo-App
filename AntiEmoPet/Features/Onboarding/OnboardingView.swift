@@ -1,4 +1,5 @@
 import SwiftUI
+internal import CoreLocation
 
 struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
