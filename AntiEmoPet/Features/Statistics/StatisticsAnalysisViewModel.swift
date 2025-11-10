@@ -14,40 +14,47 @@ enum DayPeriod: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum DayPeriod: String, CaseIterable, Identifiable, Sendable {
+        case daylight
+        case night
+
+        var id: String { rawValue }
+
+        var title: String {
+                switch self {
+                case .daylight: return "日间"
+                case .night: return "夜间"
+                }
+        }
+}
+
 @MainActor
 final class StatisticsAnalysisViewModel: ObservableObject {
-    struct RhythmBreakdown: Equatable {
-        var timeSlot: [TimeSlot: Double]
-        var weather: [WeatherType: Double]
-        var dayPeriod: [DayPeriod: Double]
-        var daylightHint: String
 
-        static let empty = RhythmBreakdown(
-            timeSlot: [:],
-            weather: [:],
-            dayPeriod: [:],
-            daylightHint: "暂无足够数据用于日照关联分析。"
-        )
-    }
 
-    @Published private(set) var latestBreakdown: RhythmBreakdown = .empty
+    private let cal: Calendar = TimeZoneManager.shared.calendar
 
-    private let calendar = TimeZoneManager.shared.calendar
+        // MARK: - Published Outputs (optional for UI binding)
+        @Published var timeSlotAverages: [TimeSlot: Double] = [:]
+        @Published var weatherAverages: [WeatherType: Double] = [:]
+        @Published var daylightHint: String = ""
+        @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
 
-    @discardableResult
-    func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> RhythmBreakdown {
-        let slotAverages = timeSlotMoodAverages(entries: entries)
-        let breakdown = RhythmBreakdown(
-            timeSlot: slotAverages,
-            weather: weatherMoodAverages(entries: entries, tasks: tasks),
-            dayPeriod: daylightMoodAverages(entries: entries),
-            daylightHint: daylightCorrelationText(slotAverages: slotAverages)
-        )
-        latestBreakdown = breakdown
-        return breakdown
-    }
+        // MARK: - Unified Wrapper Function
+        func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> (timeSlot: [TimeSlot: Double], weather: [WeatherType: Double], daylight: String, dayPeriod: [DayPeriod: Double]) {
+                let slot = timeSlotMoodAverages(entries: entries)
+                let weather = weatherMoodAverages(entries: entries, tasks: tasks)
+                let daylightBuckets = daylightMoodAverages(entries: entries)
+                let text = daylightCorrelationText(entries: entries)
+                timeSlotAverages = slot
+                weatherAverages = weather
+                dayPeriodAverages = daylightBuckets
+                daylightHint = text
+                return (slot, weather, text, daylightBuckets)
+        }
 
-    private func timeSlotMoodAverages(entries: [MoodEntry]) -> [TimeSlot: Double] {
+    // 1) 时段分析：上午 vs 下午 vs 晚上平均情绪
+    func timeSlotMoodAverages(entries: [MoodEntry]) -> [TimeSlot: Double] {
         guard !entries.isEmpty else { return [:] }
         var accumulator: [TimeSlot: (sum: Int, count: Int)] = [:]
         for entry in entries {
@@ -118,6 +125,7 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         return "各时段情绪较为均衡，暂无明显日照相关的波动。"
     }
 
+    // 日间平均情绪
     private func daylightMoodAverages(entries: [MoodEntry]) -> [DayPeriod: Double] {
         guard !entries.isEmpty else { return [:] }
         var accumulator: [DayPeriod: (sum: Int, count: Int)] = [:]

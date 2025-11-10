@@ -126,8 +126,10 @@ struct StatisticsRhythmSection: View {
         }
 
         @ViewBuilder
-        private func rhythmPlaceholder(systemImage: String) -> some View {
-                ContentUnavailableView("暂无数据", systemImage: systemImage, description: Text("记录更多情绪后可查看该图表"))
+        private func rhythmPlaceholder(ystemImage: String) -> some View {
+                Text("暂无数据", systemImage: systemImage, description: Text("记录更多情绪后可查看该图表"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 120)
         }
 }
