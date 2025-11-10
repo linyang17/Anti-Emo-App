@@ -29,12 +29,24 @@ enum WeatherType: String, Codable, CaseIterable, Identifiable {
 
 enum TaskDifficulty: String, Codable, CaseIterable {
     case easy, medium, hard
+}
 
-    var energyReward: Int {
+enum TaskCategory: String, Codable, CaseIterable, Identifiable {
+    case outdoor
+    case indoorDigital
+    case indoorPhysical
+    case social
+    case petCare
+
+    var id: String { rawValue }
+
+    var title: String {
         switch self {
-        case .easy: return 5
-        case .medium: return 10
-        case .hard: return 15
+        case .outdoor: return "户外行动"
+        case .indoorDigital: return "室内电子"
+        case .indoorPhysical: return "室内现实"
+        case .social: return "社交互动"
+        case .petCare: return "宠物互动"
         }
     }
 }
@@ -50,6 +62,8 @@ final class Task: Identifiable {
     var title: String
     var weatherType: WeatherType
     var difficulty: TaskDifficulty
+    var category: TaskCategory = .indoorDigital
+    var energyReward: Int = 0
     var date: Date
     var status: TaskStatus
     var completedAt: Date?
@@ -59,6 +73,8 @@ final class Task: Identifiable {
         title: String,
         weatherType: WeatherType,
         difficulty: TaskDifficulty,
+        category: TaskCategory,
+        energyReward: Int,
         date: Date,
         status: TaskStatus = .pending,
         completedAt: Date? = nil
@@ -67,6 +83,8 @@ final class Task: Identifiable {
         self.title = title
         self.weatherType = weatherType
         self.difficulty = difficulty
+        self.category = category
+        self.energyReward = energyReward
         self.date = date
         self.status = status
         self.completedAt = completedAt

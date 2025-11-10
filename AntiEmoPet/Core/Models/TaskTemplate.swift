@@ -5,21 +5,24 @@ import SwiftData
 final class TaskTemplate: Identifiable {
     @Attribute(.unique) var id: UUID
     var title: String
-    var weatherType: WeatherType
     var difficulty: TaskDifficulty
     var isOutdoor: Bool
+    var category: TaskCategory = .indoorDigital
+    var energyReward: Int = 0
 
     init(
         id: UUID = UUID(),
         title: String,
-        weatherType: WeatherType,
         difficulty: TaskDifficulty,
-        isOutdoor: Bool
+        isOutdoor: Bool,
+        category: TaskCategory,
+        energyReward: Int
     ) {
         self.id = id
         self.title = title
-        self.weatherType = weatherType
         self.difficulty = difficulty
         self.isOutdoor = isOutdoor
+        self.category = category
+        self.energyReward = energyReward
     }
 }

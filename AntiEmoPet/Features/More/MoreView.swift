@@ -6,8 +6,18 @@ struct MoreView: View {
 
     var body: some View {
         List {
+            Section("个人信息") {
+                if let stats = appModel.userStats {
+                    Label("昵称：\(stats.nickname.isEmpty ? "未设置" : stats.nickname)", systemImage: "person.fill")
+                    Label("当前城市：\(stats.region.isEmpty ? "定位中…" : stats.region)", systemImage: "mappin")
+                    Label("定位与天气权限：\(stats.shareLocationAndWeather ? "已启用" : "未启用")", systemImage: "location")
+                } else {
+                    Text("加载中…")
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section("情绪 / 能量趋势") {
-				if appModel.moodEntries.isEmpty && appModel.energyHistory.isEmpty {
+                                if appModel.moodEntries.isEmpty && appModel.energyHistory.isEmpty {
                     Text("暂无记录")
                         .foregroundStyle(.secondary)
                 } else {

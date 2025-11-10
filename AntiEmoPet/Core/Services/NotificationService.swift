@@ -16,7 +16,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     func scheduleDailyReminders() {
         let times = [(8, 0), (20, 30)]
-        center.removeAllPendingNotificationRequests()
+        let identifiers = times.map { "sunnyPet.reminder.\($0.0).\($0.1)" }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
         times.forEach { hour, minute in
             let content = UNMutableNotificationContent()
             content.title = "SunnyPet 提醒"
@@ -28,8 +29,9 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             components.minute = minute
 
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            let identifier = "sunnyPet.reminder.\(hour).\(minute)"
             let request = UNNotificationRequest(
-                identifier: "sunnyPet.reminder.\(hour).\(minute)",
+                identifier: identifier,
                 content: content,
                 trigger: trigger
             )
@@ -43,5 +45,37 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound])
+    }
+
+    func scheduleTaskReminders(for tasks: [Task]) {
+        guard !tasks.isEmpty else { return }
+        center.getPendingNotificationRequests { [weak self] requests in
+            let taskIdentifiers = requests
+                .filter { $0.identifier.hasPrefix("sunnyPet.task.") }
+                .map { $0.identifier }
+            if !taskIdentifiers.isEmpty {
+                self?.center.removePendingNotificationRequests(withIdentifiers: taskIdentifiers)
+            }
+            self?.enqueueTaskNotifications(for: tasks)
+        }
+    }
+
+    private func enqueueTaskNotifications(for tasks: [Task]) {
+        for task in tasks {
+            let calendar = Calendar.current
+            let hour = calendar.component(.hour, from: task.date)
+            if hour >= 22 || hour < 6 { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = "SunnyPet 新任务"
+            content.body = task.title
+            content.sound = .default
+
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: task.date)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            let identifier = "sunnyPet.task.\(task.id.uuidString)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            center.add(request)
+        }
     }
 }

@@ -1,80 +1,352 @@
 [
   {
-    "title": "清晨阳光伸展",
-    "weatherType": "sunny",
+    "title": "晨间公园散步10分钟",
     "difficulty": "easy",
-    "isOutdoor": true
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 8
   },
   {
-    "title": "阳台多肉浇水",
-    "weatherType": "sunny",
-    "difficulty": "medium",
-    "isOutdoor": true
-  },
-  {
-    "title": "午后阅读30分钟",
-    "weatherType": "sunny",
+    "title": "午后阳光下晒太阳",
     "difficulty": "easy",
-    "isOutdoor": false
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 8
   },
   {
-    "title": "云天整理衣柜",
-    "weatherType": "cloudy",
+    "title": "去附近咖啡馆买杯咖啡",
     "difficulty": "medium",
-    "isOutdoor": false
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 14
   },
   {
-    "title": "暖灯泡脚放松",
-    "weatherType": "cloudy",
-    "difficulty": "easy",
-    "isOutdoor": false
-  },
-  {
-    "title": "雨天热汤烹饪",
-    "weatherType": "rainy",
-    "difficulty": "medium",
-    "isOutdoor": false
-  },
-  {
-    "title": "雨声冥想15分钟",
-    "weatherType": "rainy",
-    "difficulty": "easy",
-    "isOutdoor": false
-  },
-  {
-    "title": "风天整理阳台植物",
-    "weatherType": "windy",
-    "difficulty": "medium",
-    "isOutdoor": true
-  },
-  {
-    "title": "风中慢跑2公里",
-    "weatherType": "windy",
+    "title": "骑自行车环湖一圈",
     "difficulty": "hard",
-    "isOutdoor": true
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 24
   },
   {
-    "title": "雪天热可可",
-    "weatherType": "snowy",
-    "difficulty": "easy",
-    "isOutdoor": false
-  },
-  {
-    "title": "堆一个迷你雪人",
-    "weatherType": "snowy",
-    "difficulty": "medium",
-    "isOutdoor": true
-  },
-  {
-    "title": "夜间瑜伽舒展",
-    "weatherType": "cloudy",
-    "difficulty": "easy",
-    "isOutdoor": false
-  },
-  {
-    "title": "晨跑打卡",
-    "weatherType": "sunny",
+    "title": "傍晚跑步两公里",
     "difficulty": "hard",
-    "isOutdoor": true
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 22
+  },
+  {
+    "title": "去便利店买瓶水",
+    "difficulty": "easy",
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 6
+  },
+  {
+    "title": "站在阳台做深呼吸",
+    "difficulty": "easy",
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 6
+  },
+  {
+    "title": "去楼下取快递",
+    "difficulty": "easy",
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 7
+  },
+  {
+    "title": "在街角买一束花",
+    "difficulty": "medium",
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 16
+  },
+  {
+    "title": "在户外做十分钟伸展操",
+    "difficulty": "medium",
+    "isOutdoor": true,
+    "category": "outdoor",
+    "energyReward": 15
+  },
+  {
+    "title": "播放一首 City Pop",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 5
+  },
+  {
+    "title": "听一张快乐歌单",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 6
+  },
+  {
+    "title": "观看搞笑短视频10分钟",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 5
+  },
+  {
+    "title": "看治愈系动物视频",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 5
+  },
+  {
+    "title": "尝试新的白噪音",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 6
+  },
+  {
+    "title": "整理你的音乐播放列表",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 12
+  },
+  {
+    "title": "写下今日三件开心的事",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 10
+  },
+  {
+    "title": "使用冥想 App 5 分钟",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 7
+  },
+  {
+    "title": "用手机拍下此刻的风景",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 6
+  },
+  {
+    "title": "尝试一档新的播客节目",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorDigital",
+    "energyReward": 11
+  },
+  {
+    "title": "冥想 5 分钟",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 8
+  },
+  {
+    "title": "做 20 个波比跳",
+    "difficulty": "hard",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 24
+  },
+  {
+    "title": "做 20 个深蹲",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 16
+  },
+  {
+    "title": "整理房间桌面",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 14
+  },
+  {
+    "title": "打扫卫生15分钟",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 15
+  },
+  {
+    "title": "伸展肩颈5分钟",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 8
+  },
+  {
+    "title": "泡一杯花草茶放松",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 7
+  },
+  {
+    "title": "做 1 组平板支撑",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 16
+  },
+  {
+    "title": "整理衣柜10分钟",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 15
+  },
+  {
+    "title": "给房间通风5分钟",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "indoorPhysical",
+    "energyReward": 7
+  },
+  {
+    "title": "分享宠物的可爱瞬间",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 9
+  },
+  {
+    "title": "在朋友圈发一条状态",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 13
+  },
+  {
+    "title": "给朋友的 IG Story 留言",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 9
+  },
+  {
+    "title": "和朋友发送一段语音问候",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 12
+  },
+  {
+    "title": "邀请朋友一起线上喝咖啡",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 14
+  },
+  {
+    "title": "写一封简短的感谢信",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 15
+  },
+  {
+    "title": "点赞朋友的近况并留言",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 8
+  },
+  {
+    "title": "向家人发一句关心的话",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 9
+  },
+  {
+    "title": "计划一次线下见面",
+    "difficulty": "hard",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 20
+  },
+  {
+    "title": "回复一条积压的消息",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "social",
+    "energyReward": 8
+  },
+  {
+    "title": "给宠物准备餐食",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 8
+  },
+  {
+    "title": "和宠物玩10分钟互动游戏",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 14
+  },
+  {
+    "title": "给宠物换一套穿搭",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 13
+  },
+  {
+    "title": "记录宠物今天的心情",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 7
+  },
+  {
+    "title": "为宠物梳理毛发",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 15
+  },
+  {
+    "title": "教宠物一个新指令",
+    "difficulty": "hard",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 22
+  },
+  {
+    "title": "和宠物说三句夸奖的话",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 9
+  },
+  {
+    "title": "拍一张宠物的近照",
+    "difficulty": "easy",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 8
+  },
+  {
+    "title": "整理宠物玩具角落",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 14
+  },
+  {
+    "title": "为宠物准备舒适睡窝",
+    "difficulty": "medium",
+    "isOutdoor": false,
+    "category": "petCare",
+    "energyReward": 15
   }
 ]

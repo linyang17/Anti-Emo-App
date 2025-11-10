@@ -12,6 +12,7 @@ final class UserStats: Identifiable {
     var nickname: String
     var region: String
     var notificationsEnabled: Bool
+    var shareLocationAndWeather: Bool
 
     init(
         id: UUID = UUID(),
@@ -22,7 +23,8 @@ final class UserStats: Identifiable {
         completedTasksCount: Int = 0,
         nickname: String = "",
         region: String = "",
-        notificationsEnabled: Bool = false
+        notificationsEnabled: Bool = false,
+        shareLocationAndWeather: Bool = false
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
@@ -33,5 +35,6 @@ final class UserStats: Identifiable {
         self.nickname = nickname
         self.region = region
         self.notificationsEnabled = notificationsEnabled
+        self.shareLocationAndWeather = shareLocationAndWeather
     }
 }
