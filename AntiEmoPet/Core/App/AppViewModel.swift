@@ -41,7 +41,10 @@ final class AppViewModel: ObservableObject {
     private let isoDayFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
-        formatter.timeZone = .autoupdatingCurrent
+        // Persisted day keys were historically written in UTC.
+        // Keep the formatter pinned to GMT to avoid reinterpreting legacy data
+        // using the user's current timezone, which would shift stored metrics.
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
 
