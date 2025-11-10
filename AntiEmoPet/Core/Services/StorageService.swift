@@ -190,7 +190,7 @@ final class StorageService {
     private func ensureItems() throws -> Bool {
         let existing = try context.fetch(FetchDescriptor<Item>())
         let existingSKUs = Set(existing.map(\.sku))
-        let missing = DefaultSeeds.makeItems().filter { !existingSKUs.contains($0.sku) }
+        let missing = DefaultSeeds.makeItems(logger: logger).filter { !existingSKUs.contains($0.sku) }
         missing.forEach { context.insert($0) }
         return !missing.isEmpty
     }
@@ -199,7 +199,7 @@ final class StorageService {
     private func ensureTaskTemplates() throws -> Bool {
         let existing = try context.fetch(FetchDescriptor<TaskTemplate>())
         let existingTitles = Set(existing.map(\.title))
-        let missing = DefaultSeeds.makeTaskTemplates().filter { !existingTitles.contains($0.title) }
+        let missing = DefaultSeeds.makeTaskTemplates(logger: logger).filter { !existingTitles.contains($0.title) }
         missing.forEach { context.insert($0) }
         return !missing.isEmpty
     }
@@ -215,38 +215,55 @@ final class StorageService {
 }
 
 enum DefaultSeeds {
-    static func makeItems() -> [Item] {
-        guard let url = Bundle.main.url(forResource: "items", withExtension: "json", subdirectory: "Static"),
-              let data = try? Data(contentsOf: url),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+    private struct ItemSeed: Decodable {
+        let sku: String
+        let type: ItemType
+        let name: String
+        let costEnergy: Int
+        let moodBoost: Int
+        let hungerBoost: Int
+    }
+
+    private struct TaskTemplateSeed: Decodable {
+        let title: String
+        let weatherType: WeatherType
+        let difficulty: TaskDifficulty
+        let isOutdoor: Bool
+    }
+
+    static func makeItems(logger: Logger? = nil) -> [Item] {
+        do {
+            let seeds: [ItemSeed] = try StaticDataLoader.decode("items")
+            return seeds.map { seed in
+                Item(
+                    sku: seed.sku,
+                    type: seed.type,
+                    name: seed.name,
+                    costEnergy: seed.costEnergy,
+                    moodBoost: seed.moodBoost,
+                    hungerBoost: seed.hungerBoost
+                )
+            }
+        } catch {
+            logger?.error("Failed to load items seed: \(error.localizedDescription, privacy: .public)")
             return []
-        }
-        return raw.compactMap { dict in
-            guard let sku = dict["sku"] as? String,
-                  let typeRaw = dict["type"] as? String,
-                  let type = ItemType(rawValue: typeRaw),
-                  let name = dict["name"] as? String,
-                  let costEnergy = dict["costEnergy"] as? Int,
-                  let moodBoost = dict["moodBoost"] as? Int,
-                  let hungerBoost = dict["hungerBoost"] as? Int else { return nil }
-            return Item(sku: sku, type: type, name: name, costEnergy: costEnergy, moodBoost: moodBoost, hungerBoost: hungerBoost)
         }
     }
 
-    static func makeTaskTemplates() -> [TaskTemplate] {
-        guard let url = Bundle.main.url(forResource: "task_templates", withExtension: "json", subdirectory: "Static"),
-              let data = try? Data(contentsOf: url),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+    static func makeTaskTemplates(logger: Logger? = nil) -> [TaskTemplate] {
+        do {
+            let seeds: [TaskTemplateSeed] = try StaticDataLoader.decode("task_templates")
+            return seeds.map { seed in
+                TaskTemplate(
+                    title: seed.title,
+                    weatherType: seed.weatherType,
+                    difficulty: seed.difficulty,
+                    isOutdoor: seed.isOutdoor
+                )
+            }
+        } catch {
+            logger?.error("Failed to load task templates seed: \(error.localizedDescription, privacy: .public)")
             return []
-        }
-        return raw.compactMap { dict in
-            guard let title = dict["title"] as? String,
-                  let weatherRaw = dict["weatherType"] as? String,
-                  let weather = WeatherType(rawValue: weatherRaw),
-                  let diffRaw = dict["difficulty"] as? String,
-                  let diff = TaskDifficulty(rawValue: diffRaw),
-                  let isOutdoor = dict["isOutdoor"] as? Bool else { return nil }
-            return TaskTemplate(title: title, weatherType: weather, difficulty: diff, isOutdoor: isOutdoor)
         }
     }
 }

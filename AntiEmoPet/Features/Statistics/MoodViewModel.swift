@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 @MainActor
 final class MoodStatisticsViewModel: ObservableObject {
@@ -19,6 +18,17 @@ final class MoodStatisticsViewModel: ObservableObject {
         let entriesCount: Int
         let trend: TrendDirection
         let comment: String
+
+        static let empty = MoodSummary(
+            lastMood: 0,
+            delta: 0,
+            averageToday: 0,
+            averagePastWeek: 0,
+            uniqueDayCount: 0,
+            entriesCount: 0,
+            trend: .flat,
+            comment: ""
+        )
     }
 
     // MARK: - Mood Summary

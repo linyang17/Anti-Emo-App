@@ -1,41 +1,47 @@
 import SwiftUI
 import Charts
+import Combine
 
 struct StatisticsRhythmSection: View {
         @EnvironmentObject private var appModel: AppViewModel
         @StateObject private var analysis = StatisticsAnalysisViewModel()
 
         var body: some View {
-                let entries = appModel.moodEntries
-                let tasks = appModel.allTasks
-                let result = analysis.rhythmAnalysis(for: entries, tasks: tasks)
+                let breakdown = analysis.latestBreakdown
 
-                return VStack(spacing: 16) {
+                VStack(spacing: 16) {
                         DashboardCard(title: "情绪节律 · 时段", icon: "clock") {
-                                rhythmSlotChart(data: result.timeSlot)
+                                rhythmSlotChart(data: breakdown.timeSlot)
                         }
 
                         DashboardCard(title: "情绪节律 · 天气", icon: "cloud.sun") {
-                                rhythmWeatherChart(data: result.weather)
+                                rhythmWeatherChart(data: breakdown.weather)
                         }
 
                         DashboardCard(title: "情绪节律 · 日照提示", icon: "sun.max") {
-                                rhythmDaylightView(buckets: result.dayPeriod, hint: result.daylight)
+                                rhythmDaylightView(buckets: breakdown.dayPeriod, hint: breakdown.daylightHint)
                         }
                 }
+                .onAppear(perform: refreshRhythms)
+                .onReceive(appModel.$moodEntries) { _ in refreshRhythms() }
+                .onReceive(appModel.$todayTasks) { _ in refreshRhythms() }
+        }
+
+        private func refreshRhythms() {
+                analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks)
         }
 
         @ViewBuilder
         private func rhythmSlotChart(data: [TimeSlot: Double]) -> some View {
                 if data.isEmpty {
-                        rhythmPlaceholder()
+                        rhythmPlaceholder(systemImage: "clock")
                 } else {
                         let ordered = TimeSlot.allCases.compactMap { slot -> SlotAverage? in
                                 guard let value = data[slot] else { return nil }
                                 return SlotAverage(slot: slot, value: value)
                         }
                         if ordered.isEmpty {
-                                rhythmPlaceholder()
+                                rhythmPlaceholder(systemImage: "clock")
                         } else {
                                 Chart(ordered) { item in
                                         BarMark(
@@ -44,12 +50,8 @@ struct StatisticsRhythmSection: View {
                                         )
                                         .foregroundStyle(.purple.gradient)
                                 }
-                                .chartXAxis {
-                                        AxisMarks(position: .bottom)
-                                }
-                                .chartYAxis {
-                                        AxisMarks(position: .leading)
-                                }
+                                .chartXAxis { AxisMarks(position: .bottom) }
+                                .chartYAxis { AxisMarks(position: .leading) }
                                 .frame(height: 160)
                         }
                 }
@@ -58,14 +60,14 @@ struct StatisticsRhythmSection: View {
         @ViewBuilder
         private func rhythmWeatherChart(data: [WeatherType: Double]) -> some View {
                 if data.isEmpty {
-                        rhythmPlaceholder()
+                        rhythmPlaceholder(systemImage: "cloud.sun")
                 } else {
                         let ordered = WeatherType.allCases.compactMap { type -> WeatherAverage? in
                                 guard let value = data[type] else { return nil }
                                 return WeatherAverage(type: type, value: value)
                         }
                         if ordered.isEmpty {
-                                rhythmPlaceholder()
+                                rhythmPlaceholder(systemImage: "cloud.sun")
                         } else {
                                 Chart(ordered) { item in
                                         LineMark(
@@ -78,12 +80,8 @@ struct StatisticsRhythmSection: View {
                                         )
                                         .symbol(by: .value("天气", item.type.title))
                                 }
-                                .chartXAxis {
-                                        AxisMarks(values: ordered.map { $0.type.title })
-                                }
-                                .chartYAxis {
-                                        AxisMarks(position: .leading)
-                                }
+                                .chartXAxis { AxisMarks(values: ordered.map { $0.type.title }) }
+                                .chartYAxis { AxisMarks(position: .leading) }
                                 .frame(height: 160)
                         }
                 }
@@ -93,7 +91,7 @@ struct StatisticsRhythmSection: View {
         private func rhythmDaylightView(buckets: [DayPeriod: Double], hint: String) -> some View {
                 if buckets.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                                rhythmPlaceholder()
+                                rhythmPlaceholder(systemImage: "sun.max")
                                 Text(hint)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -104,7 +102,7 @@ struct StatisticsRhythmSection: View {
                                 return DaylightAverage(period: period, value: value)
                         }
                         if ordered.isEmpty {
-                                rhythmPlaceholder()
+                                rhythmPlaceholder(systemImage: "sun.max")
                         } else {
                                 VStack(alignment: .leading, spacing: 12) {
                                         Chart(ordered) { item in
@@ -115,12 +113,8 @@ struct StatisticsRhythmSection: View {
                                                 .foregroundStyle(.orange.gradient)
                                                 .cornerRadius(6)
                                         }
-                                        .chartXAxis {
-                                                AxisMarks(position: .bottom)
-                                        }
-                                        .chartYAxis {
-                                                AxisMarks(position: .leading)
-                                        }
+                                        .chartXAxis { AxisMarks(position: .bottom) }
+                                        .chartYAxis { AxisMarks(position: .leading) }
                                         .frame(height: 140)
 
                                         Text(hint)
@@ -132,8 +126,8 @@ struct StatisticsRhythmSection: View {
         }
 
         @ViewBuilder
-        private func rhythmPlaceholder() -> some View {
-                Text("暂无数据")
+        private func rhythmPlaceholder(ystemImage: String) -> some View {
+                Text("暂无数据", systemImage: systemImage, description: Text("记录更多情绪后可查看该图表"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 120)
