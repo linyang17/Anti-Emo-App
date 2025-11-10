@@ -1,24 +1,44 @@
 import Foundation
 import Combine
 
+enum DayPeriod: String, CaseIterable, Identifiable, Sendable {
+        case daylight
+        case night
+
+        var id: String { rawValue }
+
+        var title: String {
+                switch self {
+                case .daylight: return "日间"
+                case .night: return "夜间"
+                }
+        }
+}
+
 @MainActor
 final class StatisticsAnalysisViewModel: ObservableObject {
-	
-	
+
+
     private let cal: Calendar = TimeZoneManager.shared.calendar
 
-	// MARK: - Published Outputs (optional for UI binding)
-	@Published var timeSlotAverages: [TimeSlot: Double] = [:]
-	@Published var weatherAverages: [WeatherType: Double] = [:]
-	@Published var daylightHint: String = ""
+        // MARK: - Published Outputs (optional for UI binding)
+        @Published var timeSlotAverages: [TimeSlot: Double] = [:]
+        @Published var weatherAverages: [WeatherType: Double] = [:]
+        @Published var daylightHint: String = ""
+        @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
 
-	// MARK: - Unified Wrapper Function
-	func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> (timeSlot: [TimeSlot: Double], weather: [WeatherType: Double], daylight: String) {
-		let slot = timeSlotMoodAverages(entries: entries)
-		let weather = weatherMoodAverages(entries: entries, tasks: tasks)
-		let text = daylightCorrelationText(entries: entries)
-		return (slot, weather, text)
-	}
+        // MARK: - Unified Wrapper Function
+        func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> (timeSlot: [TimeSlot: Double], weather: [WeatherType: Double], daylight: String, dayPeriod: [DayPeriod: Double]) {
+                let slot = timeSlotMoodAverages(entries: entries)
+                let weather = weatherMoodAverages(entries: entries, tasks: tasks)
+                let daylightBuckets = daylightMoodAverages(entries: entries)
+                let text = daylightCorrelationText(entries: entries)
+                timeSlotAverages = slot
+                weatherAverages = weather
+                dayPeriodAverages = daylightBuckets
+                daylightHint = text
+                return (slot, weather, text, daylightBuckets)
+        }
 
     // 1) 时段分析：上午 vs 下午 vs 晚上平均情绪
     func timeSlotMoodAverages(entries: [MoodEntry]) -> [TimeSlot: Double] {
@@ -97,5 +117,23 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         }
         return "各时段情绪较为均衡，暂无明显日照相关的波动。"
     }
+
+        // 日间 vs 夜间平均情绪
+        func daylightMoodAverages(entries: [MoodEntry]) -> [DayPeriod: Double] {
+                guard !entries.isEmpty else { return [:] }
+                var acc: [DayPeriod: (sum: Int, count: Int)] = [:]
+                for e in entries {
+                        let slot = TimeSlot.from(date: e.date, using: cal)
+                        let period: DayPeriod = switch slot {
+                        case .morning, .afternoon: .daylight
+                        case .evening, .night: .night
+                        }
+                        var item = acc[period] ?? (0, 0)
+                        item.sum += e.value
+                        item.count += 1
+                        acc[period] = item
+                }
+                return acc.mapValues { Double($0.sum) / Double(max(1, $0.count)) }
+        }
 }
 
