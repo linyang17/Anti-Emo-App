@@ -10,7 +10,7 @@ struct PetView: View {
             if let pet = appModel.pet {
                 VStack(spacing: 24) {
                     VStack(spacing: 12) {
-                        Image("PetCorgi")
+                        Image("foxlooking")
                             .resizable()
                             .scaledToFit()
                             .frame(height: 180)

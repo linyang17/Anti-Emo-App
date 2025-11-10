@@ -1,12 +1,15 @@
 import Foundation
 
-public enum TimeSlot: String, CaseIterable, Codable {
-    case morning, afternoon, evening, night
+public enum TimeSlot: String, Codable, CaseIterable, Sendable {
+    case morning
+    case afternoon
+    case evening
+    case night
 
-    public static func slot(for date: Date, calendar: Calendar) -> TimeSlot {
+    public static func from(date: Date, using calendar: Calendar) -> TimeSlot {
         let hour = calendar.component(.hour, from: date)
         switch hour {
-        case 6..<12: return .morning
+        case 5..<12: return .morning
         case 12..<17: return .afternoon
         case 17..<22: return .evening
         default: return .night
@@ -14,18 +17,16 @@ public enum TimeSlot: String, CaseIterable, Codable {
     }
 }
 
-public struct DailyActivityMetrics: Codable, Equatable {
-    public let tasksCompletedByDay: [Date: Int]
-    public let petInteractionsByDay: [Date: Int]
-    public let timeslotCompletionsByDay: [Date: [TimeSlot: Int]]
+public struct DailyActivityMetrics: Codable, Sendable, Equatable {
+    public var date: Date // startOfDay
+    public var completedTaskCount: Int
+    public var petInteractionCount: Int
+    public var timeSlotTaskCounts: [TimeSlot: Int]
 
-    public init(
-        tasksCompletedByDay: [Date: Int] = [:],
-        petInteractionsByDay: [Date: Int] = [:],
-        timeslotCompletionsByDay: [Date: [TimeSlot: Int]] = [:]
-    ) {
-        self.tasksCompletedByDay = tasksCompletedByDay
-        self.petInteractionsByDay = petInteractionsByDay
-        self.timeslotCompletionsByDay = timeslotCompletionsByDay
+    public init(date: Date, completedTaskCount: Int = 0, petInteractionCount: Int = 0, timeSlotTaskCounts: [TimeSlot: Int] = [:]) {
+        self.date = date
+        self.completedTaskCount = completedTaskCount
+        self.petInteractionCount = petInteractionCount
+        self.timeSlotTaskCounts = timeSlotTaskCounts
     }
 }
