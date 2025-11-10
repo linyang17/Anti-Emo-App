@@ -92,7 +92,7 @@ final class StorageService {
 
     func fetchTasks(for date: Date) -> [Task] {
         do {
-            let calendar = Calendar.current
+            let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
             let predicate = #Predicate<Task> {
@@ -215,68 +215,38 @@ final class StorageService {
 }
 
 enum DefaultSeeds {
-    fileprivate struct ItemSeed {
-        let sku: String
-        let type: ItemType
-        let name: String
-        let costEnergy: Int
-        let moodBoost: Int
-        let hungerBoost: Int
-
-        func make() -> Item {
-            Item(
-                sku: sku,
-                type: type,
-                name: name,
-                costEnergy: costEnergy,
-                moodBoost: moodBoost,
-                hungerBoost: hungerBoost
-            )
-        }
-    }
-
-    fileprivate struct TaskTemplateSeed {
-        let title: String
-        let weatherType: WeatherType
-        let difficulty: TaskDifficulty
-        let isOutdoor: Bool
-
-        func make() -> TaskTemplate {
-            TaskTemplate(
-                title: title,
-                weatherType: weatherType,
-                difficulty: difficulty,
-                isOutdoor: isOutdoor
-            )
-        }
-    }
-
-    private static let itemSeeds: [ItemSeed] = [
-        ItemSeed(sku: "snack.energy.bar", type: .snack, name: "能量棒", costEnergy: 15, moodBoost: 4, hungerBoost: 12),
-        ItemSeed(sku: "snack.bubble.tea", type: .snack, name: "暖暖奶茶", costEnergy: 20, moodBoost: 6, hungerBoost: 10),
-        ItemSeed(sku: "toy.pillow", type: .toy, name: "围巾", costEnergy: 15, moodBoost: 8, hungerBoost: 0),
-        ItemSeed(sku: "toy.ball", type: .toy, name: "发光球", costEnergy: 25, moodBoost: 12, hungerBoost: 0),
-        ItemSeed(sku: "decor.fairy.lights", type: .decor, name: "氛围灯", costEnergy: 25, moodBoost: 12, hungerBoost: 0)
-    ]
-
-    private static let taskTemplateSeeds: [TaskTemplateSeed] = [
-        TaskTemplateSeed(title: "晒太阳 10 分钟", weatherType: .sunny, difficulty: .easy, isOutdoor: true),
-        TaskTemplateSeed(title: "做一组瑜伽", weatherType: .sunny, difficulty: .medium, isOutdoor: false),
-        TaskTemplateSeed(title: "冥想3分钟", weatherType: .cloudy, difficulty: .easy, isOutdoor: false),
-        TaskTemplateSeed(title: "买个水果散散步", weatherType: .cloudy, difficulty: .medium, isOutdoor: true),
-        TaskTemplateSeed(title: "出门买一杯热饮", weatherType: .rainy, difficulty: .medium, isOutdoor: false),
-        TaskTemplateSeed(title: "雨声伴读", weatherType: .rainy, difficulty: .easy, isOutdoor: false),
-        TaskTemplateSeed(title: "室内打太极", weatherType: .snowy, difficulty: .medium, isOutdoor: true),
-        TaskTemplateSeed(title: "室内伸展", weatherType: .snowy, difficulty: .easy, isOutdoor: false),
-        TaskTemplateSeed(title: "室内运动", weatherType: .windy, difficulty: .easy, isOutdoor: true),
-        TaskTemplateSeed(title: "跳操5分钟", weatherType: .windy, difficulty: .medium, isOutdoor: false)
-    ]
-
     static func makeItems() -> [Item] {
-        itemSeeds.map { $0.make() }
+        guard let url = Bundle.main.url(forResource: "items", withExtension: "json", subdirectory: "Static"),
+              let data = try? Data(contentsOf: url),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return raw.compactMap { dict in
+            guard let sku = dict["sku"] as? String,
+                  let typeRaw = dict["type"] as? String,
+                  let type = ItemType(rawValue: typeRaw),
+                  let name = dict["name"] as? String,
+                  let costEnergy = dict["costEnergy"] as? Int,
+                  let moodBoost = dict["moodBoost"] as? Int,
+                  let hungerBoost = dict["hungerBoost"] as? Int else { return nil }
+            return Item(sku: sku, type: type, name: name, costEnergy: costEnergy, moodBoost: moodBoost, hungerBoost: hungerBoost)
+        }
     }
 
     static func makeTaskTemplates() -> [TaskTemplate] {
-        taskTemplateSeeds.map { $0.make() }
+        guard let url = Bundle.main.url(forResource: "task_templates", withExtension: "json", subdirectory: "Static"),
+              let data = try? Data(contentsOf: url),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return raw.compactMap { dict in
+            guard let title = dict["title"] as? String,
+                  let weatherRaw = dict["weatherType"] as? String,
+                  let weather = WeatherType(rawValue: weatherRaw),
+                  let diffRaw = dict["difficulty"] as? String,
+                  let diff = TaskDifficulty(rawValue: diffRaw),
+                  let isOutdoor = dict["isOutdoor"] as? Bool else { return nil }
+            return TaskTemplate(title: title, weatherType: weather, difficulty: diff, isOutdoor: isOutdoor)
+        }
     }
 }

@@ -1,13 +1,15 @@
-struct EnergyStats: View {
-	let energy: StatisticsViewModel.EnergySummary
+import SwiftUI
+
+struct EnergyStatsSection: View {
+	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
 		DashboardCard(title: "能量摘要 / Energy Stats", icon: "bolt.fill") {
 			VStack(alignment: .leading, spacing: 8) {
-				Text("今日平均能量：\(energy.averageToday) \(energy.trendText)")
+				Text("今日平均能量：\(String(format: "%.1f", energy.averageToday)) \(trendArrow(for: energy))")
 					.font(.title3.weight(.semibold))
 
-				Text("过去7天平均：\(energy.averageAddPastWeek)")
+				Text("过去7天平均：\(String(format: "%.1f", energy.averagePastWeek))")
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
 
@@ -29,23 +31,20 @@ struct EnergyStats: View {
 						Text("-\(energy.todayDeduct)")
 							.font(.subheadline.weight(.medium))
 					}
-
-					Spacer()
-
-					VStack(alignment: .leading, spacing: 2) {
-						Text("今日净变化")
-							.font(.caption2)
-							.foregroundStyle(.secondary)
-						Text("\(energy.todayDelta >= 0 ? "+" : "")\(energy.todayDelta)")
-							.font(.subheadline.weight(.semibold))
-							.foregroundStyle(energy.todayDelta >= 0 ? .green : .red)
-					}
 				}
 
-				Text(energy.insight)
+				Text(energy.comment)
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
 			}
+		}
+	}
+
+	private func trendArrow(for energy: EnergyStatisticsViewModel.EnergySummary) -> String {
+		switch energy.trend {
+		case .up: return "↑"
+		case .down: return "↓"
+		default: return "→"
 		}
 	}
 }

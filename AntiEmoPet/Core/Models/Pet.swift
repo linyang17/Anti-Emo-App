@@ -7,7 +7,7 @@ enum PetMood: String, Codable, CaseIterable {
     var displayName: String {
         switch self {
         case .ecstatic: return "活力满满"
-        case .happy: return "开心得摇尾巴"
+        case .happy: return "开始摇尾巴"
         case .calm: return "有点无聊"
         case .sleepy: return "困困"
         case .anxious: return "开始焦虑"

@@ -3,66 +3,38 @@ import Charts
 
 struct StatisticsView: View {
 	@EnvironmentObject private var appModel: AppViewModel
-	@StateObject private var viewModel = StatisticsViewModel()
+	@StateObject private var moodviewModel = MoodStatisticsViewModel()
+	@StateObject private var energyviewModel = EnergyStatisticsViewModel()
 
 	var body: some View {
 		ScrollView {
 			VStack(spacing: 20) {
+				if let mood = moodviewModel.moodSummary(entries: appModel.moodEntries),
+				   let energy = energyviewModel.energySummary(from: appModel.energyHistory, metrics: appModel.dailyMetricsCache) {
 
-				// 🧩 当前心情模块
-				DashboardCard(title: "当前心情", icon: "heart.fill") {
-					if let mood = viewModel.moodSummary(entries: appModel.moodEntries) {
-						VStack(spacing: 8) {
-							Text("最新情绪：\(mood.lastMood) (\(mood.delta >= 0 ? "+" : "")\(mood.delta)) \(mood.trend.rawValue)")
-								.font(.system(size: 48, weight: .bold, design: .rounded))
-							Text("今日平均：\(mood.averageToday) · 过去7天：\(mood.averagePastWeek)")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-							Text(mood.insight)
-								.font(.footnote)
-								.foregroundStyle(.secondary)
-							Text("总共记录：\(mood.uniqueDayCount) 天，\(mood.entriesCount) 条情绪")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-						}
-					} else {
-						Text("暂无情绪记录")
-							.font(.subheadline)
-							.foregroundStyle(.secondary)
-					}
-				}
-				
-				// ⚡ 能量模块
-				if let energy = viewModel.energySummary(from: appModel.energyHistory) {
-					DashboardCard(title: "能量摘要", icon: "bolt.fill") {
-						VStack(spacing: 8) {
-							Text("最新能量：\(energy.lastEnergy) (\(energy.delta >= 0 ? "+" : "")\(energy.delta)) \(energy.trend.rawValue)")
-								.font(.title3.weight(.semibold))
-							Text("今日平均：\(energy.averageToday) · 过去7天：\(energy.averagePastWeek)")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-							Text(energy.insight)
-								.font(.footnote)
-								.foregroundStyle(.secondary)
-						}
-					}
-				}
+					// 1️⃣ 总览卡片：今日 vs 趋势
+					StatisticsOverviewSection(mood: mood, energy: energy)
 
-				// 📊 能量趋势图 with mean line
-				if !appModel.energyHistory.isEmpty {
-					DashboardCard(title: "能量趋势图", icon: "chart.line.uptrend.xyaxis") {
-						Chart(appModel.energyHistory.suffix(14)) { entry in
-							LineMark(
-								x: .value("日期", entry.date),
-								y: .value("能量", entry.totalEnergy)
-							)
-							PointMark(
-								x: .value("日期", entry.date),
-								y: .value("能量", entry.totalEnergy)
-							)
-						}
-						.frame(height: 180)
+					// 2️⃣ 情绪统计区
+					MoodStatsSection(mood: mood)
+
+					// 3️⃣ 能量统计区
+					EnergyStatsSection(energy: energy)
+
+					// 4️⃣ 能量趋势（后续可扩展情绪趋势）
+					if !appModel.energyHistory.isEmpty {
+						EnergyTrendSection(energyHistory: appModel.energyHistory)
+						MoodTrendSection().environmentObject(appModel)
 					}
+
+					StatisticsRhythmSection().environmentObject(appModel)
+
+					// 5️⃣ 洞察与建议区
+					StatsInsights(mood: mood, energy: energy)
+
+				}
+				else {
+					StatisticsEmptyStateSection()
 				}
 			}
 			.padding()

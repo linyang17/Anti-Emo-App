@@ -52,6 +52,7 @@ final class Task: Identifiable {
     var difficulty: TaskDifficulty
     var date: Date
     var status: TaskStatus
+    var completedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -59,7 +60,8 @@ final class Task: Identifiable {
         weatherType: WeatherType,
         difficulty: TaskDifficulty,
         date: Date,
-        status: TaskStatus = .pending
+        status: TaskStatus = .pending,
+        completedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -67,5 +69,6 @@ final class Task: Identifiable {
         self.difficulty = difficulty
         self.date = date
         self.status = status
+        self.completedAt = completedAt
     }
 }

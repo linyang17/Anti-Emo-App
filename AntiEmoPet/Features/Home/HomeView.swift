@@ -26,7 +26,7 @@ struct HomeView: View {
                         Slider(value: Binding(
                             get: { Double(viewModel.moodValue) },
                             set: { viewModel.moodValue = Int($0) }
-                        ), in: 0...100, step: 1)
+                        ), in: 0...100, step: 5)
                         Text("100")
                             .foregroundStyle(.secondary)
                     }
