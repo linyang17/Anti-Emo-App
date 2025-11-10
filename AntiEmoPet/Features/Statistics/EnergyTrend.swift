@@ -18,10 +18,8 @@ struct EnergyTrendSection: View {
 
                 let data = dailyAdded(windowDays: window)
                 if data.isEmpty {
-                    Text("暂无数据")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(height: 160)
+                    ContentUnavailableView("暂无数据", systemImage: "chart.line.uptrend.xyaxis", description: Text("记录能量补充后可以看到趋势变化"))
+                        .frame(maxWidth: .infinity, minHeight: 160)
                 } else {
                     Chart(data.sorted(by: { $0.key < $1.key }), id: \.key) { day, added in
                         LineMark(

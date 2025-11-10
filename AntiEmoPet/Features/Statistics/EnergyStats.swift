@@ -1,50 +1,51 @@
 import SwiftUI
 
 struct EnergyStatsSection: View {
-	let energy: EnergyStatisticsViewModel.EnergySummary
+        let energy: EnergyStatisticsViewModel.EnergySummary
 
-	var body: some View {
-		DashboardCard(title: "能量摘要 / Energy Stats", icon: "bolt.fill") {
-			VStack(alignment: .leading, spacing: 8) {
-				Text("今日平均能量：\(String(format: "%.1f", energy.averageToday)) \(trendArrow(for: energy))")
-					.font(.title3.weight(.semibold))
+        var body: some View {
+                DashboardCard(title: "能量摘要 / Energy Stats", icon: "bolt.fill") {
+                        VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                        Text("今日平均能量：\(String(format: "%.1f", energy.averageToday))")
+                                                .font(.title3.weight(.semibold))
 
-				Text("过去7天平均：\(String(format: "%.1f", energy.averagePastWeek))")
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+                                        Image(systemName: energy.trend.rawValue)
+                                                .font(.headline)
+                                                .foregroundStyle(.secondary)
+                                                .accessibilityLabel(energy.trend.accessibilityLabel)
+                                }
 
-				HStack {
-					VStack(alignment: .leading, spacing: 2) {
-						Text("今日补充")
-							.font(.caption2)
-							.foregroundStyle(.secondary)
-						Text("+\(energy.todayAdd)")
-							.font(.subheadline.weight(.medium))
-					}
+                                Text("过去7天平均：\(String(format: "%.1f", energy.averagePastWeek))")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
 
-					Spacer()
+                                HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                                Text("今日补充")
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.secondary)
+                                                Text("+\(energy.todayAdd)")
+                                                        .font(.subheadline.weight(.medium))
+                                        }
 
-					VStack(alignment: .leading, spacing: 2) {
-						Text("今日消耗")
-							.font(.caption2)
-							.foregroundStyle(.secondary)
-						Text("-\(energy.todayDeduct)")
-							.font(.subheadline.weight(.medium))
-					}
-				}
+                                        Spacer(minLength: 24)
 
-				Text(energy.comment)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-			}
-		}
-	}
+                                        VStack(alignment: .leading, spacing: 4) {
+                                                Text("今日消耗")
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.secondary)
+                                                Text("-\(energy.todayDeduct)")
+                                                        .font(.subheadline.weight(.medium))
+                                        }
+                                }
 
-	private func trendArrow(for energy: EnergyStatisticsViewModel.EnergySummary) -> String {
-		switch energy.trend {
-		case .up: return "↑"
-		case .down: return "↓"
-		default: return "→"
-		}
-	}
+                                Text(energy.comment.isEmpty ? "暂无补充说明" : energy.comment)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+                }
+        }
 }

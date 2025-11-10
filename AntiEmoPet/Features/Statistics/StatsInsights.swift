@@ -11,11 +11,11 @@ struct StatsInsights: View {
 
 				// 1️⃣ 情感反馈（来自各自 Summary 的轻量文案）
 				Group {
-					Text("情绪总结：\(mood.comment)")
-						.font(.subheadline)
+                                        Text(mood.comment.isEmpty ? "情绪总结：暂无数据" : "情绪总结：\(mood.comment)")
+                                                .font(.subheadline)
 
-					Text("能量总结：\(energy.comment)")
-						.font(.subheadline)
+                                        Text(energy.comment.isEmpty ? "能量总结：暂无数据" : "能量总结：\(energy.comment)")
+                                                .font(.subheadline)
 				}
 
 				Divider()

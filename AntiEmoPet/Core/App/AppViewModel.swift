@@ -38,6 +38,12 @@ final class AppViewModel: ObservableObject {
     private let weatherService = WeatherService()
     private let chatService = ChatService()
     private let analytics = AnalyticsService()
+    private let isoDayFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        formatter.timeZone = .autoupdatingCurrent
+        return formatter
+    }()
 
     init(modelContext: ModelContext) {
         storage = StorageService(context: modelContext)
@@ -265,25 +271,23 @@ final class AppViewModel: ObservableObject {
     private func dayKey(for date: Date) -> String {
         let cal = TimeZoneManager.shared.calendar
         let day = cal.startOfDay(for: date)
-        return ISO8601DateFormatter().string(from: day)
+        return isoDayFormatter.string(from: day)
     }
 
     private func incrementPetInteractionCount(on date: Date = Date()) {
-        let key = interactionsKey
-        var dict = (UserDefaults.standard.dictionary(forKey: key) as? [String: Int]) ?? [:]
+        var dict = (UserDefaults.standard.dictionary(forKey: interactionsKey) as? [String: Int]) ?? [:]
         let dkey = dayKey(for: date)
         dict[dkey, default: 0] += 1
-        UserDefaults.standard.set(dict, forKey: key)
+        UserDefaults.standard.set(dict, forKey: interactionsKey)
     }
 
     private func incrementTaskCompletion(for date: Date = Date(), timeSlot: TimeSlot) {
-        let key = timeSlotKey
-        var outer = (UserDefaults.standard.dictionary(forKey: key) as? [String: [String: Int]]) ?? [:]
+        var outer = (UserDefaults.standard.dictionary(forKey: timeSlotKey) as? [String: [String: Int]]) ?? [:]
         let dkey = dayKey(for: date)
         var inner = outer[dkey] ?? [:]
         inner[timeSlot.rawValue, default: 0] += 1
         outer[dkey] = inner
-        UserDefaults.standard.set(outer, forKey: key)
+        UserDefaults.standard.set(outer, forKey: timeSlotKey)
     }
 
     func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
@@ -298,7 +302,7 @@ final class AppViewModel: ObservableObject {
 
         // Merge interactions
         for (k, v) in interactions {
-            if let date = ISO8601DateFormatter().date(from: k) {
+            if let date = isoDayFormatter.date(from: k) {
                 let day = cal.startOfDay(for: date)
                 guard day >= start else { continue }
                 var m = metricsByDay[day] ?? DailyActivityMetrics(date: day)
@@ -309,7 +313,7 @@ final class AppViewModel: ObservableObject {
 
         // Merge time slot counts
         for (k, inner) in timeSlots {
-            if let date = ISO8601DateFormatter().date(from: k) {
+            if let date = isoDayFormatter.date(from: k) {
                 let day = cal.startOfDay(for: date)
                 guard day >= start else { continue }
                 var m = metricsByDay[day] ?? DailyActivityMetrics(date: day)
