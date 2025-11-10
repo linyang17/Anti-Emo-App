@@ -4,20 +4,22 @@ import Combine
 @MainActor
 final class TasksViewModel: ObservableObject {
 	
-    private let dueFormat = Date.FormatStyle()
-        .month(.twoDigits)
-        .day(.twoDigits)
+    private let timeFormat = Date.FormatStyle()
+        .hour(.twoDigits)
+        .minute(.twoDigits)
 
     func subtitle(for task: Task) -> String {
-        let dueDate = task.date.formatted(dueFormat)
-        return "天气: \(task.weatherType.title) · 期限: \(dueDate)"
+        let time = task.date.formatted(timeFormat)
+        return "\(task.category.title) · \(time) · 天气: \(task.weatherType.title)"
     }
 
     func badge(for task: Task) -> String {
-        switch task.difficulty {
-        case .easy: return "EASY"
-        case .medium: return "MED"
-        case .hard: return "HARD"
-        }
+        "⚡️\(task.energyReward)"
+    }
+
+    func forceRefresh(appModel: AppViewModel) async {
+        let pending = appModel.todayTasks.filter { $0.status == .pending }
+        let retained = pending.randomElement()
+        await appModel.refreshTasks(retaining: retained)
     }
 }

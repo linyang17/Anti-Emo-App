@@ -4,7 +4,7 @@ import Foundation
 final class RewardEngine {
     func applyTaskReward(for task: Task, stats: UserStats) -> Int {
         guard task.status == .completed else { return 0 }
-        let energy = task.difficulty.energyReward
+        let energy = max(0, task.energyReward)
         EnergyEngine.add(energy, to: stats)
         stats.coins += 5
         stats.completedTasksCount += 1

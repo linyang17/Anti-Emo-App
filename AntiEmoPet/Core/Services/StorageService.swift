@@ -115,6 +115,23 @@ final class StorageService {
         saveContext(reason: "save tasks")
     }
 
+    func deleteTasks(for date: Date, excluding ids: Set<UUID> = []) {
+        do {
+            let calendar = TimeZoneManager.shared.calendar
+            let start = calendar.startOfDay(for: date)
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+            let predicate = #Predicate<Task> {
+                $0.date >= start && $0.date < end && !ids.contains($0.id)
+            }
+            let descriptor = FetchDescriptor<Task>(predicate: predicate)
+            let targets = try context.fetch(descriptor)
+            targets.forEach { context.delete($0) }
+            saveContext(reason: "delete tasks")
+        } catch {
+            logger.error("Failed to delete tasks: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func persist() {
         saveContext(reason: "persist changes")
     }
@@ -197,11 +214,16 @@ final class StorageService {
 
     @discardableResult
     private func ensureTaskTemplates() throws -> Bool {
-        let existing = try context.fetch(FetchDescriptor<TaskTemplate>())
-        let existingTitles = Set(existing.map(\.title))
-        let missing = DefaultSeeds.makeTaskTemplates(logger: logger).filter { !existingTitles.contains($0.title) }
-        missing.forEach { context.insert($0) }
-        return !missing.isEmpty
+        let descriptor = FetchDescriptor<TaskTemplate>()
+        let existing = try context.fetch(descriptor)
+        let seeds = DefaultSeeds.makeTaskTemplates(logger: logger)
+        let needsReset = existing.count != seeds.count || existing.contains { $0.energyReward <= 0 }
+        if needsReset {
+            existing.forEach { context.delete($0) }
+            seeds.forEach { context.insert($0) }
+            return true
+        }
+        return false
     }
 
     private func saveContext(reason: String) {
@@ -226,9 +248,10 @@ enum DefaultSeeds {
 
     private struct TaskTemplateSeed: Decodable {
         let title: String
-        let weatherType: WeatherType
         let difficulty: TaskDifficulty
         let isOutdoor: Bool
+        let category: TaskCategory
+        let energyReward: Int
     }
 
     static func makeItems(logger: Logger? = nil) -> [Item] {
@@ -256,9 +279,10 @@ enum DefaultSeeds {
             return seeds.map { seed in
                 TaskTemplate(
                     title: seed.title,
-                    weatherType: seed.weatherType,
                     difficulty: seed.difficulty,
-                    isOutdoor: seed.isOutdoor
+                    isOutdoor: seed.isOutdoor,
+                    category: seed.category,
+                    energyReward: seed.energyReward
                 )
             }
         } catch {

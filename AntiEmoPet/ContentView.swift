@@ -14,17 +14,17 @@ struct ContentView: View {
                 ProgressView("加载中…")
             }
         }
-        .task { @MainActor in
-            initializeAppModelIfNeeded()
+        .task {
+            await initializeAppModelIfNeeded()
         }
     }
 
     @MainActor
-    private func initializeAppModelIfNeeded() {
+    private func initializeAppModelIfNeeded() async {
         guard appModel == nil else { return }
         let viewModel = AppViewModel(modelContext: modelContext)
-        viewModel.load()
         appModel = viewModel
+        await viewModel.load()
     }
 }
 
@@ -54,7 +54,7 @@ struct MainTabView: View {
             get: { appModel.showOnboarding },
             set: { appModel.showOnboarding = $0 }
         )) {
-            OnboardingView()
+            OnboardingView(locationService: appModel.locationService)
                 .environmentObject(appModel)
         }
         .onAppear {
@@ -63,6 +63,11 @@ struct MainTabView: View {
                     ChatMessage(role: .pet, content: "Hi，我是Sunny，你现在感觉怎么样？要不要和我聊一聊？")
                 ]
             }
+        }
+        .alert("早点休息哦", isPresented: $appModel.showSleepReminder) {
+            Button("知道了", role: .cancel) { appModel.showSleepReminder = false }
+        } message: {
+            Text("现在已是夜间，Sunny 建议你休息，明早再继续任务。")
         }
     }
 }

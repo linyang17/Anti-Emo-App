@@ -10,6 +10,8 @@ final class LocationService: NSObject, ObservableObject {
 
     @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published private(set) var lastKnownCity: String?
+    @Published private(set) var lastKnownLocation: CLLocation?
+    @Published private(set) var weatherPermissionGranted: Bool = false
 
     override init() {
         super.init()
@@ -26,6 +28,10 @@ final class LocationService: NSObject, ObservableObject {
 
     func stopUpdating() {
         manager.stopUpdatingLocation()
+    }
+
+    func updateWeatherPermission(granted: Bool) {
+        weatherPermissionGranted = granted
     }
 }
 
@@ -46,6 +52,7 @@ extension LocationService: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
+        lastKnownLocation = location
         // Reverse geocode to city name
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in

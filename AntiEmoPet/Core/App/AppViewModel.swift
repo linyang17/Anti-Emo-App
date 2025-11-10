@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import Combine
+import CoreLocation
 
 struct EnergyHistoryEntry: Identifiable, Codable {
     let id: UUID
@@ -22,6 +23,7 @@ final class AppViewModel: ObservableObject {
     @Published var userStats: UserStats?
     @Published var shopItems: [Item] = []
     @Published var weather: WeatherType = .sunny
+    @Published var weatherReport: WeatherReport?
     @Published var chatMessages: [ChatMessage] = []
     @Published var isLoading = true
     @Published var showOnboarding = false
@@ -29,7 +31,9 @@ final class AppViewModel: ObservableObject {
     @Published var energyHistory: [EnergyHistoryEntry] = []
     @Published var inventory: [InventoryEntry] = []
     @Published var dailyMetricsCache: [DailyActivityMetrics] = []
+    @Published var showSleepReminder = false
 
+    let locationService = LocationService()
     private let storage: StorageService
     private let taskGenerator: TaskGeneratorService
     private let rewardEngine = RewardEngine()
@@ -38,6 +42,8 @@ final class AppViewModel: ObservableObject {
     private let weatherService = WeatherService()
     private let chatService = ChatService()
     private let analytics = AnalyticsService()
+    private var cancellables: Set<AnyCancellable> = []
+    private var sleepTimer: AnyCancellable?
     private let isoDayFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
@@ -51,6 +57,8 @@ final class AppViewModel: ObservableObject {
     init(modelContext: ModelContext) {
         storage = StorageService(context: modelContext)
         taskGenerator = TaskGeneratorService(storage: storage)
+        bindLocationUpdates()
+        configureSleepReminderMonitoring()
     }
 
     var totalEnergy: Int {
@@ -63,9 +71,8 @@ final class AppViewModel: ObservableObject {
         todayTasks
     }
 
-    func load() {
+    func load() async {
         storage.bootstrapIfNeeded()
-        weather = weatherService.fetchWeather()
         pet = storage.fetchPet()
         userStats = storage.fetchStats()
 
@@ -98,11 +105,21 @@ final class AppViewModel: ObservableObject {
 
         todayTasks = storage.fetchTasks(for: .now)
 
-        if todayTasks.isEmpty {
-            todayTasks = taskGenerator.generateTasks(for: .now, weather: weather)
+        if let stats = userStats, stats.shareLocationAndWeather {
+            beginLocationUpdates()
         }
 
-        ensureInitialTasks(minimum: 3)
+        await refreshWeather(using: locationService.lastKnownLocation)
+
+        if todayTasks.isEmpty {
+            let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
+            storage.save(tasks: generated)
+            todayTasks = generated
+        } else {
+            weather = weatherReport?.currentWeather ?? weather
+        }
+
+        scheduleTaskNotifications()
 
         showOnboarding = (userStats?.nickname ?? "").isEmpty
         isLoading = false
@@ -160,11 +177,20 @@ final class AppViewModel: ObservableObject {
         return true
     }
 
-    func updateProfile(nickname: String, region: String) {
+    func updateProfile(nickname: String, region: String, shareLocation: Bool) {
         userStats?.nickname = nickname
         userStats?.region = region
-        showOnboarding = false
+        userStats?.shareLocationAndWeather = shareLocation
         storage.persist()
+        showOnboarding = false
+        if shareLocation {
+            beginLocationUpdates()
+        }
+        storage.deleteTasks(for: Date())
+        let starter = taskGenerator.makeOnboardingTasks(for: Date())
+        storage.save(tasks: starter)
+        todayTasks = storage.fetchTasks(for: .now)
+        scheduleTaskNotifications()
         analytics.log(event: "onboarding_done", metadata: ["region": region])
     }
 
@@ -174,6 +200,7 @@ final class AppViewModel: ObservableObject {
             stats.notificationsEnabled = granted
             if granted {
                 self.notificationService.scheduleDailyReminders()
+                self.scheduleTaskNotifications()
             }
             self.storage.persist()
         }
@@ -243,31 +270,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func ensureInitialTasks(minimum: Int = 3) {
-        guard minimum > 0 else { return }
-
-        // 已经满足数量要求则直接返回
-        if todayTasks.count >= minimum { return }
-
-        // 使用统一的 TaskGeneratorService / 任务配置作为唯一来源补足任务
-        let generated = taskGenerator.generateTasks(for: .now, weather: weather)
-
-        guard !generated.isEmpty else {
-            storage.persist()
-            return
-        }
-
-        // 避免重复：保留已存在的 todayTasks，只从生成结果中补足缺口
-        let existingIDs = Set(todayTasks.map { $0.id })
-        let remaining = minimum - todayTasks.count
-        if remaining > 0 {
-            let extras = generated.filter { !existingIDs.contains($0.id) }
-            todayTasks.append(contentsOf: extras.prefix(remaining))
-        }
-
-        storage.persist()
-    }
-
     private var interactionsKey: String { "dailyPetInteractions" }
     private var timeSlotKey: String { "dailyTaskTimeSlots" }
 
@@ -332,5 +334,99 @@ final class AppViewModel: ObservableObject {
 
         // Only return days that have any activity
         return metricsByDay.values.sorted { $0.date < $1.date }
+    }
+
+    func beginLocationUpdates() {
+        locationService.requestAuthorization()
+        locationService.startUpdating()
+    }
+
+    func stopLocationUpdates() {
+        locationService.stopUpdating()
+    }
+
+    func requestWeatherAccess() async -> Bool {
+        let granted = await weatherService.requestAuthorization()
+        locationService.updateWeatherPermission(granted: granted)
+        return granted
+    }
+
+    func refreshTasks(retaining retained: Task? = nil) async {
+        let retainIDs: Set<UUID>
+        if let retained {
+            retainIDs = [retained.id]
+        } else {
+            retainIDs = []
+        }
+        var reservedTitles: Set<String> = []
+        if let retained {
+            reservedTitles.insert(retained.title)
+        }
+        if let stats = userStats, stats.shareLocationAndWeather {
+            beginLocationUpdates()
+        }
+        await refreshWeather(using: locationService.lastKnownLocation)
+        if let retained {
+            retained.status = .pending
+            retained.completedAt = nil
+        }
+        storage.deleteTasks(for: Date(), excluding: retainIDs)
+        let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+        storage.save(tasks: generated)
+        todayTasks = storage.fetchTasks(for: .now)
+        scheduleTaskNotifications()
+    }
+
+    func scheduleTaskNotifications() {
+        guard userStats?.notificationsEnabled == true else { return }
+        notificationService.scheduleTaskReminders(for: todayTasks)
+    }
+
+    private func refreshWeather(using location: CLLocation?) async {
+        let locality = locationService.lastKnownCity ?? userStats?.region
+        let report = await weatherService.fetchWeather(for: location, locality: locality)
+        weatherReport = report
+        weather = report.currentWeather
+        if let city = report.locality, !(city.isEmpty) {
+            userStats?.region = city
+            storage.persist()
+        }
+    }
+
+    private func bindLocationUpdates() {
+        locationService.$lastKnownCity
+            .compactMap { $0 }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] city in
+                guard let self, !city.isEmpty else { return }
+                self.userStats?.region = city
+                self.storage.persist()
+            }
+            .store(in: &cancellables)
+
+        locationService.$lastKnownLocation
+            .compactMap { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] location in
+                guard let self else { return }
+                Task { await self.refreshWeather(using: location) }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func configureSleepReminderMonitoring() {
+        sleepTimer?.cancel()
+        let publisher = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
+        sleepTimer = publisher
+            .sink { [weak self] date in
+                self?.evaluateSleepReminder(at: date)
+            }
+        evaluateSleepReminder(at: Date())
+    }
+
+    private func evaluateSleepReminder(at date: Date) {
+        let hour = Calendar.current.component(.hour, from: date)
+        showSleepReminder = hour >= 22 || hour < 6
     }
 }

@@ -39,11 +39,15 @@ struct TasksView: View {
                 }
             }
         }
-        .onAppear {
-            appModel.ensureInitialTasks()
-        }
         .listStyle(.insetGrouped)
         .navigationTitle("Tasks")
         .energyToolbar(appModel: appModel)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("强制刷新") {
+                    Task { await viewModel.forceRefresh(appModel: appModel) }
+                }
+            }
+        }
     }
 }
