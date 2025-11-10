@@ -24,6 +24,7 @@ struct StatisticsView: View {
 					// 4️⃣ 能量趋势（后续可扩展情绪趋势）
 					if !appModel.energyHistory.isEmpty {
 						EnergyTrendSection(energyHistory: appModel.energyHistory)
+						MoodTrendSection().environmentObject(appModel)
 					}
 
 					StatisticsRhythmSection().environmentObject(appModel)

@@ -6,7 +6,7 @@ struct EnergyStatsSection: View {
 	var body: some View {
 		DashboardCard(title: "能量摘要 / Energy Stats", icon: "bolt.fill") {
 			VStack(alignment: .leading, spacing: 8) {
-				Text("今日平均能量：\(String(format: "%.1f", energy.averageToday)) \(trendArrow(energy.trend))")
+				Text("今日平均能量：\(String(format: "%.1f", energy.averageToday)) \(trendArrow(for: energy))")
 					.font(.title3.weight(.semibold))
 
 				Text("过去7天平均：\(String(format: "%.1f", energy.averagePastWeek))")
@@ -40,11 +40,11 @@ struct EnergyStatsSection: View {
 		}
 	}
 
-	private func trendArrow(_ trend: TrendDirection) -> String {
-		switch trend {
+	private func trendArrow(for energy: EnergyStatisticsViewModel.EnergySummary) -> String {
+		switch energy.trend {
 		case .up: return "↑"
 		case .down: return "↓"
-		case .flat: return ""
+		default: return "→"
 		}
 	}
 }
