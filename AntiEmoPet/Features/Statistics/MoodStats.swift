@@ -16,6 +16,7 @@ struct MoodStatsSection: View {
                         Image(systemName: mood.trend.rawValue)
                             .font(.title3)
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel(mood.trend.accessibilityLabel)
                     }
                 }
 
@@ -56,13 +57,11 @@ struct MoodStatsSection: View {
                 }
 
                 // 心情评论
-                if !mood.comment.isEmpty {
-                    Divider().padding(.vertical, 6)
-                    Text(mood.comment)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Divider().padding(.vertical, 6)
+                Text(mood.comment.isEmpty ? "暂无情绪总结" : mood.comment)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 6)
         }

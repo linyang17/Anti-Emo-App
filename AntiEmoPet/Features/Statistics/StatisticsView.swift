@@ -1,45 +1,52 @@
 import SwiftUI
 import Charts
+import Combine
 
 struct StatisticsView: View {
-	@EnvironmentObject private var appModel: AppViewModel
-	@StateObject private var moodviewModel = MoodStatisticsViewModel()
-	@StateObject private var energyviewModel = EnergyStatisticsViewModel()
+        @EnvironmentObject private var appModel: AppViewModel
+        @StateObject private var moodViewModel = MoodStatisticsViewModel()
+        @StateObject private var energyViewModel = EnergyStatisticsViewModel()
 
-	var body: some View {
-		ScrollView {
-			VStack(spacing: 20) {
-				if let mood = moodviewModel.moodSummary(entries: appModel.moodEntries),
-				   let energy = energyviewModel.energySummary(from: appModel.energyHistory, metrics: appModel.dailyMetricsCache) {
+        @State private var moodSummary: MoodStatisticsViewModel.MoodSummary = .empty
+        @State private var energySummary: EnergyStatisticsViewModel.EnergySummary = .empty
 
-					// 1️⃣ 总览卡片：今日 vs 趋势
-					StatisticsOverviewSection(mood: mood, energy: energy)
+        var body: some View {
+                ScrollView {
+                        VStack(spacing: 20) {
+                                // 1️⃣ 总览卡片：今日 vs 趋势
+                                StatisticsOverviewSection(mood: moodSummary, energy: energySummary)
 
-					// 2️⃣ 情绪统计区
-					MoodStatsSection(mood: mood)
+                                // 2️⃣ 情绪统计区
+                                MoodStatsSection(mood: moodSummary)
 
-					// 3️⃣ 能量统计区
-					EnergyStatsSection(energy: energy)
+                                // 3️⃣ 能量统计区
+                                EnergyStatsSection(energy: energySummary)
 
-					// 4️⃣ 能量趋势（后续可扩展情绪趋势）
-					if !appModel.energyHistory.isEmpty {
-						EnergyTrendSection(energyHistory: appModel.energyHistory)
-						MoodTrendSection().environmentObject(appModel)
-					}
+                                // 4️⃣ 趋势区：能量与情绪
+                                EnergyTrendSection(energyHistory: appModel.energyHistory)
+                                MoodTrendSection().environmentObject(appModel)
 
-					StatisticsRhythmSection().environmentObject(appModel)
+                                // 5️⃣ 节律分析：时段 / 天气 / 日照提示
+                                StatisticsRhythmSection().environmentObject(appModel)
 
-					// 5️⃣ 洞察与建议区
-					StatsInsights(mood: mood, energy: energy)
+                                // 6️⃣ 洞察与建议区
+                                StatsInsights(mood: moodSummary, energy: energySummary).environmentObject(appModel)
+                        }
+                        .padding()
+                }
+                .navigationTitle("统计")
+                .energyToolbar(appModel: appModel)
+                .onAppear(perform: refreshSummaries)
+                .onReceive(appModel.$moodEntries) { _ in refreshSummaries() }
+                .onReceive(appModel.$energyHistory) { _ in refreshSummaries() }
+                .onReceive(appModel.$dailyMetricsCache) { _ in refreshSummaries() }
+        }
 
-				}
-				else {
-					StatisticsEmptyStateSection()
-				}
-			}
-			.padding()
-		}
-		.navigationTitle("统计")
-		.energyToolbar(appModel: appModel)
-	}
+        private func refreshSummaries() {
+                moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+                energySummary = energyViewModel.energySummary(
+                        from: appModel.energyHistory,
+                        metrics: appModel.dailyMetricsCache
+                ) ?? .empty
+        }
 }

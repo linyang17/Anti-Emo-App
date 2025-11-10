@@ -33,9 +33,9 @@ struct EnergyStatsSection: View {
 					}
 				}
 
-				Text(energy.comment)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+                                Text(energy.comment.isEmpty ? "暂无补充说明" : energy.comment)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
 			}
 		}
 	}
