@@ -1,6 +1,26 @@
 import Foundation
 import SwiftData
 
+enum GenderIdentity: String {
+    case male
+    case female
+    case other
+    case unspecified
+
+    var displayName: String {
+        switch self {
+        case .male:
+            return "Male"
+        case .female:
+            return "Female"
+        case .other:
+            return "Other"
+        case .unspecified:
+            return "Unspecified"
+        }
+    }
+}
+
 @Model
 final class UserStats: Identifiable {
     @Attribute(.unique) var id: UUID
@@ -13,6 +33,8 @@ final class UserStats: Identifiable {
     var region: String
     var notificationsEnabled: Bool
     var shareLocationAndWeather: Bool
+    var gender: String
+    var birthday: Date?
 
     init(
         id: UUID = UUID(),
@@ -24,7 +46,9 @@ final class UserStats: Identifiable {
         nickname: String = "",
         region: String = "",
         notificationsEnabled: Bool = false,
-        shareLocationAndWeather: Bool = false
+        shareLocationAndWeather: Bool = false,
+        gender: String = GenderIdentity.unspecified.rawValue,
+        birthday: Date? = nil
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
@@ -36,5 +60,7 @@ final class UserStats: Identifiable {
         self.region = region
         self.notificationsEnabled = notificationsEnabled
         self.shareLocationAndWeather = shareLocationAndWeather
+        self.gender = gender
+        self.birthday = birthday
     }
 }

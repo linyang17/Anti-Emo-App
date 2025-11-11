@@ -183,10 +183,18 @@ final class AppViewModel: ObservableObject {
         return true
     }
 
-    func updateProfile(nickname: String, region: String, shareLocation: Bool) {
+    func updateProfile(
+        nickname: String,
+        region: String,
+        shareLocation: Bool,
+        gender: String,
+        birthday: Date?
+    ) {
         userStats?.nickname = nickname
         userStats?.region = region
         userStats?.shareLocationAndWeather = shareLocation
+        userStats?.gender = gender
+        userStats?.birthday = birthday
         storage.persist()
         showOnboarding = false
         if shareLocation {
@@ -197,7 +205,13 @@ final class AppViewModel: ObservableObject {
         storage.save(tasks: starter)
         todayTasks = storage.fetchTasks(for: .now)
         scheduleTaskNotifications()
-        analytics.log(event: "onboarding_done", metadata: ["region": region])
+        analytics.log(
+            event: "onboarding_done",
+            metadata: [
+                "region": region,
+                "gender": gender
+            ]
+        )
     }
 
     func requestNotifications() {

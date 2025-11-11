@@ -15,7 +15,9 @@ final class StorageService {
         do {
             var didInsert = false
             didInsert = try ensureSeed(for: Pet.self, create: { [Pet(name: "Lumio")] }) || didInsert
-            didInsert = try ensureSeed(for: UserStats.self, create: { [UserStats()] }) || didInsert
+            didInsert = try ensureSeed(for: UserStats.self, create: {
+                [UserStats(gender: GenderIdentity.unspecified.rawValue, birthday: nil)]
+            }) || didInsert
             didInsert = try ensureItems() || didInsert
             didInsert = try ensureTaskTemplates() || didInsert
             if didInsert { saveContext(reason: "bootstrap seeds") }
@@ -39,7 +41,9 @@ final class StorageService {
 
     func fetchStats() -> UserStats? {
         do {
-            if try ensureSeed(for: UserStats.self, create: { [UserStats()] }) {
+            if try ensureSeed(for: UserStats.self, create: {
+                [UserStats(gender: GenderIdentity.unspecified.rawValue, birthday: nil)]
+            }) {
                 saveContext(reason: "ensure stats seed")
             }
             let descriptor = FetchDescriptor<UserStats>()

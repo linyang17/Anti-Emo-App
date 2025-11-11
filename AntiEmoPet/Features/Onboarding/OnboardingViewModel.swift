@@ -10,9 +10,16 @@ final class OnboardingViewModel: ObservableObject {
     @Published var enableLocationAndWeather: Bool = false
     @Published var hasLocationPermission: Bool = false
     @Published var hasWeatherPermission: Bool = false
+    @Published var selectedGender: GenderOption?
+    @Published var birthday: Date
 
     var canSubmit: Bool {
-        !nickname.isEmpty && !region.isEmpty && enableLocationAndWeather && hasLocationPermission && hasWeatherPermission
+        !nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        selectedGender != nil &&
+        enableLocationAndWeather &&
+        hasLocationPermission &&
+        hasWeatherPermission &&
+        birthday <= Date()
     }
 
     var statusText: String {
@@ -37,5 +44,30 @@ final class OnboardingViewModel: ObservableObject {
 
     func setWeatherPermission(_ granted: Bool) {
         hasWeatherPermission = granted
+    }
+
+    init(defaultBirthday: Date = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .now) {
+        self.birthday = defaultBirthday
+    }
+}
+
+extension OnboardingViewModel {
+    enum GenderOption: String, CaseIterable, Identifiable {
+        case male
+        case female
+        case other
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .male:
+                return "Male"
+            case .female:
+                return "Female"
+            case .other:
+                return "Other"
+            }
+        }
     }
 }
