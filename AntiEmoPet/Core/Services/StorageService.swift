@@ -5,7 +5,7 @@ import OSLog
 @MainActor
 final class StorageService {
     private let context: ModelContext
-    private let logger = Logger(subsystem: "com.sunny.pet", category: "StorageService")
+    private let logger = Logger(subsystem: "com.Lumio.pet", category: "StorageService")
 
     init(context: ModelContext) {
         self.context = context
@@ -14,7 +14,7 @@ final class StorageService {
     func bootstrapIfNeeded() {
         do {
             var didInsert = false
-            didInsert = try ensureSeed(for: Pet.self, create: { [Pet(name: "Sunny")] }) || didInsert
+            didInsert = try ensureSeed(for: Pet.self, create: { [Pet(name: "Lumio")] }) || didInsert
             didInsert = try ensureSeed(for: UserStats.self, create: { [UserStats()] }) || didInsert
             didInsert = try ensureItems() || didInsert
             didInsert = try ensureTaskTemplates() || didInsert
@@ -26,7 +26,7 @@ final class StorageService {
 
     func fetchPet() -> Pet? {
         do {
-            if try ensureSeed(for: Pet.self, create: { [Pet(name: "Sunny")] }) {
+            if try ensureSeed(for: Pet.self, create: { [Pet(name: "Lumio")] }) {
                 saveContext(reason: "ensure pet seed")
             }
             let descriptor = FetchDescriptor<Pet>()
@@ -76,40 +76,43 @@ final class StorageService {
         }
     }
 
-    func fetchTemplates(for weather: WeatherType) -> [TaskTemplate] {
-        do {
-            if try ensureTaskTemplates() {
-                saveContext(reason: "ensure template seeds")
-            }
-            let predicate = #Predicate<TaskTemplate> { $0.weatherType == weather }
-            let descriptor = FetchDescriptor<TaskTemplate>(predicate: predicate)
-            return try context.fetch(descriptor)
-        } catch {
-            logger.error("Failed to fetch templates: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
+	func fetchTemplates() -> [TaskTemplate] {
+		do {
+			if try ensureTaskTemplates() {
+				saveContext(reason: "ensure template seeds")
+			}
+			let descriptor = FetchDescriptor<TaskTemplate>(
+				sortBy: [SortDescriptor(\TaskTemplate.title, order: .forward)]
+			)
+			return try context.fetch(descriptor)
+		} catch {
+			logger.error("Failed to fetch templates: \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
 
-    func fetchTasks(for date: Date) -> [Task] {
-        do {
-            let calendar = TimeZoneManager.shared.calendar
-            let start = calendar.startOfDay(for: date)
-            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
-            let predicate = #Predicate<Task> {
-                $0.date >= start && $0.date < end
-            }
-            let descriptor = FetchDescriptor<Task>(
-                predicate: predicate,
-                sortBy: [SortDescriptor(\Task.date, order: .forward)]
-            )
-            return try context.fetch(descriptor)
-        } catch {
-            logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
+	func fetchTasks(for date: Date) -> [UserTask] {
+		do {
+			let calendar = TimeZoneManager.shared.calendar
+			let start = calendar.startOfDay(for: date)
+			guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
 
-    func save(tasks: [Task]) {
+			let predicate = #Predicate<UserTask> { task in
+				task.date >= start && task.date < end
+			}
+
+			let descriptor = FetchDescriptor<UserTask>(
+				predicate: predicate,
+				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+			)
+			return try context.fetch(descriptor)
+		} catch {
+			logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
+
+    func save(tasks: [UserTask]) {
         guard !tasks.isEmpty else { return }
         tasks.forEach { context.insert($0) }
         saveContext(reason: "save tasks")
@@ -120,10 +123,10 @@ final class StorageService {
             let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
-            let predicate = #Predicate<Task> {
+            let predicate = #Predicate<UserTask> {
                 $0.date >= start && $0.date < end && !ids.contains($0.id)
             }
-            let descriptor = FetchDescriptor<Task>(predicate: predicate)
+            let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
             let targets = try context.fetch(descriptor)
             targets.forEach { context.delete($0) }
             saveContext(reason: "delete tasks")

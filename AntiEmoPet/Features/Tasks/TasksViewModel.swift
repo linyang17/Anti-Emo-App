@@ -5,15 +5,15 @@ import Combine
 final class TasksViewModel: ObservableObject {
 	
     private let timeFormat = Date.FormatStyle()
-        .hour(.twoDigits)
+        .hour(.twoDigits(amPM: .omitted))
         .minute(.twoDigits)
 
-    func subtitle(for task: Task) -> String {
+    func subtitle(for task: UserTask) -> String {
         let time = task.date.formatted(timeFormat)
         return "\(task.category.title) · \(time) · 天气: \(task.weatherType.title)"
     }
 
-    func badge(for task: Task) -> String {
+    func badge(for task: UserTask) -> String {
         "⚡️\(task.energyReward)"
     }
 

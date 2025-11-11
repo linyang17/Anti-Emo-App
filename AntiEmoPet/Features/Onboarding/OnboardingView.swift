@@ -17,10 +17,10 @@ struct OnboardingView: View {
             Image(systemName: "sun.max.fill")
                 .font(.system(size: 72))
                 .foregroundStyle(.yellow)
-            Text("欢迎来到 SunnyPet")
+            Text("欢迎来到 LumioPet")
                 .font(.largeTitle.weight(.bold))
                 .multilineTextAlignment(.center)
-            Text("分享你的昵称与城市，Sunny 将结合实时天气为你推荐任务。")
+            Text("分享你的昵称与城市，Lumio 将结合实时天气为你推荐任务。")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
 
@@ -56,7 +56,7 @@ struct OnboardingView: View {
                 Toggle("接收每日提醒", isOn: $viewModel.notificationsOptIn)
             }
 
-            PrimaryButton(title: "进入 SunnyPet") {
+            PrimaryButton(title: "进入 LumioPet") {
                 guard viewModel.canSubmit else { return }
                 appModel.updateProfile(
                     nickname: viewModel.nickname,

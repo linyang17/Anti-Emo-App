@@ -8,12 +8,13 @@
 import Testing
 import SwiftData
 @testable import AntiEmoPet
+import Foundation
 
 @MainActor
 struct AntiEmoPetTests {
     private func makeInMemoryContainer() throws -> ModelContainer {
         let schema = Schema([
-            Task.self,
+            UserTask.self,
             TaskTemplate.self,
             Pet.self,
             Item.self,
@@ -39,26 +40,34 @@ struct AntiEmoPetTests {
         storage.bootstrapIfNeeded()
 
         let generator = TaskGeneratorService(storage: storage)
-        let tasks = generator.generateTasks(for: .now, weather: .sunny)
+		let tasks = generator.generateDailyTasks(for: Date.now, report: <#WeatherReport?#>)
 
         #expect((3...6).contains(tasks.count))
-        #expect(tasks.allSatisfy { $0.weatherType == .sunny })
+        #expect(tasks.allSatisfy { $0.weatherType == WeatherType.sunny })
     }
 
     @Test("RewardEngine grants energy + streak") func rewardEngineGrantsEnergy() throws {
         let stats = UserStats(totalEnergy: 10, coins: 5, streakDays: 0, completedTasksCount: 0)
-        let task = Task(title: "Test", weatherType: .sunny, difficulty: .medium, date: .now, status: .completed)
+        let task = UserTask(
+						title: "Test",
+						weatherType: WeatherType.sunny,
+						difficulty: .medium,
+						category: .outdoor,
+						energyReward: 10,
+						date: Date.now,
+						status: .completed
+						)
 
         let rewardEngine = RewardEngine()
         let gained = rewardEngine.applyTaskReward(for: task, stats: stats)
 
-        #expect(gained == task.difficulty.energyReward)
+        #expect(gained == task.energyReward)
         #expect(stats.totalEnergy == 10 + gained)
         #expect(stats.completedTasksCount == 1)
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Sunny", mood: .calm, hunger: 40, level: 1, xp: 95)
+        let pet = Pet(name: "Lumio", mood: .calm, hunger: 40, level: 1, xp: 95)
         let snack = Item(sku: "snack.energy.bar", type: .snack, name: "Bar", costEnergy: 10, moodBoost: 4, hungerBoost: 20)
 
         let engine = PetEngine()
@@ -112,8 +121,16 @@ struct AntiEmoPetTests {
         let evening = calendar.date(byAdding: .hour, value: 20, to: baseDate) ?? baseDate
 
         storage.save(tasks: [
-            Task(title: "Evening", weatherType: .cloudy, difficulty: .medium, date: evening),
-            Task(title: "Morning", weatherType: .sunny, difficulty: .easy, date: morning)
+            UserTask(title: "Evening", weatherType: .cloudy, difficulty: .medium,
+						category: .social,
+						energyReward: 10,
+						date: evening,
+						status: .completed),
+            UserTask(title: "Morning", weatherType: .sunny, difficulty: .easy,
+						category: .indoorDigital,
+						energyReward: 10,
+						date: evening,
+						status: .completed),
         ])
 
         let tasks = storage.fetchTasks(for: baseDate)

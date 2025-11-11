@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import Combine
-import CoreLocation
+internal import CoreLocation
 
 struct EnergyHistoryEntry: Identifiable, Codable {
     let id: UUID
@@ -18,7 +18,7 @@ struct EnergyHistoryEntry: Identifiable, Codable {
 
 @MainActor
 final class AppViewModel: ObservableObject {
-    @Published var todayTasks: [Task] = []
+    @Published var todayTasks: [UserTask] = []
     @Published var pet: Pet?
     @Published var userStats: UserStats?
     @Published var shopItems: [Item] = []
@@ -65,7 +65,7 @@ final class AppViewModel: ObservableObject {
         userStats?.totalEnergy ?? 0
     }
 
-    var allTasks: [Task] {
+    var allTasks: [UserTask] {
         // MVP 阶段：全部任务等于今日任务列表
         // 未来如加入历史/模板任务库，只需在此改为从 StorageService / TaskGenerator 获取
         todayTasks
@@ -126,8 +126,14 @@ final class AppViewModel: ObservableObject {
 
         dailyMetricsCache = makeDailyActivityMetrics(days: 7)
     }
+	
+	func refreshIfNeeded() async {
+		// 应用从后台回到前台时，刷新必要数据
+		// 比如重新同步任务、天气、统计等
+		await load()
+	}
 
-    func toggleTask(_ task: Task) {
+    func toggleTask(_ task: UserTask) {
         guard let stats = userStats, let pet else { return }
         task.status = task.status == .completed ? .pending : .completed
         if task.status == .completed {
@@ -346,12 +352,12 @@ final class AppViewModel: ObservableObject {
     }
 
     func requestWeatherAccess() async -> Bool {
-        let granted = await weatherService.requestAuthorization()
+        let granted = await weatherService.checkLocationAuthorization()
         locationService.updateWeatherPermission(granted: granted)
         return granted
     }
 
-    func refreshTasks(retaining retained: Task? = nil) async {
+    func refreshTasks(retaining retained: UserTask? = nil) async {
         let retainIDs: Set<UUID>
         if let retained {
             retainIDs = [retained.id]

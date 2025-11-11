@@ -60,14 +60,14 @@ struct MainTabView: View {
         .onAppear {
             if appModel.chatMessages.isEmpty {
                 appModel.chatMessages = [
-                    ChatMessage(role: .pet, content: "Hi，我是Sunny，你现在感觉怎么样？要不要和我聊一聊？")
+                    ChatMessage(role: .pet, content: "Hi，我是Lumio，你现在感觉怎么样？要不要和我聊一聊？")
                 ]
             }
         }
         .alert("早点休息哦", isPresented: $appModel.showSleepReminder) {
             Button("知道了", role: .cancel) { appModel.showSleepReminder = false }
         } message: {
-            Text("现在已是夜间，Sunny 建议你休息，明早再继续任务。")
+            Text("现在已是夜间，Lumio 建议你休息，明早再继续任务。")
         }
     }
 }

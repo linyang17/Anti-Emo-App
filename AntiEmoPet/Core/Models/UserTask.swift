@@ -57,12 +57,12 @@ enum TaskStatus: String, Codable, CaseIterable {
 }
 
 @Model
-final class Task: Identifiable {
+final class UserTask: Identifiable {
     @Attribute(.unique) var id: UUID
     var title: String
     var weatherType: WeatherType
     var difficulty: TaskDifficulty
-    var category: TaskCategory = .indoorDigital
+    var category: TaskCategory
     var energyReward: Int = 0
     var date: Date
     var status: TaskStatus

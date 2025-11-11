@@ -51,7 +51,7 @@ struct PetView: View {
                     .background(RoundedRectangle(cornerRadius: 16).fill(Color.blue.opacity(0.1)))
                     // TODO(中/EN): Hook up to live animation + weather-reactive stats from PRD section 3 once data available.
 
-                    PrimaryButton(title: "摸摸 Sunny 🐾") {
+                    PrimaryButton(title: "摸摸 Lumio 🐾") {
                         appModel.petting()
                     }
 

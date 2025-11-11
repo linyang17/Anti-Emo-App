@@ -26,7 +26,7 @@ final class StatisticsAnalysisViewModel: ObservableObject {
     @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
 
     // MARK: - Unified Wrapper Function
-    func rhythmAnalysis(for entries: [MoodEntry], tasks: [Task]) -> (
+    func rhythmAnalysis(for entries: [MoodEntry], tasks: [UserTask]) -> (
         timeSlot: [TimeSlot: Double],
         weather: [WeatherType: Double],
         daylight: String,
@@ -65,7 +65,7 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         }
     }
 
-    private func weatherMoodAverages(entries: [MoodEntry], tasks: [Task]) -> [WeatherType: Double] {
+    private func weatherMoodAverages(entries: [MoodEntry], tasks: [UserTask]) -> [WeatherType: Double] {
         guard !entries.isEmpty else { return [:] }
 
         let dayGroups = Dictionary(grouping: entries) { cal.startOfDay(for: $0.date) }
@@ -94,7 +94,7 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         }
     }
 
-    private func dominantWeather(for tasks: [Task]?) -> WeatherType? {
+    private func dominantWeather(for tasks: [UserTask]?) -> WeatherType? {
         guard let tasks, !tasks.isEmpty else { return nil }
         let counts = tasks.reduce(into: [WeatherType: Int]()) { partial, task in
             partial[task.weatherType, default: 0] += 1

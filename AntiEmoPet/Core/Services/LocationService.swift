@@ -6,12 +6,12 @@ import Combine
 final class LocationService: NSObject, ObservableObject {
     
     private let manager = CLLocationManager()
-    private let log = Logger(subsystem: "com.sunny.pet", category: "LocationService")
+    private let log = Logger(subsystem: "com.Lumio.pet", category: "LocationService")
 
-    @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
-    @Published private(set) var lastKnownCity: String?
-    @Published private(set) var lastKnownLocation: CLLocation?
-    @Published private(set) var weatherPermissionGranted: Bool = false
+    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var lastKnownCity: String?
+    @Published var lastKnownLocation: CLLocation?
+    @Published var weatherPermissionGranted: Bool = false
 
     override init() {
         super.init()

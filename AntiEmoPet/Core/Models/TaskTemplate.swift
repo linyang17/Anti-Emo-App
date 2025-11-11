@@ -7,7 +7,7 @@ final class TaskTemplate: Identifiable {
     var title: String
     var difficulty: TaskDifficulty
     var isOutdoor: Bool
-    var category: TaskCategory = .indoorDigital
+    var category: TaskCategory
     var energyReward: Int = 0
 
     init(

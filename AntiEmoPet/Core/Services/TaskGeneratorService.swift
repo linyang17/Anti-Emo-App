@@ -9,13 +9,13 @@ final class TaskGeneratorService {
         self.storage = storage
     }
 
-    func generateDailyTasks(for date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [Task] {
+    func generateDailyTasks(for date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
         let templates = storage.fetchAllTaskTemplates()
         guard !templates.isEmpty else { return [] }
 
         let intervals = activeSlotIntervals(for: date)
         var usedTitles = reservedTitles
-        var tasks: [Task] = []
+        var tasks: [UserTask] = []
 
         for (_, interval) in intervals {
             let windows = overlappingWindows(interval: interval, report: report)
@@ -27,7 +27,7 @@ final class TaskGeneratorService {
                     continue
                 }
                 let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
-                let task = Task(
+                let task = UserTask(
                     title: template.title,
                     weatherType: scheduled.weather,
                     difficulty: template.difficulty,
@@ -42,15 +42,15 @@ final class TaskGeneratorService {
         return tasks.sorted { $0.date < $1.date }
     }
 
-    func makeOnboardingTasks(for date: Date) -> [Task] {
+    func makeOnboardingTasks(for date: Date) -> [UserTask] {
         let titles = [
-            "向 Sunny 打个招呼",
-            "浏览 Sunny 的商店",
+            "向 Lumio 打个招呼",
+            "浏览 Lumio 的商店",
             "查看今日天气概览"
         ]
         let baseDate = calendar.startOfDay(for: date)
         return titles.enumerated().map { index, title in
-            Task(
+            UserTask(
                 title: title,
                 weatherType: .sunny,
                 difficulty: .easy,

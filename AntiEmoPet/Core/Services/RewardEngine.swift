@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class RewardEngine {
-    func applyTaskReward(for task: Task, stats: UserStats) -> Int {
+    func applyTaskReward(for task: UserTask, stats: UserStats) -> Int {
         guard task.status == .completed else { return 0 }
         let energy = max(0, task.energyReward)
         EnergyEngine.add(energy, to: stats)
@@ -12,7 +12,7 @@ final class RewardEngine {
         return energy
     }
 
-    func evaluateAllClear(tasks: [Task], stats: UserStats) -> Bool {
+    func evaluateAllClear(tasks: [UserTask], stats: UserStats) -> Bool {
         guard tasks.allSatisfy({ $0.status == .completed }) else { return false }
         stats.TotalDays += 1
         return true

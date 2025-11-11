@@ -1,5 +1,5 @@
 import Foundation
-import CoreLocation
+internal import CoreLocation
 
 struct WeatherWindow: Identifiable, Sendable, Hashable {
     let id: UUID
