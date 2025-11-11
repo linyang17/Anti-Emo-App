@@ -31,6 +31,8 @@ struct OnboardingView: View {
 
                 VStack(spacing: 24) {
                     stepContent
+                        .transition(.opacity)
+                        .animation(.easeInOut, value: step)
                     OnboardingArrowButton(
                         isEnabled: canAdvance,
                         isLoading: isProcessingFinalStep,
@@ -109,27 +111,24 @@ private extension OnboardingView {
         }
     }
 
+    @ViewBuilder
     var stepContent: some View {
-        Group {
-            switch step {
-            case .intro:
-                IntroStepView()
-            case .name:
-                NameStepView(
-                    nickname: $viewModel.nickname,
-                    focus: $isNameFocused,
-                    onSubmit: handleAdvance
-                )
-            case .gender:
-                GenderStepView(selectedGender: $viewModel.selectedGender)
-            case .birthday:
-                BirthdayStepView(selectedDate: $viewModel.birthday)
-            case .access:
-                AccessStepView(region: viewModel.region, isRequesting: isProcessingFinalStep)
-            }
+        switch step {
+        case .intro:
+            IntroStepView()
+        case .name:
+            NameStepView(
+                nickname: $viewModel.nickname,
+                focus: $isNameFocused,
+                onSubmit: handleAdvance
+            )
+        case .gender:
+            GenderStepView(selectedGender: $viewModel.selectedGender)
+        case .birthday:
+            BirthdayStepView(selectedDate: $viewModel.birthday)
+        case .access:
+            AccessStepView(region: viewModel.region, isRequesting: isProcessingFinalStep)
         }
-        .transition(.opacity)
-        .animation(.easeInOut, value: step)
     }
 
     var canAdvance: Bool {
@@ -141,7 +140,8 @@ private extension OnboardingView {
         case .gender:
             return viewModel.selectedGender != nil
         case .birthday:
-            return viewModel.birthday <= Date()
+            let birthday = viewModel.birthday
+            return birthday <= Date()
         case .access:
             return !isProcessingFinalStep
         }
@@ -349,6 +349,8 @@ private struct NameStepView: View {
 private struct GenderStepView: View {
     @Binding var selectedGender: OnboardingViewModel.GenderOption?
 
+    private let genderOptions = OnboardingViewModel.GenderOption.allCases
+
     var body: some View {
         VStack(spacing: 24) {
             Text("And you are…")
@@ -356,7 +358,7 @@ private struct GenderStepView: View {
                 .foregroundStyle(.white)
 
             HStack(spacing: 16) {
-                ForEach(OnboardingViewModel.GenderOption.allCases) { option in
+                ForEach(genderOptions) { option in
                     Button {
                         selectedGender = option
                     } label: {

@@ -4,6 +4,25 @@ internal import CoreLocation
 
 @MainActor
 final class OnboardingViewModel: ObservableObject {
+    enum GenderOption: String, CaseIterable, Identifiable {
+        case male
+        case female
+        case other
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .male:
+                return "Male"
+            case .female:
+                return "Female"
+            case .other:
+                return "Other"
+            }
+        }
+    }
+    
     @Published var nickname: String = ""
     @Published var region: String = ""
     @Published var notificationsOptIn: Bool = true
@@ -48,26 +67,5 @@ final class OnboardingViewModel: ObservableObject {
 
     init(defaultBirthday: Date = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .now) {
         self.birthday = defaultBirthday
-    }
-}
-
-extension OnboardingViewModel {
-    enum GenderOption: String, CaseIterable, Identifiable {
-        case male
-        case female
-        case other
-
-        var id: String { rawValue }
-
-        var displayName: String {
-            switch self {
-            case .male:
-                return "Male"
-            case .female:
-                return "Female"
-            case .other:
-                return "Other"
-            }
-        }
     }
 }
