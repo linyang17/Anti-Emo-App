@@ -50,13 +50,14 @@ struct MainTabView: View {
             NavigationStack { MoreView() }
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
-        .sheet(isPresented: Binding(
+        .fullScreenCover(isPresented: Binding(
             get: { appModel.showOnboarding },
             set: { appModel.showOnboarding = $0 }
         )) {
             OnboardingView(locationService: appModel.locationService)
                 .environmentObject(appModel)
         }
+        .interactiveDismissDisabled(true)
         .onAppear {
             if appModel.chatMessages.isEmpty {
                 appModel.chatMessages = [
