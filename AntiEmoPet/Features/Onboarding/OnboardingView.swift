@@ -12,6 +12,8 @@ struct OnboardingView: View {
     @State private var isProcessingFinalStep = false
     @State private var showLocationDeniedAlert = false
     @State private var hasCompletedOnboarding = false
+    @State private var dragOffset: CGFloat = .zero
+    @State private var hasTriggeredHapticPreview = false
 
     init(locationService: LocationService? = nil) {
         _locationService = ObservedObject(wrappedValue: locationService ?? LocationService())
@@ -38,6 +40,8 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 32)
                 .padding(.bottom, 120)
+                .offset(x: dragOffset)
+                .gesture(backSwipeGesture)
 
                 Spacer(minLength: 0)
             }
@@ -84,6 +88,7 @@ struct OnboardingView: View {
             }
             viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
         }
+        .background(NavigationGestureDisabler(isDisabled: true))
     }
 }
 
@@ -97,6 +102,10 @@ private extension OnboardingView {
 
         var next: Step? {
             Step(rawValue: rawValue + 1)
+        }
+
+        var previous: Step? {
+            Step(rawValue: rawValue - 1)
         }
     }
 
@@ -156,6 +165,23 @@ private extension OnboardingView {
                     isNameFocused = false
                 }
             }
+        }
+    }
+
+    func handleRetreat() {
+        guard let previous = step.previous else { return }
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.78, blendDuration: 0.1)) {
+            step = previous
+        }
+        isProcessingFinalStep = false
+        if previous == .name {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                isNameFocused = true
+            }
+        } else {
+            isNameFocused = false
         }
     }
 
@@ -246,6 +272,33 @@ private extension OnboardingView {
             gender: viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue,
             birthday: viewModel.birthday
         )
+    }
+
+    var backSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .local)
+            .onChanged { value in
+                guard value.translation.width > 0 else {
+                    dragOffset = 0
+                    hasTriggeredHapticPreview = false
+                    return
+                }
+                dragOffset = min(value.translation.width, 160)
+                if !hasTriggeredHapticPreview, dragOffset > 40, step.previous != nil {
+                    let generator = UIImpactFeedbackGenerator(style: .soft)
+                    generator.impactOccurred()
+                    hasTriggeredHapticPreview = true
+                }
+            }
+            .onEnded { value in
+                defer {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        dragOffset = 0
+                    }
+                    hasTriggeredHapticPreview = false
+                }
+                guard value.translation.width > 90 else { return }
+                handleRetreat()
+            }
     }
 }
 
@@ -494,6 +547,48 @@ private struct BirthdayPicker: View {
         let calendar = Calendar.current
         if let updatedDate = calendar.date(from: components) {
             date = updatedDate
+        }
+    }
+}
+
+private struct NavigationGestureDisabler: UIViewControllerRepresentable {
+    let isDisabled: Bool
+
+    func makeUIViewController(context: Context) -> Controller {
+        Controller(isDisabled: isDisabled)
+    }
+
+    func updateUIViewController(_ uiViewController: Controller, context: Context) {
+        uiViewController.isDisabled = isDisabled
+    }
+
+    final class Controller: UIViewController {
+        var isDisabled: Bool {
+            didSet { updateInteractivePopState() }
+        }
+
+        init(isDisabled: Bool) {
+            self.isDisabled = isDisabled
+            super.init(nibName: nil, bundle: nil)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            updateInteractivePopState()
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        }
+
+        private func updateInteractivePopState() {
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = !isDisabled
         }
     }
 }
