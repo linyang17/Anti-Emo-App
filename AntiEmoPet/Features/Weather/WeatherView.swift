@@ -1,8 +1,8 @@
 import SwiftUI
 
-struct HomeView: View {
+struct WeatherView: View {
     @EnvironmentObject private var appModel: AppViewModel
-    @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var viewModel = WeatherViewModel()
     @State private var saveToast: (String, Date)? = nil
 
     var body: some View {

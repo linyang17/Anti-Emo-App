@@ -5,7 +5,7 @@ struct BackpackView: View {
 
     var body: some View {
         List {
-            Section("我的背包") {
+            Section("背包") {
                 if appModel.inventory.isEmpty {
                     Text("空空如也，去商店购买一些物品吧！")
                         .foregroundStyle(.secondary)
@@ -39,13 +39,6 @@ struct BackpackView: View {
             }
         }
         .navigationTitle("Backpack")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Label("\(appModel.totalEnergy)", systemImage: "bolt")
-                    .labelStyle(.titleAndIcon)
-                    .foregroundStyle(.yellow)
-            }
-        }
     }
 }
 

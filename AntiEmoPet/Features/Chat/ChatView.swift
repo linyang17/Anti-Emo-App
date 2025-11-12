@@ -44,7 +44,6 @@ struct ChatView: View {
             }
             .padding()
         }
-        .energyToolbar(appModel: appModel)
         .navigationTitle("Chat")
     }
 }

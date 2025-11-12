@@ -30,12 +30,5 @@ struct ProfileView: View {
             }
         }
         .navigationTitle("Profile")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if let energy = appModel.userStats?.totalEnergy {
-                    Label("\(energy)", systemImage: "bolt")
-                }
-            }
-        }
     }
 }

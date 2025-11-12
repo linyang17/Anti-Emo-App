@@ -4,7 +4,7 @@
     "type": "snack",
     "name": "阳光橙汁",
     "costEnergy": 8,
-    "moodBoost": 6,
+    "BondingBoost": 6,
     "hungerBoost": 10
   },
   {
@@ -12,7 +12,7 @@
     "type": "snack",
     "name": "晚安奶酪",
     "costEnergy": 6,
-    "moodBoost": 4,
+    "BondingBoost": 4,
     "hungerBoost": 12
   },
   {
@@ -20,7 +20,7 @@
     "type": "toy",
     "name": "风铃逗猫棒",
     "costEnergy": 12,
-    "moodBoost": 10,
+    "BondingBoost": 10,
     "hungerBoost": 0
   },
   {
@@ -28,7 +28,7 @@
     "type": "toy",
     "name": "云朵抱枕",
     "costEnergy": 10,
-    "moodBoost": 7,
+    "BondingBoost": 7,
     "hungerBoost": 0
   },
   {
@@ -36,7 +36,7 @@
     "type": "decor",
     "name": "极光夜灯",
     "costEnergy": 15,
-    "moodBoost": 8,
+    "BondingBoost": 8,
     "hungerBoost": 0
   },
   {
@@ -44,7 +44,7 @@
     "type": "decor",
     "name": "庭院茶几",
     "costEnergy": 18,
-    "moodBoost": 5,
+    "BondingBoost": 5,
     "hungerBoost": 0
   }
 ]

@@ -21,7 +21,7 @@ struct PetView: View {
 
             content
         }
-        .overlay(alignment: .trailing) { rocketButton }
+        .overlay(alignment: .trailing) { taskButton }
         .overlay(alignment: .bottom) { shopButton }
         .sheet(item: $activeSheet, content: presentSheet(for:))
         .toolbar(.hidden, for: .navigationBar)
@@ -45,8 +45,6 @@ struct PetView: View {
                 topBar
                 Spacer(minLength: 24)
                 petStage(for: pet)
-                Spacer(minLength: 24)
-                interactionPanel(for: pet)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 32)
@@ -55,175 +53,108 @@ struct PetView: View {
                 Image(systemName: "pawprint.circle")
                     .font(.system(size: 64))
                     .foregroundStyle(.white.opacity(0.85))
-                Text("尚未创建宠物")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
                 Text("完成引导流程后，就能和 Lumio 在这里见面啦")
                     .font(.callout)
                     .foregroundStyle(.white.opacity(0.75))
             }
             .padding(32)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding()
         }
     }
 
     private var topBar: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 12) {
-                statusChip(icon: "bolt.fill", title: "能量", value: "\(viewModel.statusSummary.energy)")
-                statusChip(icon: "heart.fill", title: "关系", value: "\(viewModel.statusSummary.bond)")
-                if appModel.pet != nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(viewModel.statusSummary.levelLabel, systemImage: "star.circle.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .labelStyle(.titleAndIcon)
-                            .foregroundStyle(.white)
-                        ProgressView(value: viewModel.statusSummary.experienceProgress)
-                            .tint(.yellow)
-                    }
-                    .padding(12)
-                    .background(statusBackground)
-                }
+            VStack(alignment: .leading, spacing: 8) {
+                statusChip(icon: "bolt.fill", value: "\(viewModel.statusSummary.energy)")
+                statusChip(icon: "heart.fill", value: "\(viewModel.statusSummary.bond)")
+				statusChip(icon: "star.circle.fill", value: "\(viewModel.statusSummary.levelLabel)")
+				ProgressView(value: viewModel.statusSummary.experienceProgress)
+					.tint(.orange)
+					.frame(width: 70)
             }
+			.padding(8)
+			.background(statusBackground)
 
             Spacer()
 
-            NavigationLink(destination: MoreView().environmentObject(appModel)) {
+            NavigationLink(destination: OtherView().environmentObject(appModel)) {
                 Image(systemName: "arrow.turn.up.left")
                     .font(.system(size: 20, weight: .semibold))
-                    .padding(12)
-                    .background(.ultraThinMaterial, in: Circle())
+                    .padding(8)
                     .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
             }
-            .accessibilityLabel("前往更多设置")
         }
     }
 
     private func petStage(for pet: Pet) -> some View {
-        VStack(spacing: 16) {
-            Spacer(minLength: 0)
-
-            Image(viewModel.screenState.petAsset)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 240)
-                .shadow(color: .black.opacity(0.2), radius: 18, x: 0, y: 10)
-                .accessibilityLabel("Lumio 正在等待你的互动")
-
-            VStack(spacing: 8) {
-                Text(pet.name)
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(.white)
-                Text(viewModel.moodDescription(for: pet))
-                    .font(.callout)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                if !viewModel.screenState.weatherDescription.isEmpty {
-                    Text(viewModel.screenState.weatherDescription)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.75))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
-                }
-            }
-            .padding(.horizontal, 12)
-        }
+		
+		Image(viewModel.screenState.petAsset)
+			.resizable()
+			.scaledToFit()
+			.frame(maxHeight: 280)
+			.shadow(color: .black.opacity(0.2), radius: 15, x: 5, y: 5)
+		
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
 
-    private func interactionPanel(for pet: Pet) -> some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                PrimaryButton(title: "摸摸 Lumio 🐾") {
-                    appModel.petting()
-                }
+	private var statusBackground: some View {
+		RoundedRectangle(cornerRadius: 20)
+			.fill(
+				LinearGradient(colors: [.white.opacity(0.2), .white.opacity(0.05)],
+							   startPoint: .topLeading,
+							   endPoint: .bottomTrailing)
+			)
+			.background(.ultraThinMaterial)
+			.shadow(color: .white.opacity(0.2), radius: 4, x: -2, y: -2)
+			.shadow(color: .black.opacity(0.3), radius: 6, x: 3, y: 3)
+	}
 
-                NavigationLink(destination: BackpackView().environmentObject(appModel)) {
-                    Label("背包", systemImage: "bag")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-            }
-
-            if let snack = appModel.shopItems.first(where: { $0.type == .snack }),
-               appModel.inventory.first(where: { $0.sku == snack.sku && $0.count > 0 }) != nil {
-                PrimaryButton(title: "喂零食：\(snack.name) 🍪") {
-                    appModel.useItem(sku: snack.sku)
-                }
-            } else {
-                Text("🍪 背包没有零食，先去商店购买吧")
-                    .font(.callout)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-    }
-
-    private var statusBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.16))
-    }
-
-    private func statusChip(icon: String, title: String, value: String) -> some View {
-        HStack(spacing: 10) {
+    private func statusChip(icon: String, value: String) -> some View {
+        HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
-                .frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-                Text(value)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
-            }
+                .frame(width: 8)
+			Text(value)
+				.font(.headline.weight(.semibold))
+				.foregroundStyle(.white)
         }
-        .padding(12)
-        .background(statusBackground)
+		.padding(8)
     }
 
-    private var rocketButton: some View {
+    private var taskButton: some View {
         VStack {
             Spacer()
             Button {
                 activeSheet = .tasks
             } label: {
-                Image(systemName: "rocket.fill")
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(18)
-                    .background(Color.accentColor, in: Circle())
-                    .shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
+                Image("spaceship")
+					.resizable()
+					.scaledToFit()
+					.frame(maxWidth: 80)
+					.accessibilityHidden(true)
+					.padding(18)
+					.shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
             }
-            .accessibilityLabel("查看今日任务")
-            Spacer()
         }
-        .padding(.trailing, 24)
+        .padding(.trailing, 30)
+		.padding(.top, 200)
     }
 
     private var shopButton: some View {
         Button {
             activeSheet = .shop
         } label: {
-            Label("前往商店", systemImage: "gift.fill")
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 32)
-                .padding(.vertical, 14)
-                .background(.ultraThinMaterial, in: Capsule())
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
-        }
+			Image("giftbox")
+				   .resizable()
+				   .scaledToFit()
+				   .frame(maxWidth: 100)
+				   .accessibilityHidden(true)
+				   .padding(18)
+				   .shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
+				}
         .padding(.bottom, 28)
     }
 
@@ -234,25 +165,14 @@ struct PetView: View {
             NavigationStack {
                 TasksView()
                     .environmentObject(appModel)
-                    .navigationTitle("今日任务")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("完成") { activeSheet = nil }
-                        }
-                    }
             }
             .presentationDetents([.medium, .large])
         case .shop:
             NavigationStack {
                 ShopView()
                     .environmentObject(appModel)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("完成") { activeSheet = nil }
-                        }
-                    }
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.medium])
         }
     }
 }

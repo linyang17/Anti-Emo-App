@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class PetViewModel: ObservableObject {
@@ -34,9 +35,9 @@ final class PetViewModel: ObservableObject {
             timeOfDay: .day
         )
         statusSummary = StatusSummary(
-            energy: 0,
+            energy: 50,
             bond: 30,
-            levelLabel: "LV.1 · 0/10",
+            levelLabel: "LV 1",
             experienceProgress: 0
         )
     }
@@ -52,16 +53,16 @@ final class PetViewModel: ObservableObject {
         summary.energy = stats?.totalEnergy ?? 0
 
         if let pet {
-            summary.bond = bondValue(for: pet.mood)
+            summary.bond = bondValue(for: pet.bonding)
             let requirement = xpRequirement(for: pet.level)
             let clampedRequirement = max(requirement, 1)
             let progress = Double(max(0, min(pet.xp, clampedRequirement))) / Double(clampedRequirement)
             summary.experienceProgress = min(max(progress, 0), 1)
-            summary.levelLabel = "LV.\(pet.level) · \(min(pet.xp, clampedRequirement))/\(clampedRequirement)"
+            summary.levelLabel = "LV \(pet.level)"
         } else {
             summary.bond = 30
             summary.experienceProgress = 0
-            summary.levelLabel = "尚未创建宠物"
+            summary.levelLabel = ""
         }
 
         statusSummary = summary
@@ -84,40 +85,36 @@ final class PetViewModel: ObservableObject {
 
     func updatePetState(pet: Pet?) {
         var state = screenState
-        state.petAsset = petAsset(for: pet?.mood ?? .calm)
+        state.petAsset = petAsset(for: pet?.bonding ?? .calm)
         screenState = state
     }
 
     func moodDescription(for pet: Pet) -> String {
-        switch pet.mood {
+        switch pet.bonding {
         case .ecstatic:
-            return "Lumio 兴奋地围着你打转"
+            return "Lumio兴奋地围着你打转"
         case .happy:
-            return "Lumio 看见你就开始摇尾巴"
+            return "Lumio看见你就开始摇尾巴"
         case .calm:
-            return "Lumio 今天心情平静，等着你互动"
+            return "Lumio等着和你互动"
         case .sleepy:
-            return "Lumio 有点困，摸摸它会更安心"
+            return "Lumio有点困，摸摸它会更安心"
         case .anxious:
-            return "Lumio 有些焦虑，需要你的陪伴"
-        case .grumpy:
-            return "Lumio 想你了，去哄哄它吧"
+            return "Lumio想你了，去哄哄它吧"
         }
     }
 
-    private func petAsset(for mood: PetMood) -> String {
-        switch mood {
+    private func petAsset(for bonding: PetBonding) -> String {
+        switch bonding {
         case .ecstatic:
-            return "foxcurious"
+            return "foxhappy"
         case .happy:
             return "foxlooking"
         case .calm:
-            return "foxlooking"
+            return "foxcurious"
         case .sleepy:
             return "foxsleep-2"
         case .anxious:
-            return "foxsad"
-        case .grumpy:
             return "foxtired"
         }
     }
@@ -154,20 +151,18 @@ final class PetViewModel: ObservableObject {
         }
     }
 
-    private func bondValue(for mood: PetMood) -> Int {
-        switch mood {
+    private func bondValue(for bonding: PetBonding) -> Int {
+        switch bonding {
         case .ecstatic:
             return 85
         case .happy:
             return 70
         case .calm:
-            return 55
+            return 50
         case .sleepy:
-            return 45
+            return 30
         case .anxious:
-            return 35
-        case .grumpy:
-            return 25
+            return 15
         }
     }
 

@@ -44,9 +44,9 @@ final class TaskGeneratorService {
 
     func makeOnboardingTasks(for date: Date) -> [UserTask] {
         let titles = [
-            "向 Lumio 打个招呼",
+            "和 Lumio 打个招呼",
             "浏览 Lumio 的商店",
-            "查看今日天气概览"
+            "做 20 个波比跳"
         ]
         let baseDate = calendar.startOfDay(for: date)
         return titles.enumerated().map { index, title in

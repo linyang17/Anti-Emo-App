@@ -78,7 +78,7 @@ private extension StatsInsights {
 		}
 
 		if energy.todayDelta > 0 {
-			return "今天是偏『补充型』的一天，你有在为自己充值，这是很好的节奏。"
+			return "今天是偏补充的一天，你有在为自己充值，这是很好的节奏。"
 		} else if energy.todayDelta < 0 {
 			return "今天能量略有透支，试试安排一点简单放松或早睡，帮自己补回来。"
 		} else {

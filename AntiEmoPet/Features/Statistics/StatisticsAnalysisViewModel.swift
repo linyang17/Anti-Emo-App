@@ -65,6 +65,7 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         }
     }
 
+	// 2) 情绪与天气关联度分析：
     private func weatherMoodAverages(entries: [MoodEntry], tasks: [UserTask]) -> [WeatherType: Double] {
         guard !entries.isEmpty else { return [:] }
 
@@ -102,8 +103,9 @@ final class StatisticsAnalysisViewModel: ObservableObject {
         return counts.max(by: { $0.value < $1.value })?.key
     }
 
+	// 3) TODO: 情绪与日照时长关联度分析：
     private func daylightCorrelationText(slotAverages: [TimeSlot: Double]) -> String {
-        guard !slotAverages.isEmpty else { return "暂无足够的数据来生成日照提示。" }
+        guard !slotAverages.isEmpty else { return "暂无足够的数据来生成分析。" }
 
         if let (slot, _) = slotAverages.min(by: { $0.value < $1.value }) {
             switch slot {

@@ -10,16 +10,16 @@ final class PetEngine {
     func handleAction(_ action: PetActionType, pet: Pet) {
         switch action {
         case .pat:
-            pet.mood = nextMood(from: pet.mood, boost: 1)
+            pet.bonding = nextBonding(from: pet.bonding, boost: 1)
             pet.hunger = max(0, pet.hunger - 2)
         case .feed(let item):
             pet.hunger = min(100, pet.hunger + item.hungerBoost)
-            pet.mood = nextMood(from: pet.mood, boost: item.moodBoost / 4)
+            pet.bonding = nextBonding(from: pet.bonding, boost: item.BondingBoost / 4)
         }
     }
 
     func applyTaskCompletion(pet: Pet) {
-        pet.mood = nextMood(from: pet.mood, boost: 2)
+        pet.bonding = nextBonding(from: pet.bonding, boost: 2)
         pet.hunger = max(0, pet.hunger - 5)
         pet.xp += 1
         if pet.xp >= 10 {
@@ -28,9 +28,9 @@ final class PetEngine {
         }
     }
 
-    private func nextMood(from mood: PetMood, boost: Int) -> PetMood {
-        let ordered: [PetMood] = [.grumpy, .sleepy, .calm, .happy, .ecstatic]
-        guard let index = ordered.firstIndex(of: mood) else { return mood }
+    private func nextBonding(from bonding: PetBonding, boost: Int) -> PetBonding {
+        let ordered: [PetBonding] = [.sleepy, .calm, .happy, .ecstatic]
+        guard let index = ordered.firstIndex(of: bonding) else { return bonding }
         let newIndex = min(ordered.count - 1, index + boost)
         return ordered[newIndex]
     }

@@ -33,7 +33,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
-            NavigationStack { HomeView() }
+            NavigationStack { WeatherView() }
                 .tabItem { Label("Weather", systemImage: "sun.max") }
             NavigationStack { TasksView() }
                 .tabItem { Label("Tasks", systemImage: "checklist") }
@@ -47,7 +47,7 @@ struct MainTabView: View {
                 .tabItem { Label("Statistics", systemImage: "chart.line.uptrend.xyaxis") }
             NavigationStack { ProfileView() }
                 .tabItem { Label("Profile", systemImage: "person") }
-            NavigationStack { MoreView() }
+            NavigationStack { OtherView() }
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
         .fullScreenCover(isPresented: Binding(
@@ -68,7 +68,7 @@ struct MainTabView: View {
         .alert("早点休息哦", isPresented: $appModel.showSleepReminder) {
             Button("知道了", role: .cancel) { appModel.showSleepReminder = false }
         } message: {
-            Text("现在已是夜间，Lumio 建议你休息，明早再继续任务。")
+            Text("已经很晚啦，Lumio建议你早点休息，明天再来看我哦。")
         }
     }
 }

@@ -232,7 +232,7 @@ final class AppViewModel: ObservableObject {
         let reply = chatService.reply(
             to: text,
             weather: weather,
-            mood: pet?.mood ?? .calm
+            bonding: pet?.bonding ?? .calm
         )
         chatMessages.append(ChatMessage(role: .pet, content: reply))
         analytics.log(event: "chat_message")

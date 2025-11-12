@@ -5,17 +5,12 @@ import Combine
 final class MoodStatisticsViewModel: ObservableObject {
 	
 
-    // MARK: - Helper
-    private func rounded(_ value: Double) -> Double {
-        (value * 10).rounded() / 10
-    }
-
     // MARK: - Structs
     struct MoodSummary {
         let lastMood: Int
         let delta: Int
-        let averageToday: Double
-        let averagePastWeek: Double
+        let averageToday: Int
+        let averagePastWeek: Int
         let uniqueDayCount: Int
         let entriesCount: Int
         let trend: TrendDirection
@@ -64,7 +59,7 @@ final class MoodStatisticsViewModel: ObservableObject {
             }
         }
 
-        let avgToday = countToday > 0 ? rounded(Double(totalToday) / Double(countToday)) : 0.0
+        let avgToday = countToday > 0 ? totalToday / countToday : 0
 
         // Past week average as mean of per-day averages
         let weekEntries = entries.filter { $0.date >= startDate }
@@ -76,8 +71,8 @@ final class MoodStatisticsViewModel: ObservableObject {
             item.count += 1
             daySums[day] = item
         }
-        let dayAverages = daySums.values.map { Double($0.sum) / Double(max(1, $0.count)) }
-        let avgWeek = dayAverages.isEmpty ? 0.0 : rounded(dayAverages.reduce(0.0, +) / Double(dayAverages.count))
+		let dayAverages = daySums.values.map { $0.sum / max(1, $0.count) }
+		let avgWeek = dayAverages.isEmpty ? 0 : dayAverages.reduce(0, +) / dayAverages.count
 
         let trend: TrendDirection = avgToday > avgWeek ? .up : (avgToday < avgWeek ? .down : .flat)
         let comment: String = {

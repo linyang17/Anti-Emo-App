@@ -14,7 +14,7 @@ struct StatisticsView: View {
                 ScrollView {
                         VStack(spacing: 20) {
                                 // 1️⃣ 总览卡片：今日 vs 趋势
-                                StatisticsOverviewSection(mood: moodSummary, energy: energySummary)
+                                //StatisticsOverviewSection(mood: moodSummary, energy: energySummary)
 
                                 // 2️⃣ 情绪统计区
                                 MoodStatsSection(mood: moodSummary)
@@ -23,7 +23,7 @@ struct StatisticsView: View {
                                 EnergyStatsSection(energy: energySummary)
 
                                 // 4️⃣ 趋势区：能量与情绪
-                                EnergyTrendSection(energyHistory: appModel.energyHistory)
+							EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
                                 MoodTrendSection().environmentObject(appModel)
 
                                 // 5️⃣ 节律分析：时段 / 天气 / 日照提示

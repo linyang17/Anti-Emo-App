@@ -8,15 +8,15 @@ struct StatisticsRhythmSection: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            DashboardCard(title: "情绪节律 · 时段", icon: "clock") {
+            DashboardCard(title: "情绪时段分析", icon: "clock") {
                 rhythmSlotChart(data: analysis.timeSlotAverages)
             }
 
-            DashboardCard(title: "情绪节律 · 天气", icon: "cloud.sun") {
+            DashboardCard(title: "天气关联度", icon: "cloud.sun") {
                 rhythmWeatherChart(data: analysis.weatherAverages)
             }
 
-            DashboardCard(title: "情绪节律 · 日照提示", icon: "sun.max") {
+            DashboardCard(title: "日照关联度", icon: "sun.max") {
                 rhythmDaylightView(buckets: analysis.dayPeriodAverages, hint: analysis.daylightHint)
             }
         }

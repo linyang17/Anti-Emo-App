@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 @MainActor
-final class HomeViewModel: ObservableObject {
+final class WeatherViewModel: ObservableObject {
     @Published var tip: String = ""
     @Published var moodValue: Int = 50
     

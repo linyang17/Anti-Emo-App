@@ -17,7 +17,7 @@ struct ShopView: View {
                 header
                 ForEach(viewModel.grouped(items: appModel.shopItems)) { section in
                     VStack(alignment: .leading, spacing: 12) {
-                        Label(sectionTitle(for: section.type), systemImage: section.type.icon)
+                        Label(shopSections(for: section.type), systemImage: section.type.icon)
                             .font(.headline)
                             .foregroundStyle(.primary)
 
@@ -29,22 +29,12 @@ struct ShopView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
-            .padding(.bottom, 40)
+            .padding(20)
         }
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .top) { toastView }
         .animation(.spring(duration: 0.3), value: purchaseToast != nil)
-        .navigationTitle("装扮商店")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Text("当前能量：\(appModel.userStats?.totalEnergy ?? 0)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        .navigationTitle("商店")
         .alert("提示", isPresented: Binding(
             get: { alertMessage != nil },
             set: { _ in alertMessage = nil }
@@ -56,20 +46,14 @@ struct ShopView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Lumio 装扮商店")
-                .font(.largeTitle.bold())
-            Text("用完成任务获得的能量兑换配饰，让 Lumio 在冒险途中展现不同的模样。")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                statusBadge(title: "能量", value: "\(appModel.userStats?.totalEnergy ?? 0)", icon: "bolt.fill")
-                statusBadge(title: "金币", value: "\(appModel.userStats?.coins ?? 0)", icon: "sparkles")
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 20) {
+                statusBadge(value: "\(appModel.userStats?.totalEnergy ?? 0)", icon: "bolt.fill")
+                statusBadge(value: "\(appModel.userStats?.coins ?? 0)", icon: "cookie.fill")
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
     private func shopCard(for item: Item) -> some View {
@@ -80,17 +64,17 @@ struct ShopView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
                         .font(.headline)
-                    Text("拥有 \(ownedCount) 件")
+                    Text("x \(ownedCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(item.costEnergy) ⚡️")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
             }
 
-            Text("心情 +\(item.moodBoost) · 饱食 +\(item.hungerBoost)")
+            Text("关系 +\(item.BondingBoost) · 饱食 +\(item.hungerBoost)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -114,21 +98,13 @@ struct ShopView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    private func statusBadge(title: String, value: String, icon: String) -> some View {
+    private func statusBadge(value: String, icon: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .foregroundStyle(.accentColor)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .foregroundStyle(Color.accentColor)
                 Text(value)
                     .font(.body.weight(.semibold))
-            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(Color.accentColor.opacity(0.12), in: Capsule())
     }
 
     @ViewBuilder
@@ -144,20 +120,20 @@ struct ShopView: View {
         }
     }
 
-    private func sectionTitle(for type: ItemType) -> String {
+    private func shopSections(for type: ItemType) -> String {
         switch type {
         case .snack:
-            return "补给"
+            return "食物"
         case .toy:
-            return "玩具"
+            return "头部"
         case .decor:
-            return "装扮"
+            return "衣服"
         }
     }
 
     private func handlePurchase(_ item: Item) {
         if appModel.purchase(item: item) {
-            alertMessage = "已兑换：\(item.name)\n心情 +\(item.moodBoost) · 饱食 +\(item.hungerBoost)\n消耗能量 \(item.costEnergy)"
+            alertMessage = "已兑换：\(item.name)\n关系 +\(item.BondingBoost) · 饱食 +\(item.hungerBoost)\n消耗能量 \(item.costEnergy)"
             purchaseToast = ("能量 -\(item.costEnergy)", .now)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                 if case let (_, timestamp)? = purchaseToast,

@@ -15,10 +15,10 @@ final class EnergyStatisticsViewModel: ObservableObject {
         let todayAdd: Int
         let todayDeduct: Int
         let todayDelta: Int
-        let averageDailyAddPastWeek: Double
-        let averageDailyUsePastWeek: Double
-        let averageToday: Double
-        let averagePastWeek: Double
+        let averageDailyAddPastWeek: Int
+        let averageDailyUsePastWeek: Int
+        let averageToday: Int
+        let averagePastWeek: Int
         let trend: TrendDirection
         let comment: String
 
@@ -37,9 +37,6 @@ final class EnergyStatisticsViewModel: ObservableObject {
         )
     }
 
-    private func rounded(_ value: Double) -> Double {
-        (value * 10).rounded() / 10
-    }
 
     func energySummary(
         from history: [EnergyHistoryEntry],
@@ -78,7 +75,7 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
 
         let todayDelta = todayAdd - todayDeduct
-        let averageToday = countToday > 0 ? rounded(Double(totalToday) / Double(countToday)) : 0.0
+		let averageToday = countToday > 0 ? totalToday / countToday : 0
 
         var addPerDay = [Date: Int]()
         var usePerDay = [Date: Int]()
@@ -104,13 +101,12 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
 
         let dayCount = sumPerDay.count
-        let averageAddWeek = dayCount > 0 ? rounded(Double(addPerDay.values.reduce(0, +)) / Double(dayCount)) : 0.0
-        let averageUseWeek = dayCount > 0 ? rounded(Double(usePerDay.values.reduce(0, +)) / Double(dayCount)) : 0.0
-        let averageWeek = dayCount > 0
-            ? rounded(sumPerDay.values.reduce(0.0) { $0 + Double($1.total) / Double($1.count) } / Double(dayCount))
-            : 0.0
+		let totalSum = sumPerDay.values.reduce(0) { $0 + ($1.total / max($1.count, 1)) }
+		let averageAddWeek = dayCount > 0 ? addPerDay.values.reduce(0, +) / dayCount : 0
+		let averageUseWeek = dayCount > 0 ? usePerDay.values.reduce(0, +) / dayCount : 0
+		let averageWeek = dayCount > 0 ? totalSum / dayCount : 0
 
-        var score = averageToday > averageWeek ? 1 : (averageToday < averageWeek ? -1 : 0)
+        var score = todayAdd > averageAddWeek ? 1 : (todayAdd < averageAddWeek ? -1 : 0)
         if let metrics {
             let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })
             let daysSorted = Array(sumPerDay.keys).sorted()

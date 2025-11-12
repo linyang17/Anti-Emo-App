@@ -67,8 +67,8 @@ struct AntiEmoPetTests {
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Lumio", mood: .calm, hunger: 40, level: 1, xp: 95)
-        let snack = Item(sku: "snack.energy.bar", type: .snack, name: "Bar", costEnergy: 10, moodBoost: 4, hungerBoost: 20)
+        let pet = Pet(name: "Lumio", bonding: .calm, hunger: 40, level: 1, xp: 95)
+        let snack = Item(sku: "snack.energy.bar", type: .snack, name: "Bar", costEnergy: 10, BondingBoost: 4, hungerBoost: 20)
 
         let engine = PetEngine()
         engine.handleAction(.feed(item: snack), pet: pet)
@@ -78,8 +78,8 @@ struct AntiEmoPetTests {
         #expect(pet.xp < 10)
     }
 
-    @Test("ChatService stub responds with mood line") func chatServiceResponds() {
-        let reply = ChatService().reply(to: "有点累", weather: .rainy, mood: .happy)
+    @Test("ChatService stub responds with bonding line") func chatServiceResponds() {
+        let reply = ChatService().reply(to: "有点累", weather: .rainy, bonding: .happy)
         #expect(reply.contains("雨声陪你"))
         #expect(reply.contains("开心"))
     }
@@ -99,11 +99,11 @@ struct AntiEmoPetTests {
 
         storage.bootstrapIfNeeded()
         let firstItems = storage.fetchShopItems()
-        let firstTemplates = storage.fetchTemplates(for: .sunny)
+        let firstTemplates = storage.fetchTemplates()
 
         storage.bootstrapIfNeeded()
         let secondItems = storage.fetchShopItems()
-        let secondTemplates = storage.fetchTemplates(for: .sunny)
+        let secondTemplates = storage.fetchTemplates()
 
         #expect(firstItems.count == secondItems.count)
         #expect(firstTemplates.count == secondTemplates.count)
