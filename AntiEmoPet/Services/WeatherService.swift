@@ -7,18 +7,25 @@ import OSLog
 
 // MARK: - Codable Snapshots for Persistence
 private struct WeatherReportSnapshot: Codable {
-	let latitude: Double?
-	let longitude: Double?
-	let locality: String?
-	let current: String // WeatherType rawValue
-	let windows: [WeatherWindowSnapshot]
-	let timestamp: Date
+        let latitude: Double?
+        let longitude: Double?
+        let locality: String?
+        let current: String // WeatherType rawValue
+        let windows: [WeatherWindowSnapshot]
+        let sunEvents: [SunEventSnapshot]?
+        let timestamp: Date
 }
 
 private struct WeatherWindowSnapshot: Codable {
-	let startDate: Date
-	let endDate: Date
-	let weather: String // WeatherType rawValue
+        let startDate: Date
+        let endDate: Date
+        let weather: String // WeatherType rawValue
+}
+
+private struct SunEventSnapshot: Codable {
+        let day: Date
+        let sunrise: Date
+        let sunset: Date
 }
 
 // MARK: - WeatherService (MainActor)
@@ -96,11 +103,12 @@ final class WeatherService: ObservableObject {
 		}
 
 		// Remote fetch via WeatherKit
-		do {
-			let weather = try await weatherService.weather(for: location)
-			let current = WeatherType(from: weather.currentWeather)
-			let windows = buildWindows(weather: weather)
-			let report = WeatherReport(location: location, locality: locality, currentWeather: current, windows: windows)
+                do {
+                        let weather = try await weatherService.weather(for: location)
+                        let current = WeatherType(from: weather.currentWeather)
+                        let windows = buildWindows(weather: weather)
+                        let sunEvents = buildSunEvents(weather: weather)
+                        let report = WeatherReport(location: location, locality: locality, currentWeather: current, windows: windows, sunEvents: sunEvents)
 
 			// Update memory + persistence
 			currentWeatherReport = report
@@ -190,11 +198,11 @@ final class WeatherService: ObservableObject {
 		return .sunny
 	}
 
-	private func mergeAdjacentWindows(_ windows: [WeatherWindow]) -> [WeatherWindow] {
-		guard !windows.isEmpty else { return [] }
-		var merged: [WeatherWindow] = []
-		var current = windows[0]
-		for window in windows.dropFirst() {
+        private func mergeAdjacentWindows(_ windows: [WeatherWindow]) -> [WeatherWindow] {
+                guard !windows.isEmpty else { return [] }
+                var merged: [WeatherWindow] = []
+                var current = windows[0]
+                for window in windows.dropFirst() {
 			if window.weather == current.weather && window.startDate <= current.endDate.addingTimeInterval(60) {
 				current = WeatherWindow(
 					id: current.id,
@@ -206,40 +214,57 @@ final class WeatherService: ObservableObject {
 				merged.append(current)
 				current = window
 			}
-		}
-		merged.append(current)
-		return merged
-	}
+                }
+                merged.append(current)
+                return merged
+        }
 
-	// MARK: - Fallback
-	private func fallbackReport(locality: String?) -> WeatherReport {
+        private func buildSunEvents(weather: Weather) -> [Date: SunTimes] {
+                let calendar = TimeZoneManager.shared.calendar
+                let daily = weather.dailyForecast.forecast
+                var events: [Date: SunTimes] = [:]
+                for day in daily {
+                        if let sunrise = day.sun?.sunrise, let sunset = day.sun?.sunset {
+                                let key = calendar.startOfDay(for: sunrise)
+                                events[key] = SunTimes(sunrise: sunrise, sunset: sunset)
+                        }
+                }
+                return events
+        }
+
+        // MARK: - Fallback
+        private func fallbackReport(locality: String?) -> WeatherReport {
 		let now = Date()
-		let calendar = Calendar.current
+                let calendar = TimeZoneManager.shared.calendar
 		let startOfDay = calendar.startOfDay(for: now)
-		let windows = [
-			WeatherWindow(startDate: startOfDay,
-						  endDate: calendar.date(byAdding: .hour, value: 5, to: startOfDay) ?? startOfDay.addingTimeInterval(18_000),
-						  weather: .sunny),
-			WeatherWindow(startDate: calendar.date(byAdding: .hour, value: 5, to: startOfDay) ?? startOfDay.addingTimeInterval(18_000),
-						  endDate: calendar.date(byAdding: .hour, value: 12, to: startOfDay) ?? startOfDay.addingTimeInterval(43_200),
-						  weather: .cloudy),
-			WeatherWindow(startDate: calendar.date(byAdding: .hour, value: 12, to: startOfDay) ?? startOfDay.addingTimeInterval(43_200),
-						  endDate: calendar.date(byAdding: .hour, value: 18, to: startOfDay) ?? startOfDay.addingTimeInterval(64_800),
-						  weather: .rainy)
-		]
-		return WeatherReport(location: nil, locality: locality, currentWeather: .sunny, windows: windows)
-	}
+                let windows = [
+                        WeatherWindow(startDate: startOfDay,
+                                                  endDate: calendar.date(byAdding: .hour, value: 5, to: startOfDay) ?? startOfDay.addingTimeInterval(18_000),
+                                                  weather: .sunny),
+                        WeatherWindow(startDate: calendar.date(byAdding: .hour, value: 5, to: startOfDay) ?? startOfDay.addingTimeInterval(18_000),
+                                                  endDate: calendar.date(byAdding: .hour, value: 12, to: startOfDay) ?? startOfDay.addingTimeInterval(43_200),
+                                                  weather: .cloudy),
+                        WeatherWindow(startDate: calendar.date(byAdding: .hour, value: 12, to: startOfDay) ?? startOfDay.addingTimeInterval(43_200),
+                                                  endDate: calendar.date(byAdding: .hour, value: 18, to: startOfDay) ?? startOfDay.addingTimeInterval(64_800),
+                                                  weather: .rainy)
+                ]
+                let sunrise = calendar.date(bySettingHour: 6, minute: 30, second: 0, of: startOfDay) ?? startOfDay.addingTimeInterval(23_400)
+                let sunset = calendar.date(bySettingHour: 18, minute: 30, second: 0, of: startOfDay) ?? startOfDay.addingTimeInterval(66_600)
+                let events = [startOfDay: SunTimes(sunrise: sunrise, sunset: sunset)]
+                return WeatherReport(location: nil, locality: locality, currentWeather: .sunny, windows: windows, sunEvents: events)
+        }
 
 	// MARK: - Persistence (Snapshot <-> Domain)
 	private func persistToDisk(_ report: WeatherReport) {
-		let snap = WeatherReportSnapshot(
-			latitude: report.location?.coordinate.latitude,
-			longitude: report.location?.coordinate.longitude,
-			locality: report.locality,
-			current: report.currentWeather.rawValue,
-			windows: report.windows.map { WeatherWindowSnapshot(startDate: $0.startDate, endDate: $0.endDate, weather: $0.weather.rawValue) },
-			timestamp: Date()
-		)
+                let snap = WeatherReportSnapshot(
+                        latitude: report.location?.coordinate.latitude,
+                        longitude: report.location?.coordinate.longitude,
+                        locality: report.locality,
+                        current: report.currentWeather.rawValue,
+                        windows: report.windows.map { WeatherWindowSnapshot(startDate: $0.startDate, endDate: $0.endDate, weather: $0.weather.rawValue) },
+                        sunEvents: report.sunEvents.map { SunEventSnapshot(day: $0.key, sunrise: $0.value.sunrise, sunset: $0.value.sunset) },
+                        timestamp: Date()
+                )
 		do {
 			let data = try JSONEncoder().encode(snap)
 			UserDefaults.standard.set(data, forKey: cacheKey)
@@ -259,12 +284,17 @@ final class WeatherService: ObservableObject {
 				}
 				return nil
 			}()
-			let report = WeatherReport(
-				location: loc,
-				locality: snap.locality,
-				currentWeather: WeatherType(rawValue: snap.current) ?? .cloudy,
-				windows: snap.windows.map { WeatherWindow(startDate: $0.startDate, endDate: $0.endDate, weather: WeatherType(rawValue: $0.weather) ?? .cloudy) }
-			)
+                        let cal = TimeZoneManager.shared.calendar
+                        let sunEvents = Dictionary(uniqueKeysWithValues: (snap.sunEvents ?? []).map { snapshot in
+                                (cal.startOfDay(for: snapshot.day), SunTimes(sunrise: snapshot.sunrise, sunset: snapshot.sunset))
+                        })
+                        let report = WeatherReport(
+                                location: loc,
+                                locality: snap.locality,
+                                currentWeather: WeatherType(rawValue: snap.current) ?? .cloudy,
+                                windows: snap.windows.map { WeatherWindow(startDate: $0.startDate, endDate: $0.endDate, weather: WeatherType(rawValue: $0.weather) ?? .cloudy) },
+                                sunEvents: sunEvents
+                        )
 			currentWeatherReport = report
 			lastFetchAt = snap.timestamp
 			if let lat = snap.latitude, let lon = snap.longitude {

@@ -74,7 +74,7 @@ struct ShopView: View {
                     .foregroundStyle(Color.accentColor)
             }
 
-            Text("关系 +\(item.BondingBoost) · 饱食 +\(item.hungerBoost)")
+            Text("关系 +\(item.BondingBoost)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -133,7 +133,7 @@ struct ShopView: View {
 
     private func handlePurchase(_ item: Item) {
         if appModel.purchase(item: item) {
-            alertMessage = "已兑换：\(item.name)\n关系 +\(item.BondingBoost) · 饱食 +\(item.hungerBoost)\n消耗能量 \(item.costEnergy)"
+            alertMessage = "已兑换：\(item.name)\n关系 +\(item.BondingBoost)\n消耗能量 \(item.costEnergy)"
             purchaseToast = ("能量 -\(item.costEnergy)", .now)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                 if case let (_, timestamp)? = purchaseToast,

@@ -23,8 +23,8 @@ struct ContentView: View {
     private func initializeAppModelIfNeeded() async {
         guard appModel == nil else { return }
         let viewModel = AppViewModel(modelContext: modelContext)
-        appModel = viewModel
         await viewModel.load()
+        appModel = viewModel
     }
 }
 
@@ -54,10 +54,10 @@ struct MainTabView: View {
 				.environmentObject(appModel)
 		}
 		.interactiveDismissDisabled(true)
-		.alert("早点休息哦", isPresented: $appModel.showSleepReminder) {
-			Button("知道了", role: .cancel) { appModel.showSleepReminder = false }
-		} message: {
-			Text("已经很晚啦，Lumio建议你早点休息，明天再来哦。")
-		}
-	}
+                .alert("早点休息哦", isPresented: $appModel.showSleepReminder) {
+                        Button("知道了", role: .cancel) { appModel.dismissSleepReminder() }
+                } message: {
+                        Text("已经很晚啦，Lumio建议你早点休息，明天再来哦。")
+                }
+        }
 }

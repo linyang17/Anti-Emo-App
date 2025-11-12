@@ -19,20 +19,32 @@ struct WeatherWindow: Identifiable, Sendable, Hashable {
     }
 }
 
+struct SunTimes: Sendable, Hashable {
+    let sunrise: Date
+    let sunset: Date
+}
+
 struct WeatherReport: Sendable {
     let location: CLLocation?
     let locality: String?
     let currentWeather: WeatherType
     let windows: [WeatherWindow]
+    let sunEvents: [Date: SunTimes]
 
-    init(location: CLLocation?, locality: String?, currentWeather: WeatherType, windows: [WeatherWindow]) {
+    init(location: CLLocation?, locality: String?, currentWeather: WeatherType, windows: [WeatherWindow], sunEvents: [Date: SunTimes]) {
         self.location = location
         self.locality = locality
         self.currentWeather = currentWeather
         self.windows = windows
+        self.sunEvents = sunEvents
     }
 
     func window(at date: Date) -> WeatherWindow? {
         windows.first { $0.contains(date) }
+    }
+
+    func sunTimes(for date: Date, calendar: Calendar) -> SunTimes? {
+        let day = calendar.startOfDay(for: date)
+        return sunEvents[day]
     }
 }

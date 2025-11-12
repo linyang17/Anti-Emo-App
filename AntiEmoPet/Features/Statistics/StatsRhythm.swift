@@ -34,11 +34,11 @@ struct StatsRhythmSection: View {
 		.onReceive(appModel.$todayTasks) { _ in refreshRhythms() }
 	}
 
-	private func refreshRhythms() {
-		Task(priority: .userInitiated) {
-			await analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks)
-		}
-	}
+        private func refreshRhythms() {
+                Task(priority: .userInitiated) {
+                        await analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks, sunEvents: appModel.weatherReport?.sunEvents ?? [:])
+                }
+        }
 
 	// MARK: - 时段图
 	@ViewBuilder
