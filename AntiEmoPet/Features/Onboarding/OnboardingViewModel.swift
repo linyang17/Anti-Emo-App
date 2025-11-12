@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-internal import CoreLocation
+import CoreLocation
 
 @MainActor
 final class OnboardingViewModel: ObservableObject {

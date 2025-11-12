@@ -43,7 +43,7 @@ struct PetView: View {
         if let pet = appModel.pet {
             VStack(alignment: .leading, spacing: 24) {
                 topBar
-                Spacer(minLength: 24)
+                Spacer(minLength: 8)
                 petStage(for: pet)
             }
             .padding(.horizontal, 24)
@@ -78,9 +78,9 @@ struct PetView: View {
 
             Spacer()
 
-            NavigationLink(destination: OtherView().environmentObject(appModel)) {
-                Image(systemName: "arrow.turn.up.left")
-                    .font(.system(size: 20, weight: .semibold))
+            NavigationLink(destination: MoreView().environmentObject(appModel)) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 20, weight: .bold))
                     .padding(8)
                     .foregroundStyle(.white)
             }
@@ -92,7 +92,7 @@ struct PetView: View {
 		Image(viewModel.screenState.petAsset)
 			.resizable()
 			.scaledToFit()
-			.frame(maxHeight: 280)
+			.frame(maxHeight: 240)
 			.shadow(color: .black.opacity(0.2), radius: 15, x: 5, y: 5)
 		
         .frame(maxWidth: .infinity)

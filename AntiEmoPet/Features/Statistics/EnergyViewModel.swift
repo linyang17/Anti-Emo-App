@@ -132,21 +132,26 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
         let trend: TrendDirection = score > 0 ? .up : (score < 0 ? .down : .flat)
 
-        let comment: String = {
-            var parts: [String] = []
-            switch trend {
-            case .up: parts.append("最近能量在上升，做得很棒！")
-            case .down: parts.append("最近能量略有下降，注意休息恢复哦。")
-            case .flat: parts.append("能量水平保持稳定。")
-            }
-            parts.append("今日 +\(todayAdd) / -\(todayDeduct)")
-            if let metrics {
-                let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
-                let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
-                parts.append("近\(days)天完成任务 \(totalTasks) 次，互动 \(totalInteractions) 次")
-            }
-            return parts.joined(separator: " · ")
-        }()
+		let comment: String = {
+			var parts: [String] = []
+
+			if let metrics {
+				let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
+				let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
+				parts.append("近\(days)天你完成了 \(totalTasks) 个任务，和Lumio互动了 \(totalInteractions) 次")
+			}
+
+			switch trend {
+			case .up:
+				parts.append("最近能量在上升，做得很棒！")
+			case .down:
+				parts.append("最近能量略有下降，注意休息恢复哦。")
+			case .flat:
+				parts.append("能量水平保持稳定。")
+			}
+
+			return parts.joined(separator: "\n")
+		}()
 
         return EnergySummary(
             lastEnergy: last.totalEnergy,

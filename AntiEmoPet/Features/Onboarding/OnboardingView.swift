@@ -1,6 +1,6 @@
 import SwiftUI
 import UIKit
-internal import CoreLocation
+import CoreLocation
 
 struct OnboardingView: View {
 	@StateObject private var viewModel = OnboardingViewModel()
@@ -27,7 +27,7 @@ struct OnboardingView: View {
 				.ignoresSafeArea()
 
 			VStack {
-				Spacer(minLength: 80)
+				Spacer(minLength: 50)
 
 				VStack(spacing: 24) {
 					stepContent
@@ -74,21 +74,28 @@ struct OnboardingView: View {
 		} message: {
 			Text("后续任务将无法根据你当前的天气情况生成")
 		}
-		.onChange(of: locationService.authorizationStatus, perform: handleLocationAuthorizationChange)
-		.onChange(of: locationService.lastKnownCity) { city in
-			if let city {
+		.onChange(of: locationService.authorizationStatus) { oldValue, newValue in
+			handleLocationAuthorizationChange(newValue)
+		}
+		.onChange(of: locationService.lastKnownCity) { _, newCity in
+			if let city = newCity {
 				viewModel.region = city
 			}
 		}
-		.onChange(of: locationService.weatherPermissionGranted) { granted in
+		.onChange(of: locationService.weatherPermissionGranted) { _, granted in
 			viewModel.setWeatherPermission(granted)
 		}
-		.onAppear {
+		.task {
 			viewModel.updateLocationStatus(locationService.authorizationStatus)
 			if let city = locationService.lastKnownCity {
 				viewModel.region = city
 			}
 			viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
+		}
+		.onChange(of: step) { _, newStep in
+			if newStep == .access {
+				viewModel.updateLocationStatus(locationService.authorizationStatus)
+			}
 		}
 		.background(NavigationGestureDisabler(isDisabled: true))
 	}
@@ -302,13 +309,25 @@ private extension OnboardingView {
 	}
 }
 
-private struct IntroStepView: View {
+
+struct LumioSay: View {
+	let text: String
+
 	var body: some View {
-		Text("Hey! I'm Lumio, another fox from the little prince's planet.")
-			.font(.title2.weight(.semibold))
+		Text(text)
+			.font(.system(.title2, design: .rounded).weight(.semibold))
 			.multilineTextAlignment(.center)
 			.foregroundStyle(.white)
+			.shadow(color: .black.opacity(0.3), radius: 6, x: 2, y: 2)
+			.shadow(color: .cyan.opacity(0.2), radius: 6, x: 1, y: 1)
 			.padding(.horizontal, 8)
+	}
+}
+
+
+private struct IntroStepView: View {
+	var body: some View {
+		LumioSay(text: "Hey! I'm Lumio, \n another fox from \n the little prince's planet.")
 	}
 }
 
@@ -319,10 +338,7 @@ private struct NameStepView: View {
 
 	var body: some View {
 		VStack(spacing: 24) {
-			Text("My lovely new friend, what shall I call you?")
-				.font(.title2.weight(.semibold))
-				.multilineTextAlignment(.center)
-				.foregroundStyle(.white)
+			LumioSay(text: "My lovely new friend, what shall I call you?")
 
 			TextField("Type here…", text: $nickname)
 				.padding(.vertical, 14)
@@ -353,9 +369,7 @@ private struct GenderStepView: View {
 
 	var body: some View {
 		VStack(spacing: 24) {
-			Text("And you are…")
-				.font(.title2.weight(.semibold))
-				.foregroundStyle(.white)
+			LumioSay(text: "And you are…")
 
 			HStack(spacing: 16) {
 				ForEach(genderOptions) { option in
@@ -363,9 +377,8 @@ private struct GenderStepView: View {
 						selectedGender = option
 					} label: {
 						Text(option.displayName)
-							.fontWeight(.medium)
-							.frame(maxWidth: .infinity)
-							.padding(.vertical, 14)
+							.font(.system(size: 15, weight: .medium, design: .rounded))
+							.frame(width: 70, height: 40)
 							.background(
 								RoundedRectangle(cornerRadius: 18, style: .continuous)
 									.fill(backgroundColor(for: option))
@@ -383,7 +396,7 @@ private struct GenderStepView: View {
 	}
 
 	private func backgroundColor(for option: OnboardingViewModel.GenderOption) -> Color {
-		option == selectedGender ? Color.white.opacity(0.25) : Color.white.opacity(0.12)
+		option == selectedGender ? Color.black.opacity(0.2) : Color.white.opacity(0.12)
 	}
 }
 
@@ -407,13 +420,10 @@ private struct AccessStepView: View {
 
 	var body: some View {
 		VStack(spacing: 16) {
-			Text("I'd like to know your local weather to personalise my message when I think of you.")
-				.font(.title2.weight(.semibold))
-				.multilineTextAlignment(.center)
-				.foregroundStyle(.white)
+			LumioSay(text: "I'd like to know \n your local weather to \n personalise my message \n when I think of you.")
 
 			if !region.isEmpty {
-				Text("当前定位：\(region)")
+				Text("Default：\(region)")
 					.font(.footnote)
 					.foregroundStyle(.white.opacity(0.8))
 			}
@@ -450,7 +460,7 @@ private struct BirthdayPicker: View {
 
 	var body: some View {
 		HStack(spacing: 16) {
-			selectionMenu(title: "Year", display: String(year)) {
+			selectionMenu(display: String(year)) {
 				ForEach(years.reversed(), id: \.self) { value in
 					Button(String(value)) {
 						year = value
@@ -459,7 +469,7 @@ private struct BirthdayPicker: View {
 				}
 			}
 
-			selectionMenu(title: "Month", display: monthTitle(for: month)) {
+			selectionMenu(display: monthTitle(for: month)) {
 				ForEach(months, id: \.self) { value in
 					Button(monthTitle(for: value)) {
 						month = value
@@ -468,7 +478,7 @@ private struct BirthdayPicker: View {
 				}
 			}
 
-			selectionMenu(title: "Day", display: String(format: "%02d", day)) {
+			selectionMenu(display: String(format: "%02d", day)) {
 				ForEach(daysInMonth(), id: \.self) { value in
 					Button(String(format: "%02d", value)) {
 						day = value
@@ -494,21 +504,15 @@ private struct BirthdayPicker: View {
 	}
 
 	private func selectionMenu<Content: View>(
-		title: String,
 		display: String,
 		@ViewBuilder content: () -> Content
 	) -> some View {
 		Menu {
 			content()
 		} label: {
-			VStack(spacing: 4) {
-				Text(display)
-					.font(.headline)
-					.foregroundStyle(.white)
-				Text(title)
-					.font(.caption2)
-					.foregroundStyle(.white.opacity(0.7))
-			}
+			Text(display)
+				.font(.headline)
+				.foregroundStyle(.white)
 			.frame(maxWidth: .infinity)
 			.padding(.vertical, 14)
 			.background(
