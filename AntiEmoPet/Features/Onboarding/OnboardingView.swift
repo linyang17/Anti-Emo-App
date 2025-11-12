@@ -62,14 +62,10 @@ struct OnboardingView: View {
 		.ignoresSafeArea()
 		.alert("无法获取定位", isPresented: $showLocationDeniedAlert) {
 			Button("前往设置") {
-				isProcessingFinalStep = false
+				isProcessingFinalStep = true
 				if let url = URL(string: UIApplication.openSettingsURLString) {
 					openURL(url)
 				}
-			}
-			Button("继续", role: .cancel) {
-				viewModel.enableLocationAndWeather = false
-				finishOnboarding(shareLocation: false)
 			}
 		} message: {
 			Text("后续任务将无法根据你当前的天气情况生成")
@@ -78,8 +74,8 @@ struct OnboardingView: View {
 			handleLocationAuthorizationChange(newValue)
 		}
 		.onChange(of: locationService.lastKnownCity) { _, newCity in
-			if let city = newCity {
-				viewModel.region = city
+			if !newCity.isEmpty {
+				viewModel.region = newCity
 			}
 		}
 		.onChange(of: locationService.weatherPermissionGranted) { _, granted in
@@ -87,8 +83,8 @@ struct OnboardingView: View {
 		}
 		.task {
 			viewModel.updateLocationStatus(locationService.authorizationStatus)
-			if let city = locationService.lastKnownCity {
-				viewModel.region = city
+			if !locationService.lastKnownCity.isEmpty {
+				viewModel.region = locationService.lastKnownCity
 			}
 			viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
 		}
@@ -134,7 +130,7 @@ private extension OnboardingView {
 		case .birthday:
 			BirthdayStepView(selectedDate: $viewModel.birthday)
 		case .access:
-			AccessStepView(region: viewModel.region, isRequesting: isProcessingFinalStep)
+			AccessStepView(isRequesting: isProcessingFinalStep)
 		}
 	}
 
@@ -158,7 +154,11 @@ private extension OnboardingView {
 		guard canAdvance else { return }
 		switch step {
 		case .access:
-			handleFinalStep()
+			// 点击箭头触发定位授权
+			isProcessingFinalStep = true
+			viewModel.enableLocationAndWeather = true
+			locationService.requestAuthorization()
+			return
 		default:
 			if let next = step.next {
 				withAnimation(.easeInOut) {
@@ -199,18 +199,17 @@ private extension OnboardingView {
 		switch status {
 		case .authorizedAlways, .authorizedWhenInUse:
 			isProcessingFinalStep = true
-			locationService.startUpdating()
+			locationService.requestLocationOnce()
 			requestWeatherAndNotifications()
 		case .denied, .restricted:
-			viewModel.enableLocationAndWeather = false
-			isProcessingFinalStep = false
+			isProcessingFinalStep = true
 			showLocationDeniedAlert = true
 		case .notDetermined:
 			isProcessingFinalStep = true
-			locationService.requestAuthorization()
+			showLocationDeniedAlert = true
 		@unknown default:
 			isProcessingFinalStep = true
-			locationService.requestAuthorization()
+			showLocationDeniedAlert = true
 		}
 	}
 
@@ -221,13 +220,13 @@ private extension OnboardingView {
 		case .authorizedAlways, .authorizedWhenInUse:
 			if viewModel.enableLocationAndWeather {
 				isProcessingFinalStep = true
-				locationService.startUpdating()
+				locationService.requestLocationOnce()
 				requestWeatherAndNotifications()
 			}
 		case .denied, .restricted:
 			if viewModel.enableLocationAndWeather {
 				viewModel.enableLocationAndWeather = false
-				isProcessingFinalStep = false
+				isProcessingFinalStep = true
 				showLocationDeniedAlert = true
 			}
 		case .notDetermined:
@@ -277,7 +276,8 @@ private extension OnboardingView {
 			region: trimmedRegion,
 			shareLocation: shareLocation,
 			gender: viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue,
-			birthday: viewModel.birthday
+			birthday: viewModel.birthday,
+			Onboard: true
 		)
 	}
 
@@ -379,10 +379,6 @@ private struct GenderStepView: View {
 						Text(option.displayName)
 							.font(.system(size: 15, weight: .medium, design: .rounded))
 							.frame(width: 70, height: 40)
-							.background(
-								RoundedRectangle(cornerRadius: 18, style: .continuous)
-									.fill(backgroundColor(for: option))
-							)
 							.overlay(
 								RoundedRectangle(cornerRadius: 18, style: .continuous)
 									.stroke(Color.white.opacity(0.9), lineWidth: option == selectedGender ? 1.5 : 0.8)
@@ -415,18 +411,11 @@ private struct BirthdayStepView: View {
 }
 
 private struct AccessStepView: View {
-	var region: String
 	var isRequesting: Bool
 
 	var body: some View {
 		VStack(spacing: 16) {
 			LumioSay(text: "I'd like to know \n your local weather to \n personalise my message \n when I think of you.")
-
-			if !region.isEmpty {
-				Text("Default：\(region)")
-					.font(.footnote)
-					.foregroundStyle(.white.opacity(0.8))
-			}
 
 			if isRequesting {
 				ProgressView()
@@ -468,6 +457,7 @@ private struct BirthdayPicker: View {
 					}
 				}
 			}
+			.frame(width: 80, height: 40)
 
 			selectionMenu(display: monthTitle(for: month)) {
 				ForEach(months, id: \.self) { value in
@@ -477,6 +467,7 @@ private struct BirthdayPicker: View {
 					}
 				}
 			}
+			.frame(width: 60, height: 40)
 
 			selectionMenu(display: String(format: "%02d", day)) {
 				ForEach(daysInMonth(), id: \.self) { value in
@@ -486,6 +477,7 @@ private struct BirthdayPicker: View {
 					}
 				}
 			}
+			.frame(width: 60, height: 40)
 		}
 	}
 

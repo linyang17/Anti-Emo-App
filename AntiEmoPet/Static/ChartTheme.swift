@@ -83,7 +83,7 @@ final class AnimatedChartData<T: Identifiable & Equatable>: ObservableObject {
 	private func zeroed(_ data: [T]) -> [T] {
 		return data.map { item in
 			if let mirror = Mirror(reflecting: item).children.first(where: { $0.value is Double }) {
-				var copy = item
+				_ = item
 				let mirrorValue = Mirror(reflecting: item)
 				var dict = Dictionary(uniqueKeysWithValues: mirrorValue.children.map { ($0.label ?? "", $0.value) })
 				if let label = mirror.label {

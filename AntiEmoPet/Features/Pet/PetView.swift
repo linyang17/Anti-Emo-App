@@ -92,7 +92,7 @@ struct PetView: View {
 		Image(viewModel.screenState.petAsset)
 			.resizable()
 			.scaledToFit()
-			.frame(maxHeight: 240)
+			.frame(maxHeight: 260)
 			.shadow(color: .black.opacity(0.2), radius: 15, x: 5, y: 5)
 		
         .frame(maxWidth: .infinity)
@@ -126,7 +126,6 @@ struct PetView: View {
 
     private var taskButton: some View {
         VStack {
-            Spacer()
             Button {
                 activeSheet = .tasks
             } label: {
