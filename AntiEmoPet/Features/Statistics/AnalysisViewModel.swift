@@ -32,7 +32,7 @@ final class AnalysisViewModel: ObservableObject {
     @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
 
     // MARK: - Unified Wrapper Function
-    func rhythmAnalysis(for entries: [MoodEntry], tasks: [UserTask]) -> (
+    func rhythmAnalysis(for entries: [MoodEntry], tasks: [UserTask], sunEvents: [Date: SunTimes]) -> (
         timeSlot: [TimeSlot: Double],
         weather: [WeatherType: Double],
         daylight: String,
@@ -40,7 +40,7 @@ final class AnalysisViewModel: ObservableObject {
     ) {
         let slot = timeSlotMoodAverages(entries: entries)
         let weather = weatherMoodAverages(entries: entries, tasks: tasks)
-        let daylightBuckets = daylightMoodAverages(entries: entries)
+        let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: sunEvents)
         let text = daylightCorrelationText(slotAverages: slot)
 
         timeSlotAverages = slot
@@ -130,15 +130,25 @@ final class AnalysisViewModel: ObservableObject {
     }
 
     // 日间平均情绪
-    private func daylightMoodAverages(entries: [MoodEntry]) -> [DayPeriod: Double] {
+    private func daylightMoodAverages(entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> [DayPeriod: Double] {
         guard !entries.isEmpty else { return [:] }
 
         var accumulator: [DayPeriod: (sum: Int, count: Int)] = [:]
         for entry in entries {
-            let slot = TimeSlot.from(date: entry.date, using: cal)
-            let period: DayPeriod = switch slot {
-            case .morning, .afternoon: .daylight
-            case .evening, .night: .night
+            let day = cal.startOfDay(for: entry.date)
+            let period: DayPeriod
+            if let sun = sunEvents[day] {
+                if entry.date >= sun.sunrise && entry.date < sun.sunset {
+                    period = .daylight
+                } else {
+                    period = .night
+                }
+            } else {
+                let slot = TimeSlot.from(date: entry.date, using: cal)
+                period = switch slot {
+                case .morning, .afternoon: .daylight
+                case .evening, .night: .night
+                }
             }
 
             var bucket = accumulator[period] ?? (0, 0)

@@ -3,6 +3,7 @@ import Combine
 
 @MainActor
 final class TasksViewModel: ObservableObject {
+    @Published var isRefreshing = false
 
 
     func subtitle(for task: UserTask) -> String {
@@ -14,6 +15,9 @@ final class TasksViewModel: ObservableObject {
     }
 
     func forceRefresh(appModel: AppViewModel) async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
         let pending = appModel.todayTasks.filter { $0.status == .pending }
         let retained = pending.randomElement()
         await appModel.refreshTasks(retaining: retained)

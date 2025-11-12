@@ -20,7 +20,6 @@ final class Pet: Identifiable {
     @Attribute(.unique) var id: UUID
     var name: String
     var bonding: PetBonding
-    var hunger: Int
     var level: Int
     var xp: Int
     var decorations: [String]
@@ -29,7 +28,6 @@ final class Pet: Identifiable {
         id: UUID = UUID(),
         name: String,
         bonding: PetBonding = .calm,
-        hunger: Int = 60,
         level: Int = 1,
         xp: Int = 0,
         decorations: [String] = []
@@ -37,7 +35,6 @@ final class Pet: Identifiable {
         self.id = id
         self.name = name
         self.bonding = bonding
-        self.hunger = hunger
         self.level = level
         self.xp = xp
         self.decorations = decorations
