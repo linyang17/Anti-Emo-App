@@ -121,7 +121,7 @@ final class AppViewModel: ObservableObject {
 
         scheduleTaskNotifications()
 
-        showOnboarding = (userStats?.nickname ?? "").isEmpty
+        showOnboarding = !(userStats?.Onboard ?? false)
         isLoading = false
 
         dailyMetricsCache = makeDailyActivityMetrics(days: 7)
@@ -188,13 +188,15 @@ final class AppViewModel: ObservableObject {
         region: String,
         shareLocation: Bool,
         gender: String,
-        birthday: Date?
+        birthday: Date?,
+		Onboard: Bool
     ) {
         userStats?.nickname = nickname
         userStats?.region = region
         userStats?.shareLocationAndWeather = shareLocation
         userStats?.gender = gender
         userStats?.birthday = birthday
+		userStats?.Onboard = true
         storage.persist()
         showOnboarding = false
         if shareLocation {
@@ -278,7 +280,7 @@ final class AppViewModel: ObservableObject {
 
     private func logTodayEnergySnapshot() {
         guard userStats != nil else { return }
-        let calendar = TimeZoneManager.shared.calendar
+		_ = TimeZoneManager.shared.calendar
         // Always append a new entry with exact timestamp Date()
         let entry = EnergyHistoryEntry(date: Date(), totalEnergy: totalEnergy)
         energyHistory.append(entry)
@@ -357,7 +359,6 @@ final class AppViewModel: ObservableObject {
     }
 
     func beginLocationUpdates() {
-        locationService.requestAuthorization()
         locationService.startUpdating()
     }
 
@@ -403,7 +404,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func refreshWeather(using location: CLLocation?) async {
-        let locality = locationService.lastKnownCity ?? userStats?.region
+		let locality = locationService.lastKnownCity
         let report = await weatherService.fetchWeather(for: location, locality: locality)
         weatherReport = report
         weather = report.currentWeather

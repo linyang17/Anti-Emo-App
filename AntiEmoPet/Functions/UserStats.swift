@@ -35,6 +35,7 @@ final class UserStats: Identifiable {
     var shareLocationAndWeather: Bool
     var gender: String
     var birthday: Date?
+	var Onboard: Bool
 
     init(
         id: UUID = UUID(),
@@ -48,7 +49,8 @@ final class UserStats: Identifiable {
         notificationsEnabled: Bool = false,
         shareLocationAndWeather: Bool = false,
         gender: String = GenderIdentity.unspecified.rawValue,
-        birthday: Date? = nil
+        birthday: Date? = nil,
+		Onboard: Bool = false
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
@@ -62,5 +64,6 @@ final class UserStats: Identifiable {
         self.shareLocationAndWeather = shareLocationAndWeather
         self.gender = gender
         self.birthday = birthday
+		self.Onboard = Onboard
     }
 }
