@@ -1,0 +1,86 @@
+import SwiftUI
+
+struct OnboardingArrowButton: View {
+    let isEnabled: Bool
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                circleFill
+
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                } else {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 24, weight: .semibold))
+						.foregroundStyle(Color.white.opacity(0.8))
+                }
+            }
+            .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled || isLoading)
+        .opacity(isEnabled ? 1 : 0.6)
+        .animation(.easeInOut(duration: 0.2), value: isEnabled)
+        .accessibilityLabel("下一步")
+    }
+
+	private var circleFill: some View {
+		ZStack {
+			// 背景磨砂玻璃
+			Circle()
+				.fill(.ultraThinMaterial)
+				.blur(radius: 0.5)
+				.overlay(
+					LinearGradient(
+						colors: [
+							Color.white.opacity(0.5),
+							Color.white.opacity(0.15)
+						],
+						startPoint: .topLeading,
+						endPoint: .bottomTrailing
+					)
+				)
+				.overlay(
+					AngularGradient(
+						gradient: Gradient(colors: [
+							.white.opacity(0.12),
+							.clear,
+							.cyan.opacity(0.12),
+							.clear,
+							.purple.opacity(0.1)
+						]),
+						center: .center
+					)
+					.blendMode(.plusLighter)
+					.blur(radius: 4)
+				)
+				.shadow(color: glowColor.opacity(isEnabled && !isLoading ? 0.5 : 0.1),
+						radius: isEnabled && !isLoading ? 12 : 3,
+						x: 0, y: 4)
+
+			Circle()
+				.fill(
+					LinearGradient(
+						colors: isEnabled && !isLoading
+						? [Color.white.opacity(0.3), Color.white.opacity(0.15)]
+						: [Color.white.opacity(0.2), Color.white.opacity(0.08)],
+						startPoint: .top,
+						endPoint: .bottom
+					)
+				)
+				.blendMode(.softLight)
+		}
+	}
+	
+	private var glowColor: Color {
+		if isEnabled && !isLoading {
+			return Color.cyan.opacity(0.2)
+		} else {
+			return Color.gray.opacity(0.4)
+		}
+	}
+}

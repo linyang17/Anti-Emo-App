@@ -25,13 +25,13 @@ struct StatisticsOverviewSection: View {
 
 					// 打卡情况：天数 & 总记录数
 					VStack(alignment: .leading, spacing: 4) {
-						Text("已记录天数")
+						Text("记录天数")
 							.font(.caption2)
 							.foregroundStyle(.secondary)
 						Text("\(mood.uniqueDayCount) 天")
 							.font(.subheadline.weight(.medium))
 
-						Text("情绪记录总数")
+						Text("情绪记录")
 							.font(.caption2)
 							.foregroundStyle(.secondary)
 						Text("\(mood.entriesCount) 条")

@@ -15,10 +15,10 @@ final class EnergyStatisticsViewModel: ObservableObject {
         let todayAdd: Int
         let todayDeduct: Int
         let todayDelta: Int
-        let averageDailyAddPastWeek: Double
-        let averageDailyUsePastWeek: Double
-        let averageToday: Double
-        let averagePastWeek: Double
+        let averageDailyAddPastWeek: Int
+        let averageDailyUsePastWeek: Int
+        let averageToday: Int
+        let averagePastWeek: Int
         let trend: TrendDirection
         let comment: String
 
@@ -37,9 +37,6 @@ final class EnergyStatisticsViewModel: ObservableObject {
         )
     }
 
-    private func rounded(_ value: Double) -> Double {
-        (value * 10).rounded() / 10
-    }
 
     func energySummary(
         from history: [EnergyHistoryEntry],
@@ -78,7 +75,7 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
 
         let todayDelta = todayAdd - todayDeduct
-        let averageToday = countToday > 0 ? rounded(Double(totalToday) / Double(countToday)) : 0.0
+		let averageToday = countToday > 0 ? totalToday / countToday : 0
 
         var addPerDay = [Date: Int]()
         var usePerDay = [Date: Int]()
@@ -104,13 +101,12 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
 
         let dayCount = sumPerDay.count
-        let averageAddWeek = dayCount > 0 ? rounded(Double(addPerDay.values.reduce(0, +)) / Double(dayCount)) : 0.0
-        let averageUseWeek = dayCount > 0 ? rounded(Double(usePerDay.values.reduce(0, +)) / Double(dayCount)) : 0.0
-        let averageWeek = dayCount > 0
-            ? rounded(sumPerDay.values.reduce(0.0) { $0 + Double($1.total) / Double($1.count) } / Double(dayCount))
-            : 0.0
+		let totalSum = sumPerDay.values.reduce(0) { $0 + ($1.total / max($1.count, 1)) }
+		let averageAddWeek = dayCount > 0 ? addPerDay.values.reduce(0, +) / dayCount : 0
+		let averageUseWeek = dayCount > 0 ? usePerDay.values.reduce(0, +) / dayCount : 0
+		let averageWeek = dayCount > 0 ? totalSum / dayCount : 0
 
-        var score = averageToday > averageWeek ? 1 : (averageToday < averageWeek ? -1 : 0)
+        var score = todayAdd > averageAddWeek ? 1 : (todayAdd < averageAddWeek ? -1 : 0)
         if let metrics {
             let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })
             let daysSorted = Array(sumPerDay.keys).sorted()
@@ -136,21 +132,26 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
         let trend: TrendDirection = score > 0 ? .up : (score < 0 ? .down : .flat)
 
-        let comment: String = {
-            var parts: [String] = []
-            switch trend {
-            case .up: parts.append("最近能量在上升，做得很棒！")
-            case .down: parts.append("最近能量略有下降，注意休息恢复哦。")
-            case .flat: parts.append("能量水平保持稳定。")
-            }
-            parts.append("今日 +\(todayAdd) / -\(todayDeduct)")
-            if let metrics {
-                let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
-                let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
-                parts.append("近\(days)天完成任务 \(totalTasks) 次，互动 \(totalInteractions) 次")
-            }
-            return parts.joined(separator: " · ")
-        }()
+		let comment: String = {
+			var parts: [String] = []
+
+			if let metrics {
+				let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
+				let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
+				parts.append("近\(days)天你完成了 \(totalTasks) 个任务，和Lumio互动了 \(totalInteractions) 次")
+			}
+
+			switch trend {
+			case .up:
+				parts.append("最近能量在上升，做得很棒！")
+			case .down:
+				parts.append("最近能量略有下降，注意休息恢复哦。")
+			case .flat:
+				parts.append("能量水平保持稳定。")
+			}
+
+			return parts.joined(separator: "\n")
+		}()
 
         return EnergySummary(
             lastEnergy: last.totalEnergy,

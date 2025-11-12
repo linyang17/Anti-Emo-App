@@ -1,51 +1,50 @@
 import SwiftUI
 
-struct StatsInsights: View {
+struct StatsInsightsSection: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	let mood: MoodStatisticsViewModel.MoodSummary
 	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
-		DashboardCard(title: "小狐狸的观察 / Insights", icon: "sparkles") {
+		DashboardCard(title: "小狐狸的观察", icon: "sparkles") {
 			VStack(alignment: .leading, spacing: 10) {
 
-				// 1️⃣ 情感反馈（来自各自 Summary 的轻量文案）
+				// 情感反馈（来自各自 Summary 的轻量文案）
 				Group {
-                                        Text(mood.comment.isEmpty ? "情绪总结：暂无数据" : "情绪总结：\(mood.comment)")
-                                                .font(.subheadline)
-
-                                        Text(energy.comment.isEmpty ? "能量总结：暂无数据" : "能量总结：\(energy.comment)")
-                                                .font(.subheadline)
+					Text(mood.comment.isEmpty ? "总结：暂无数据" : "总结：\(mood.comment)")
+							.font(.subheadline)
 				}
 
 				Divider()
 
-				// 2️⃣ 关联与交互分析（轻量可解释，无需改数据结构）
+				// 情绪 / 能量的关联与交互分析（轻量可解释，无需改数据结构）
+				/// TODO - 加入statistical analysis和图表
+				
 				VStack(alignment: .leading, spacing: 6) {
-					Text("关联观察 / Correlation & Patterns")
-						.font(.caption)
+					Text("分析")
+						.font(.subheadline)
 						.foregroundStyle(.secondary)
 
 					// 情绪与能量相关感（基于水平与趋势的一致性）
 					Text(moodEnergyCorrelationText(mood: mood, energy: energy))
-						.font(.caption)
+						.font(.subheadline)
 
 					// 能量使用模式：今天是「补充型」还是「透支型」
 					Text(energyUsagePatternText(energy: energy))
-						.font(.caption)
+						.font(.subheadline)
 
 					// 任务完成率与情绪改善（占位说明：可直接接 Task 数据，不需改此 View）
 					Text(taskEffectPlaceholderText())
-						.font(.caption)
+						.font(.subheadline)
 						.foregroundStyle(.secondary)
 
 					// 睡眠 / 活动 等扩展信号（占位说明：未来可对接外部数据源）
 					Text(externalFactorsPlaceholderText())
-						.font(.caption)
+						.font(.subheadline)
 						.foregroundStyle(.secondary)
 				}
 
-				// 3️⃣ 组合建议：根据当前情绪 x 能量给出一条小提示
+				// 组合建议：根据当前情绪 x 能量给出一条小提示
 				if let combined = mood.combinedAdvice(with: energy) {
 					Divider()
 					Text("小提示：\(combined)")
@@ -57,7 +56,7 @@ struct StatsInsights: View {
 	}
 }
 
-private extension StatsInsights {
+private extension StatsInsightsSection {
 	/// 基于情绪 & 能量水平 + 趋势给出「匹配度」描述，模拟情绪与能量相关系数的直觉反馈
 	func moodEnergyCorrelationText(mood: MoodStatisticsViewModel.MoodSummary,
 								   energy: EnergyStatisticsViewModel.EnergySummary) -> String {
@@ -78,7 +77,7 @@ private extension StatsInsights {
 		}
 
 		if energy.todayDelta > 0 {
-			return "今天是偏『补充型』的一天，你有在为自己充值，这是很好的节奏。"
+			return "今天是偏补充的一天，你有在为自己充值，这是很好的节奏。"
 		} else if energy.todayDelta < 0 {
 			return "今天能量略有透支，试试安排一点简单放松或早睡，帮自己补回来。"
 		} else {
@@ -155,14 +154,6 @@ struct StatsEmptyStateSection: View {
 
 
 private extension MoodStatisticsViewModel.MoodSummary {
-	/// 展示用趋势文本（例如 ↑ / ↓ / →）
-	var trendText: String {
-		switch trend {
-		case .up: return "↑"
-		case .down: return "↓"
-		case .flat: return "→"
-		}
-	}
 
 	/// 轻量规则版：后面可无缝替换为 AI 模型，不影响调用方
 	func combinedAdvice(with energy: EnergyStatisticsViewModel.EnergySummary) -> String? {
@@ -171,23 +162,23 @@ private extension MoodStatisticsViewModel.MoodSummary {
 		let energyLevel = energy.averageToday
 
 		// 情绪和能量都低 → 给温和、可执行的小目标
-		if moodLevel <= 4 && energyLevel <= 40 {
-			return "今天有点辛苦，不如先完成一个超小目标（喝水、伸展、晒5分钟太阳），小狐狸只要求你做到一点点就好。"
+		if moodLevel <= 3 && energyLevel <= 30 {
+			return "今天是不是有点累呢？别着急，不如先放松一下，完成一个小任务，或者试试一些轻松的运动活动。"
 		}
 
-		// 情绪低但能量还可以 → 引导把能量用在情绪修复上
-		if moodLevel <= 4 && energyLevel >= 50 {
-			return "你还有一点能量，可以试试做一件平时让你放松的小事，把这点能量投资在自己身上。"
+		// 情绪低但能量高 → 引导把能量用在商店里
+		if moodLevel <= 4 && energyLevel >= 100 {
+			return "你是不是有点不开心呢？要不去商店里给Lumio买个新装扮，或者和它聊一聊，也许能让你心情稍微好一点呢。"
 		}
 
-		// 情绪一般但能量低 → 建议休息与温和补充
+		// 情绪一般但能量低 → 建议温和补充
 		if moodLevel >= 5 && energyLevel <= 30 {
-			return "情绪还可以，但身体有点累，试试早点休息或做一个零压力的小任务补充能量。"
+			return "最近你的心情好像一般，试试早点休息，做一件平时让你放松的小事，多关注自己，给自己一些鼓励吧。"
 		}
 
-		// 情绪和能量都不错
-		if moodLevel >= 6 && energyLevel >= 60 {
-			return "今天状态不错，非常适合完成一个让你有成就感的小任务，顺便为未来的自己多存一点好心情。"
+		// 情绪不错
+		if moodLevel >= 7 {
+			return "看来最近你有在好好生活呢！继续保持哦！"
 		}
 
 		// 其他情况不给多余噪音
@@ -195,13 +186,4 @@ private extension MoodStatisticsViewModel.MoodSummary {
 	}
 }
 
-private extension EnergyStatisticsViewModel.EnergySummary {
-	var trendText: String {
-		switch trend {
-		case .up: return "↑"
-		case .down: return "↓"
-		case .flat: return "→"
-		}
-	}
-}
 
