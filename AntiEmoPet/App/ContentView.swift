@@ -20,7 +20,7 @@ struct ContentView: View {
 		}
 		.fullScreenCover(isPresented: $showWelcome) {
 			if let appModel {
-				FoxWaveStepView {
+				WelcomeView {
 					showWelcome = false
 				}
 				.environmentObject(appModel)

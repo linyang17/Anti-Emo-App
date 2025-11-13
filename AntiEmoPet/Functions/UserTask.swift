@@ -1,32 +1,6 @@
 import Foundation
 import SwiftData
 
-enum WeatherType: String, Codable, CaseIterable, Identifiable {
-    case sunny, cloudy, rainy, snowy, windy
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .sunny: return "sun.max"
-        case .cloudy: return "cloud"
-        case .rainy: return "cloud.rain"
-        case .snowy: return "snow"
-        case .windy: return "wind"
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .sunny: return "晴"
-        case .cloudy: return "多云"
-        case .rainy: return "雨"
-        case .snowy: return "雪"
-        case .windy: return "风"
-        }
-    }
-}
-
 enum TaskDifficulty: String, Codable, CaseIterable {
     case easy, medium, hard
 }
@@ -42,9 +16,9 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .outdoor: return "户外行动"
-        case .indoorDigital: return "室内电子"
-        case .indoorPhysical: return "室内现实"
+        case .outdoor: return "户外"
+        case .indoorDigital: return "刷手机"
+        case .indoorPhysical: return "室内活动"
         case .social: return "社交互动"
         case .petCare: return "宠物互动"
         }

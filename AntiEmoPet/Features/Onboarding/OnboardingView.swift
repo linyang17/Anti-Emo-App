@@ -136,7 +136,7 @@ private extension OnboardingView {
 		case .access:
 			AccessStepView()
 		case .celebration:
-			FoxWaveStepView {
+			WelcomeView {
 					finishOnboarding(shareLocation: true)
 					}
 		}

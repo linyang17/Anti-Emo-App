@@ -5,7 +5,7 @@ struct SettingsView: View {
 
 	var body: some View {
 		List {
-			Section(header: Text("用户信息")) {
+			Section(header: Text("User")) {
 				NavigationLink(destination: ProfileView().environmentObject(appModel)) {
 					Label("Profile", systemImage: "person")
 				}
