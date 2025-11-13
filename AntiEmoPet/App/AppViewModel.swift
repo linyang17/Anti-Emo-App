@@ -174,10 +174,13 @@ final class AppViewModel: ObservableObject {
     }
 
     func purchase(item: Item) -> Bool {
-        guard let stats = userStats else { return false }
+        guard let stats = userStats, let pet else { return false }
         let success = rewardEngine.purchase(item: item, stats: stats)
         guard success else { return false }
         incrementInventory(for: item)
+        petEngine.applyPurchaseReward(pet: pet)
+        storage.persist()
+        objectWillChange.send()
         analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
         logTodayEnergySnapshot()
         return true
@@ -253,6 +256,29 @@ final class AppViewModel: ObservableObject {
     func incrementInventory(for item: Item) {
         storage.incrementInventory(forSKU: item.sku)
         inventory = storage.fetchInventory()
+    }
+
+    func isEquipped(_ item: Item) -> Bool {
+        guard let pet else { return false }
+        return pet.decorations.contains(item.assetName)
+    }
+
+    func equip(item: Item) {
+        guard let pet, !item.assetName.isEmpty else { return }
+        if !pet.decorations.contains(item.assetName) {
+            pet.decorations.append(item.assetName)
+            storage.persist()
+            objectWillChange.send()
+        }
+    }
+
+    func unequip(item: Item) {
+        guard let pet else { return }
+        let countBefore = pet.decorations.count
+        pet.decorations.removeAll { $0 == item.assetName }
+        guard pet.decorations.count != countBefore else { return }
+        storage.persist()
+        objectWillChange.send()
     }
 
     func useItem(sku: String) -> Bool {

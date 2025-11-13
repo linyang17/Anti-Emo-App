@@ -248,6 +248,7 @@ enum DefaultSeeds {
         let sku: String
         let type: ItemType
         let name: String
+        let assetName: String
         let costEnergy: Int
         let BondingBoost: Int
         let hungerBoost: Int
@@ -269,6 +270,7 @@ enum DefaultSeeds {
                     sku: seed.sku,
                     type: seed.type,
                     name: seed.name,
+                    assetName: seed.assetName,
                     costEnergy: seed.costEnergy,
                     BondingBoost: seed.BondingBoost,
                     hungerBoost: seed.hungerBoost

@@ -2,15 +2,31 @@ import Foundation
 import SwiftData
 
 enum ItemType: String, Codable, CaseIterable {
+    case decor
+    case clothing
+    case shoes
     case snack
     case toy
-    case decor
+
+    static var allCases: [ItemType] { [.decor, .clothing, .shoes] }
 
     var icon: String {
         switch self {
+        case .decor: return "paintbrush.pointed"
+        case .clothing: return "tshirt.fill"
+        case .shoes: return "shoeprints.fill"
         case .snack: return "takeoutbag.and.cup.and.straw"
         case .toy: return "puzzlepiece.extension"
-        case .decor: return "paintbrush.pointed"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .decor: return "Decor"
+        case .clothing: return "Clothing"
+        case .shoes: return "Shoes"
+        case .snack: return "Snack"
+        case .toy: return "Toy"
         }
     }
 }
@@ -21,6 +37,7 @@ final class Item: Identifiable {
     var sku: String
     var type: ItemType
     var name: String
+    var assetName: String
     var costEnergy: Int
     var BondingBoost: Int
     var hungerBoost: Int
@@ -30,6 +47,7 @@ final class Item: Identifiable {
         sku: String,
         type: ItemType,
         name: String,
+        assetName: String = "",
         costEnergy: Int,
         BondingBoost: Int,
         hungerBoost: Int
@@ -38,6 +56,7 @@ final class Item: Identifiable {
         self.sku = sku
         self.type = type
         self.name = name
+        self.assetName = assetName
         self.costEnergy = costEnergy
         self.BondingBoost = BondingBoost
         self.hungerBoost = hungerBoost

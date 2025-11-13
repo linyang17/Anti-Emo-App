@@ -1,50 +1,56 @@
 [
   {
-    "sku": "snack.sunny.orange",
-    "type": "snack",
-    "name": "阳光橙汁",
-    "costEnergy": 8,
-    "BondingBoost": 6,
-    "hungerBoost": 10
+    "sku": "decor.heart.gift",
+    "type": "decor",
+    "name": "晨露花礼",
+    "assetName": "giftbox",
+    "costEnergy": 100,
+    "BondingBoost": 12,
+    "hungerBoost": 0
   },
   {
-    "sku": "snack.moon.cake",
-    "type": "snack",
-    "name": "晚安奶酪",
-    "costEnergy": 6,
-    "BondingBoost": 4,
-    "hungerBoost": 12
+    "sku": "decor.aurora.chest",
+    "type": "decor",
+    "name": "极光珍藏",
+    "assetName": "giftbox-open",
+    "costEnergy": 300,
+    "BondingBoost": 18,
+    "hungerBoost": 0
   },
   {
-    "sku": "toy.wind.chimes",
-    "type": "toy",
-    "name": "风铃逗猫棒",
-    "costEnergy": 12,
+    "sku": "clothing.heart.bag",
+    "type": "clothing",
+    "name": "心语背包",
+    "assetName": "heartbag",
+    "costEnergy": 100,
+    "BondingBoost": 15,
+    "hungerBoost": 0
+  },
+  {
+    "sku": "clothing.sunrise.pack",
+    "type": "clothing",
+    "name": "晨光行囊",
+    "assetName": "backpack",
+    "costEnergy": 300,
+    "BondingBoost": 20,
+    "hungerBoost": 0
+  },
+  {
+    "sku": "shoes.bloom.suitcase",
+    "type": "shoes",
+    "name": "花旅鞋柜",
+    "assetName": "suitcase",
+    "costEnergy": 100,
     "BondingBoost": 10,
     "hungerBoost": 0
   },
   {
-    "sku": "toy.cloud.pillow",
-    "type": "toy",
-    "name": "云朵抱枕",
-    "costEnergy": 10,
-    "BondingBoost": 7,
-    "hungerBoost": 0
-  },
-  {
-    "sku": "decor.aurora.lamp",
-    "type": "decor",
-    "name": "极光夜灯",
-    "costEnergy": 15,
-    "BondingBoost": 8,
-    "hungerBoost": 0
-  },
-  {
-    "sku": "decor.garden.table",
-    "type": "decor",
-    "name": "庭院茶几",
-    "costEnergy": 18,
-    "BondingBoost": 5,
+    "sku": "shoes.moon.mailbox",
+    "type": "shoes",
+    "name": "月光鞋盒",
+    "assetName": "mailbox",
+    "costEnergy": 300,
+    "BondingBoost": 16,
     "hungerBoost": 0
   }
 ]
