@@ -4,7 +4,7 @@ import UserNotifications
 final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     private let center = UNUserNotificationCenter.current()
 
-    func requestAuthorization(completion: @escaping (Bool) -> Void) {
+    func requestNotiAuth(completion: @escaping (Bool) -> Void) {
         center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
             DispatchQueue.main.async {
                 completion(granted)

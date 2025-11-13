@@ -22,7 +22,7 @@ struct LumioPetApp: App {
 		do {
 			return try ModelContainer(for: schema, configurations: [configuration])
 		} catch {
-			fatalError("❌ 无法创建 ModelContainer: \(error.localizedDescription)")
+			fatalError("无法创建 ModelContainer: \(error.localizedDescription)")
 		}
 	}()
 

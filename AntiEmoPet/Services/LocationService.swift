@@ -41,7 +41,7 @@ final class LocationService: NSObject, ObservableObject {
 		}
 
 	// MARK: - Permissions
-	func requestAuthorization() {
+	func requestLocAuthorization() {
 		manager.requestWhenInUseAuthorization()
 	}
 

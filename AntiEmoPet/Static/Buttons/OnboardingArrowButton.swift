@@ -16,14 +16,13 @@ struct OnboardingArrowButton: View {
                 } else {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 24, weight: .semibold))
-						.foregroundStyle(Color.white.opacity(0.8))
+						.foregroundStyle(Color.white)
                 }
             }
-            .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled || isLoading)
-        .opacity(isEnabled ? 1 : 0.6)
+		.frame(width: 44, height: 44)
         .animation(.easeInOut(duration: 0.2), value: isEnabled)
         .accessibilityLabel("下一步")
     }
@@ -34,22 +33,13 @@ struct OnboardingArrowButton: View {
 			Circle()
 				.fill(.ultraThinMaterial)
 				.blur(radius: 0.5)
-				.overlay(
-					LinearGradient(
-						colors: [
-							Color.white.opacity(0.5),
-							Color.white.opacity(0.15)
-						],
-						startPoint: .topLeading,
-						endPoint: .bottomTrailing
-					)
-				)
+				.opacity(isEnabled ? 0.7 : 0.4)
 				.overlay(
 					AngularGradient(
 						gradient: Gradient(colors: [
 							.white.opacity(0.12),
 							.clear,
-							.cyan.opacity(0.12),
+							.gray.opacity(0.12),
 							.clear,
 							.purple.opacity(0.1)
 						]),
@@ -66,21 +56,22 @@ struct OnboardingArrowButton: View {
 				.fill(
 					LinearGradient(
 						colors: isEnabled && !isLoading
-						? [Color.white.opacity(0.3), Color.white.opacity(0.15)]
-						: [Color.white.opacity(0.2), Color.white.opacity(0.08)],
+						? [Color.white.opacity(0.5), Color.white.opacity(0.15)]
+						: [Color.white.opacity(0.25), Color.white.opacity(0.08)],
 						startPoint: .top,
 						endPoint: .bottom
 					)
 				)
+				.opacity(isEnabled ? 0.7 : 0.4)
 				.blendMode(.softLight)
 		}
 	}
 	
 	private var glowColor: Color {
 		if isEnabled && !isLoading {
-			return Color.cyan.opacity(0.2)
+			return Color.purple.opacity(0.2)
 		} else {
-			return Color.gray.opacity(0.4)
+			return Color.gray.opacity(0.2)
 		}
 	}
 }
