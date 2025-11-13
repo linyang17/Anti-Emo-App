@@ -21,8 +21,19 @@ struct PetView: View {
 
             content
         }
-        .overlay(alignment: .trailing) { taskButton }
-        .overlay(alignment: .bottom) { shopButton }
+        .overlay(alignment: .topTrailing) {
+            VStack(alignment: .trailing, spacing: 120) {
+                magicOrbButton
+                taskButton
+            }
+            .padding(.trailing, 24)
+            .padding(.top, 12)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            shopButton
+                .padding(.trailing, 36)
+                .padding(.bottom, 48)
+        }
         .sheet(item: $activeSheet, content: presentSheet(for:))
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { viewModel.sync(with: appModel) }
@@ -68,35 +79,31 @@ struct PetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusChip(icon: "bolt.fill", value: "\(viewModel.statusSummary.energy)")
                 statusChip(icon: "heart.fill", value: "\(viewModel.statusSummary.bond)")
-				statusChip(icon: "star.circle.fill", value: "\(viewModel.statusSummary.levelLabel)")
-				ProgressView(value: viewModel.statusSummary.experienceProgress)
-					.tint(.orange)
-					.frame(width: 70)
+                statusChip(icon: "star.circle.fill", value: "\(viewModel.statusSummary.levelLabel)")
+                ProgressView(value: viewModel.statusSummary.experienceProgress)
+                    .tint(.orange)
+                    .frame(width: 70)
             }
-			.padding(8)
-			.background(statusBackground)
+            .padding(8)
+            .background(statusBackground)
 
             Spacer()
-
-            NavigationLink(destination: MoreView().environmentObject(appModel)) {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 20, weight: .bold))
-                    .padding(8)
-                    .foregroundStyle(.white)
-            }
         }
     }
 
     private func petStage(for pet: Pet) -> some View {
-		
-		Image(viewModel.screenState.petAsset)
-			.resizable()
-			.scaledToFit()
-			.frame(maxHeight: 260)
-			.shadow(color: .black.opacity(0.2), radius: 15, x: 5, y: 5)
-		
+        ZStack(alignment: .bottomTrailing) {
+            Image(viewModel.screenState.petAsset)
+                .resizable()
+                .scaledToFit()
+                .frame(maxHeight: 260)
+                .shadow(color: .black.opacity(0.2), radius: 15, x: 5, y: 5)
+
+            decorationStack(for: pet.decorations)
+        }
         .frame(maxWidth: .infinity)
-        .padding()
+        .frame(height: 360)
+        .padding(.horizontal, 16)
     }
 
 	private var statusBackground: some View {
@@ -125,36 +132,78 @@ struct PetView: View {
     }
 
     private var taskButton: some View {
-        VStack {
-            Button {
-                activeSheet = .tasks
-            } label: {
-                Image("spaceship")
-					.resizable()
-					.scaledToFit()
-					.frame(maxWidth: 80)
-					.accessibilityHidden(true)
-					.padding(18)
-					.shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
-            }
+        Button {
+            activeSheet = .tasks
+        } label: {
+            Image("spaceship")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120)
+                .accessibilityLabel("查看任务")
+                .shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
         }
-        .padding(.trailing, 30)
-		.padding(.top, 200)
+        .buttonStyle(.plain)
     }
 
     private var shopButton: some View {
         Button {
             activeSheet = .shop
         } label: {
-			Image("giftbox")
-				   .resizable()
-				   .scaledToFit()
-				   .frame(maxWidth: 100)
-				   .accessibilityHidden(true)
-				   .padding(18)
-				   .shadow(color: Color.accentColor.opacity(0.4), radius: 14, x: 0, y: 8)
-				}
-        .padding(.bottom, 28)
+            Image("giftbox")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 130)
+                .accessibilityLabel("打开商店")
+                .shadow(color: Color.accentColor.opacity(0.4), radius: 18, x: 0, y: 10)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var magicOrbButton: some View {
+        NavigationLink(destination: MoreView().environmentObject(appModel)) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.pink.opacity(0.9), Color.purple.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+                    .shadow(color: Color.purple.opacity(0.4), radius: 14, x: 0, y: 8)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.6), lineWidth: 1.5)
+                    .frame(width: 60, height: 60)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityLabel("更多设置")
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func decorationStack(for decorations: [String]) -> some View {
+        let visible = Array(decorations.filter { !$0.isEmpty }.prefix(3))
+        if !visible.isEmpty {
+            HStack(spacing: -12) {
+                ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
+                    Image(asset)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: max(80, 120 - CGFloat(index) * 10))
+                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 6)
+                        .offset(y: CGFloat(index) * -4)
+                }
+            }
+            .padding(.trailing, 6)
+            .padding(.bottom, 12)
+            .transition(.opacity.combined(with: .move(edge: .trailing)))
+        }
     }
 
     @ViewBuilder
@@ -167,11 +216,10 @@ struct PetView: View {
             }
             .presentationDetents([.medium, .large])
         case .shop:
-            NavigationStack {
-                ShopView()
-                    .environmentObject(appModel)
-            }
-            .presentationDetents([.medium])
+            ShopView()
+                .environmentObject(appModel)
+                .presentationDetents([.fraction(0.55)])
+                .presentationDragIndicator(.hidden)
         }
     }
 }

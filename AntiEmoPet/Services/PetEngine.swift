@@ -18,11 +18,13 @@ final class PetEngine {
 
     func applyTaskCompletion(pet: Pet) {
         pet.bonding = nextBonding(from: pet.bonding, boost: 2)
-        pet.xp += 1
-        if pet.xp >= 10 {
-            pet.level += 1
-            pet.xp = 0
-        }
+        awardXP(1, to: pet)
+    }
+
+    func applyPurchaseReward(pet: Pet, xpGain: Int = 1, bondingBoost: Int = 20) {
+        let steps = max(1, bondingBoost / 20)
+        pet.bonding = nextBonding(from: pet.bonding, boost: steps)
+        awardXP(xpGain, to: pet)
     }
 
     private func nextBonding(from bonding: PetBonding, boost: Int) -> PetBonding {
@@ -30,5 +32,14 @@ final class PetEngine {
         guard let index = ordered.firstIndex(of: bonding) else { return bonding }
         let newIndex = min(ordered.count - 1, index + boost)
         return ordered[newIndex]
+    }
+
+    private func awardXP(_ amount: Int, to pet: Pet) {
+        guard amount > 0 else { return }
+        pet.xp += amount
+        if pet.xp >= 10 {
+            pet.level += 1
+            pet.xp = 0
+        }
     }
 }

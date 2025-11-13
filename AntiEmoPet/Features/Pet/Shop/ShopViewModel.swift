@@ -1,18 +1,20 @@
 import Foundation
 import Combine
 
-struct ShopSection: Identifiable {
-    let type: ItemType
-    let items: [Item]
-    var id: ItemType { type }
-}
-
 @MainActor
 final class ShopViewModel: ObservableObject {
-    func grouped(items: [Item]) -> [ShopSection] {
-        ItemType.allCases.compactMap { type in
-            let filtered = items.filter { $0.type == type }
-            return filtered.isEmpty ? nil : ShopSection(type: type, items: filtered)
+    let gridCapacity = 6
+
+    func items(for type: ItemType, in items: [Item], limit: Int) -> [Item] {
+        let filtered = items.filter { $0.type == type }
+        guard limit < filtered.count else { return filtered }
+        return Array(filtered.prefix(limit))
+    }
+
+    func defaultCategory(in items: [Item]) -> ItemType {
+        if let first = items.first?.type {
+            return first
         }
+        return ItemType.allCases.first ?? .decor
     }
 }
