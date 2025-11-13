@@ -27,39 +27,42 @@ struct OnboardingView: View {
 				.ignoresSafeArea()
 
 			VStack {
-				Spacer(minLength: 50)
 
 				VStack(spacing: 24) {
 					stepContent
 						.transition(.opacity)
 						.animation(.easeInOut, value: step)
-					OnboardingArrowButton(
-						isEnabled: canAdvance,
-						isLoading: isProcessingFinalStep,
-						action: handleAdvance
-					)
+
+					if step != .celebration {
+						OnboardingArrowButton(
+							isEnabled: canAdvance,
+							isLoading: isProcessingFinalStep,
+							action: handleAdvance
+						)
+					}
 				}
-				.frame(maxWidth: .infinity)
-				.padding(.horizontal, 32)
-				.padding(.bottom, 120)
-				.offset(x: dragOffset)
-				.gesture(backSwipeGesture)
+					.frame(maxWidth: .infinity)
+					.padding(.top, 120)
+					.padding(.bottom, 120)
+					.offset(x: dragOffset)
+					.gesture(backSwipeGesture)
+				
+				Spacer(minLength: 50)
+				}
 
-				Spacer(minLength: 0)
+			if step != .celebration {
+				VStack {
+					Spacer()
+					Image("foxcurious")
+						.resizable()
+						.scaledToFit()
+						.frame(maxWidth: 220)
+						.accessibilityHidden(true)
+						.padding(.top, 120)
+						.padding(.bottom, 120)
+				}
 			}
-
-			VStack {
-				Spacer()
-				Image("foxcurious")
-					.resizable()
-					.scaledToFit()
-					.frame(maxWidth: 220)
-					.accessibilityHidden(true)
-					.padding(.bottom, 24)
-			}
-			.ignoresSafeArea()
 		}
-		.ignoresSafeArea()
 		.alert("无法获取定位", isPresented: $showLocationDeniedAlert) {
 			Button("前往设置") {
 				isProcessingFinalStep = true
@@ -68,7 +71,7 @@ struct OnboardingView: View {
 				}
 			}
 		} message: {
-			Text("后续任务将无法根据你当前的天气情况生成")
+			Text("后续任务将无法根据你当前城市的天气情况生成")
 		}
 		.onChange(of: locationService.authorizationStatus) { oldValue, newValue in
 			handleLocationAuthorizationChange(newValue)
@@ -104,6 +107,7 @@ private extension OnboardingView {
 		case gender
 		case birthday
 		case access
+		case celebration
 
 		var next: Step? {
 			Step(rawValue: rawValue + 1)
@@ -130,7 +134,11 @@ private extension OnboardingView {
 		case .birthday:
 			BirthdayStepView(selectedDate: $viewModel.birthday)
 		case .access:
-			AccessStepView(isRequesting: isProcessingFinalStep)
+			AccessStepView()
+		case .celebration:
+			FoxWaveStepView {
+					finishOnboarding(shareLocation: true)
+					}
 		}
 	}
 
@@ -147,6 +155,8 @@ private extension OnboardingView {
 			return birthday <= Date()
 		case .access:
 			return !isProcessingFinalStep
+		case .celebration:
+			return false
 		}
 	}
 
@@ -154,10 +164,27 @@ private extension OnboardingView {
 		guard canAdvance else { return }
 		switch step {
 		case .access:
-			// 点击箭头触发定位授权
-			isProcessingFinalStep = true
-			viewModel.enableLocationAndWeather = true
-			locationService.requestAuthorization()
+			let status = locationService.authorizationStatus
+			switch status {
+			case .authorizedAlways, .authorizedWhenInUse:
+				// 已经有权限：第二次点击，真正执行最终流程并进入宠物页面
+				viewModel.enableLocationAndWeather = true
+				isProcessingFinalStep = false
+				locationService.requestLocationOnce()
+				requestWeatherAndNotifications()
+			case .denied, .restricted:
+				// 权限被拒绝或受限，提示用户去设置
+				viewModel.enableLocationAndWeather = false
+				isProcessingFinalStep = false
+				showLocationDeniedAlert = true
+			case .notDetermined:
+				// 第一次/尚未决定：只请求权限，等待系统弹窗结果
+				isProcessingFinalStep = true
+				locationService.requestLocAuthorization()
+			@unknown default:
+				isProcessingFinalStep = true
+				locationService.requestLocAuthorization()
+			}
 			return
 		default:
 			if let next = step.next {
@@ -192,45 +219,22 @@ private extension OnboardingView {
 		}
 	}
 
-	func handleFinalStep() {
-		guard !hasCompletedOnboarding else { return }
-		viewModel.enableLocationAndWeather = true
-		let status = locationService.authorizationStatus
-		switch status {
-		case .authorizedAlways, .authorizedWhenInUse:
-			isProcessingFinalStep = true
-			locationService.requestLocationOnce()
-			requestWeatherAndNotifications()
-		case .denied, .restricted:
-			isProcessingFinalStep = true
-			showLocationDeniedAlert = true
-		case .notDetermined:
-			isProcessingFinalStep = true
-			showLocationDeniedAlert = true
-		@unknown default:
-			isProcessingFinalStep = true
-			showLocationDeniedAlert = true
-		}
-	}
 
 	func handleLocationAuthorizationChange(_ status: CLAuthorizationStatus) {
 		viewModel.updateLocationStatus(status)
 		guard step == .access else { return }
 		switch status {
 		case .authorizedAlways, .authorizedWhenInUse:
-			if viewModel.enableLocationAndWeather {
-				isProcessingFinalStep = true
-				locationService.requestLocationOnce()
-				requestWeatherAndNotifications()
-			}
+			// 用户在系统弹窗中授予了权限：结束 loading，保持在 access 页面，等待用户再次点击箭头进入下一步
+			isProcessingFinalStep = false
+			// 不在这里自动请求天气和结束 Onboarding
 		case .denied, .restricted:
-			if viewModel.enableLocationAndWeather {
-				viewModel.enableLocationAndWeather = false
-				isProcessingFinalStep = true
-				showLocationDeniedAlert = true
-			}
+			// 用户拒绝/受限：关闭 loading，提示去设置
+			viewModel.enableLocationAndWeather = false
+			isProcessingFinalStep = false
+			showLocationDeniedAlert = true
 		case .notDetermined:
-			break
+			isProcessingFinalStep = false
 		@unknown default:
 			break
 		}
@@ -238,11 +242,15 @@ private extension OnboardingView {
 
 	func requestWeatherAndNotifications() {
 		guard !hasCompletedOnboarding else { return }
+
 		if viewModel.hasWeatherPermission {
 			if viewModel.notificationsOptIn {
 				appModel.requestNotifications()
 			}
-			finishOnboarding(shareLocation: true)
+			isProcessingFinalStep = false
+			withAnimation(.easeInOut) {
+				step = .celebration
+			}
 			return
 		}
 
@@ -254,7 +262,10 @@ private extension OnboardingView {
 				if viewModel.notificationsOptIn {
 					appModel.requestNotifications()
 				}
-				finishOnboarding(shareLocation: true)
+				isProcessingFinalStep = false
+				withAnimation(.easeInOut) {
+					step = .celebration
+				}
 			} else {
 				locationService.updateWeatherPermission(granted: false)
 				viewModel.enableLocationAndWeather = false
@@ -266,19 +277,25 @@ private extension OnboardingView {
 
 	func finishOnboarding(shareLocation: Bool) {
 		guard !hasCompletedOnboarding else { return }
-		hasCompletedOnboarding = true
 		isProcessingFinalStep = false
+		isNameFocused = false
+
+		// 预处理用户输入，去掉首尾空格
 		let trimmedName = viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
 		let trimmedRegion = viewModel.region.trimmingCharacters(in: .whitespacesAndNewlines)
+		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
+
 		viewModel.enableLocationAndWeather = shareLocation
+
 		appModel.updateProfile(
 			nickname: trimmedName,
 			region: trimmedRegion,
 			shareLocation: shareLocation,
-			gender: viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue,
+			gender: genderRaw,
 			birthday: viewModel.birthday,
 			Onboard: true
 		)
+		hasCompletedOnboarding = true
 	}
 
 	var backSwipeGesture: some Gesture {
@@ -318,9 +335,8 @@ struct LumioSay: View {
 			.font(.system(.title2, design: .rounded).weight(.semibold))
 			.multilineTextAlignment(.center)
 			.foregroundStyle(.white)
-			.shadow(color: .black.opacity(0.3), radius: 6, x: 2, y: 2)
-			.shadow(color: .cyan.opacity(0.2), radius: 6, x: 1, y: 1)
-			.padding(.horizontal, 8)
+			.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
+			.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
 	}
 }
 
@@ -338,9 +354,10 @@ private struct NameStepView: View {
 
 	var body: some View {
 		VStack(spacing: 24) {
-			LumioSay(text: "My lovely new friend, what shall I call you?")
+			LumioSay(text: "My lovely new friend, \n what shall I call you?")
 
 			TextField("Type here…", text: $nickname)
+				.frame(width: 200, height: 40)
 				.padding(.vertical, 14)
 				.padding(.horizontal, 18)
 				.background(
@@ -379,7 +396,10 @@ private struct GenderStepView: View {
 						Text(option.displayName)
 							.font(.system(size: 15, weight: .medium, design: .rounded))
 							.frame(width: 70, height: 40)
-							.overlay(
+							.background(
+								RoundedRectangle(cornerRadius: 18, style: .continuous)
+									.fill(backgroundColor(for: option))
+							).overlay(
 								RoundedRectangle(cornerRadius: 18, style: .continuous)
 									.stroke(Color.white.opacity(0.9), lineWidth: option == selectedGender ? 1.5 : 0.8)
 							)
@@ -411,21 +431,11 @@ private struct BirthdayStepView: View {
 }
 
 private struct AccessStepView: View {
-	var isRequesting: Bool
-
 	var body: some View {
-		VStack(spacing: 16) {
-			LumioSay(text: "I'd like to know \n your local weather to \n personalise my message \n when I think of you.")
-
-			if isRequesting {
-				ProgressView()
-					.progressViewStyle(.circular)
-					.tint(.white)
-			}
+		LumioSay(text: "I'd like to know \n your local weather to \n personalise my message \n when I think of you.")
 		}
-		.padding(.horizontal, 8)
-	}
 }
+
 
 private struct BirthdayPicker: View {
 	@Binding var date: Date

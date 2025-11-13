@@ -51,7 +51,6 @@ final class WeatherService: ObservableObject {
 	// MARK: - Initialization
 	init() {
 		restoreFromDisk()
-		Task { await checkLocationAuthorization() }
 	}
 
 	// MARK: - Location Authorization
@@ -104,11 +103,11 @@ final class WeatherService: ObservableObject {
 
 		// Remote fetch via WeatherKit
                 do {
-                        let weather = try await weatherService.weather(for: location)
-                        let current = WeatherType(from: weather.currentWeather)
-                        let windows = buildWindows(weather: weather)
-                        let sunEvents = buildSunEvents(weather: weather)
-                        let report = WeatherReport(location: location, locality: locality, currentWeather: current, windows: windows, sunEvents: sunEvents)
+					let weather = try await weatherService.weather(for: location)
+					let current = WeatherType(from: weather.currentWeather)
+					let windows = buildWindows(weather: weather)
+					let sunEvents = buildSunEvents(weather: weather)
+					let report = WeatherReport(location: location, locality: locality, currentWeather: current, windows: windows, sunEvents: sunEvents)
 
 			// Update memory + persistence
 			currentWeatherReport = report
@@ -224,7 +223,7 @@ final class WeatherService: ObservableObject {
                 let daily = weather.dailyForecast.forecast
                 var events: [Date: SunTimes] = [:]
                 for day in daily {
-                        if let sunrise = day.sun?.sunrise, let sunset = day.sun?.sunset {
+					if let sunrise = day.sun.sunrise, let sunset = day.sun.sunset {
                                 let key = calendar.startOfDay(for: sunrise)
                                 events[key] = SunTimes(sunrise: sunrise, sunset: sunset)
                         }

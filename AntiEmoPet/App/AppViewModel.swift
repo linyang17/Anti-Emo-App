@@ -102,9 +102,6 @@ final class AppViewModel: ObservableObject {
         shopItems = storage.fetchShopItems()
 
         moodEntries = storage.fetchMoodEntries()
-        if moodEntries.isEmpty {
-            addMoodEntry(value: 50) // 心情一般 baseline 50/100
-        }
         inventory = storage.fetchInventory()
 
         todayTasks = storage.fetchTasks(for: .now)
@@ -132,8 +129,6 @@ final class AppViewModel: ObservableObject {
     }
 	
 	func refreshIfNeeded() async {
-		// 应用从后台回到前台时，刷新必要数据
-		// 比如重新同步任务、天气、统计等
 		await load()
 	}
 
@@ -219,7 +214,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func requestNotifications() {
-        notificationService.requestAuthorization { [weak self] granted in
+        notificationService.requestNotiAuth { [weak self] granted in
             guard let self, let stats = self.userStats else { return }
             stats.notificationsEnabled = granted
             if granted {
