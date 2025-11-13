@@ -16,6 +16,12 @@ struct EnergyHistoryEntry: Identifiable, Codable {
     }
 }
 
+struct RewardEvent: Identifiable, Equatable {
+    let id = UUID()
+    let energy: Int
+    let xp: Int
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var todayTasks: [UserTask] = []
@@ -24,7 +30,6 @@ final class AppViewModel: ObservableObject {
     @Published var shopItems: [Item] = []
     @Published var weather: WeatherType = .sunny
     @Published var weatherReport: WeatherReport?
-    @Published var chatMessages: [ChatMessage] = []
     @Published var isLoading = true
     @Published var showOnboarding = false
     @Published var moodEntries: [MoodEntry] = []
@@ -32,6 +37,7 @@ final class AppViewModel: ObservableObject {
     @Published var inventory: [InventoryEntry] = []
     @Published var dailyMetricsCache: [DailyActivityMetrics] = []
     @Published var showSleepReminder = false
+    @Published var rewardBanner: RewardEvent?
 
     let locationService = LocationService()
     private let storage: StorageService
@@ -40,10 +46,9 @@ final class AppViewModel: ObservableObject {
     private let petEngine = PetEngine()
     private let notificationService = NotificationService()
     private let weatherService = WeatherService()
-    private let chatService = ChatService()
     private let analytics = AnalyticsService()
     private var cancellables: Set<AnyCancellable> = []
-    private var sleepTimer: AnyCancellable?
+    private let sleepReminderService = SleepReminderService()
     private let isoDayFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
@@ -58,6 +63,7 @@ final class AppViewModel: ObservableObject {
         storage = StorageService(context: modelContext)
         taskGenerator = TaskGeneratorService(storage: storage)
         bindLocationUpdates()
+        bindSleepReminder()
         configureSleepReminderMonitoring()
     }
 
@@ -89,8 +95,6 @@ final class AppViewModel: ObservableObject {
         // Removed fallback else block that initialized today's snapshot
 
         if let pet = pet {
-            // Ensure reasonable initial hunger baseline at least 50
-            if pet.hunger < 50 { pet.hunger = 50 }
             // XP baseline should start at 0 if negative
             if pet.xp < 0 { pet.xp = 0 }
         }
@@ -98,9 +102,6 @@ final class AppViewModel: ObservableObject {
         shopItems = storage.fetchShopItems()
 
         moodEntries = storage.fetchMoodEntries()
-        if moodEntries.isEmpty {
-            addMoodEntry(value: 50) // 心情一般 baseline 50/100
-        }
         inventory = storage.fetchInventory()
 
         todayTasks = storage.fetchTasks(for: .now)
@@ -128,29 +129,24 @@ final class AppViewModel: ObservableObject {
     }
 	
 	func refreshIfNeeded() async {
-		// 应用从后台回到前台时，刷新必要数据
-		// 比如重新同步任务、天气、统计等
 		await load()
 	}
 
-    func toggleTask(_ task: UserTask) {
-        guard let stats = userStats, let pet else { return }
-        task.status = task.status == .completed ? .pending : .completed
-        if task.status == .completed {
-            task.completedAt = Date()
-            _ = rewardEngine.applyTaskReward(for: task, stats: stats)
-            petEngine.applyTaskCompletion(pet: pet)
-            analytics.log(event: "task_completed", metadata: ["title": task.title])
-            let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-            incrementTaskCompletion(for: Date(), timeSlot: slot)
-            if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
-                analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
-            }
-            logTodayEnergySnapshot()
-            dailyMetricsCache = makeDailyActivityMetrics()
-        } else {
-            task.completedAt = nil
+    func completeTask(_ task: UserTask) {
+        guard let stats = userStats, let pet, task.status == .pending else { return }
+        task.status = .completed
+        task.completedAt = Date()
+        let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
+        petEngine.applyTaskCompletion(pet: pet)
+        analytics.log(event: "task_completed", metadata: ["title": task.title])
+        let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+        incrementTaskCompletion(for: Date(), timeSlot: slot)
+        if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
+            analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
         }
+        rewardBanner = RewardEvent(energy: energyReward, xp: 1)
+        logTodayEnergySnapshot()
+        dailyMetricsCache = makeDailyActivityMetrics()
         storage.persist()
         todayTasks = storage.fetchTasks(for: .now)
     }
@@ -205,6 +201,7 @@ final class AppViewModel: ObservableObject {
         if shareLocation {
             beginLocationUpdates()
         }
+        storage.resetCompletionDates(for: Date())
         storage.deleteTasks(for: Date())
         let starter = taskGenerator.makeOnboardingTasks(for: Date())
         storage.save(tasks: starter)
@@ -220,7 +217,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func requestNotifications() {
-        notificationService.requestAuthorization { [weak self] granted in
+        notificationService.requestNotiAuth { [weak self] granted in
             guard let self, let stats = self.userStats else { return }
             stats.notificationsEnabled = granted
             if granted {
@@ -231,20 +228,12 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func sendChat(_ text: String) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        chatMessages.append(ChatMessage(role: .user, content: text))
-        let reply = chatService.reply(
-            to: text,
-            weather: weather,
-            bonding: pet?.bonding ?? .calm
-        )
-        chatMessages.append(ChatMessage(role: .pet, content: reply))
-        analytics.log(event: "chat_message")
-    }
-
     func persistState() {
         storage.persist()
+    }
+
+    func consumeRewardBanner() {
+        rewardBanner = nil
     }
 
     func addMoodEntry(value: Int) {
@@ -417,6 +406,7 @@ final class AppViewModel: ObservableObject {
             retained.status = .pending
             retained.completedAt = nil
         }
+        storage.resetCompletionDates(for: Date())
         storage.deleteTasks(for: Date(), excluding: retainIDs)
         let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
         storage.save(tasks: generated)
@@ -462,18 +452,17 @@ final class AppViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func configureSleepReminderMonitoring() {
-        sleepTimer?.cancel()
-        let publisher = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
-        sleepTimer = publisher
-            .sink { [weak self] date in
-                self?.evaluateSleepReminder(at: date)
-            }
-        evaluateSleepReminder(at: Date())
+    private func bindSleepReminder() {
+        sleepReminderService.$isReminderDue
+            .receive(on: RunLoop.main)
+            .assign(to: &$showSleepReminder)
     }
 
-    private func evaluateSleepReminder(at date: Date) {
-        let hour = Calendar.current.component(.hour, from: date)
-        showSleepReminder = hour >= 22 || hour < 6
+    private func configureSleepReminderMonitoring() {
+        sleepReminderService.startMonitoring()
+    }
+
+    func dismissSleepReminder() {
+        sleepReminderService.acknowledgeReminder()
     }
 }

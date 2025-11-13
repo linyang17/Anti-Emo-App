@@ -40,7 +40,6 @@ final class Item: Identifiable {
     var assetName: String
     var costEnergy: Int
     var BondingBoost: Int
-    var hungerBoost: Int
 
     init(
         id: UUID = UUID(),
@@ -49,8 +48,7 @@ final class Item: Identifiable {
         name: String,
         assetName: String = "",
         costEnergy: Int,
-        BondingBoost: Int,
-        hungerBoost: Int
+        BondingBoost: Int
     ) {
         self.id = id
         self.sku = sku
@@ -59,6 +57,5 @@ final class Item: Identifiable {
         self.assetName = assetName
         self.costEnergy = costEnergy
         self.BondingBoost = BondingBoost
-        self.hungerBoost = hungerBoost
     }
 }

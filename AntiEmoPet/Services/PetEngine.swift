@@ -11,16 +11,13 @@ final class PetEngine {
         switch action {
         case .pat:
             pet.bonding = nextBonding(from: pet.bonding, boost: 1)
-            pet.hunger = max(0, pet.hunger - 2)
         case .feed(let item):
-            pet.hunger = min(100, pet.hunger + item.hungerBoost)
             pet.bonding = nextBonding(from: pet.bonding, boost: item.BondingBoost / 4)
         }
     }
 
     func applyTaskCompletion(pet: Pet) {
         pet.bonding = nextBonding(from: pet.bonding, boost: 2)
-        pet.hunger = max(0, pet.hunger - 5)
         awardXP(1, to: pet)
     }
 

@@ -17,7 +17,7 @@ Weather-driven daily quests + virtual pet companion. MVP implements the closed l
 | Layer | Path | Notes |
 | --- | --- | --- |
 | App | `AntiEmoPet/App/SunnyPetApp.swift` | Creates `ModelContainer` for Task / TaskTemplate / Pet / Item / UserStats and launches `ContentView`. |
-| Core Models | `AntiEmoPet/Core/Models` | SwiftData `@Model` classes that mirror PRD fields (`Task`, `Pet`, `Item`, `UserStats`, `TaskTemplate`) plus lightweight helper structs (`ChatMessage`). |
+| Core Models | `AntiEmoPet/Core/Models` | SwiftData `@Model` classes that mirror PRD fields (`Task`, `Pet`, `Item`, `UserStats`, `TaskTemplate`). |
 | Core Services | `AntiEmoPet/Core/Services` | Business logic modules: storage bootstrapping, task generation, rewards, pet engine, notifications, weather, chat placeholder, analytics logger. |
 | App State | `AntiEmoPet/Core/App/AppViewModel.swift` | Single source of truth that coordinates services and exposes observable state to feature modules. |
 | Features | `AntiEmoPet/Features/<Module>` | Each screen has its own View + ViewModel (Home, Tasks, Pet, Shop, Profile, Chat, Onboarding). |
@@ -27,7 +27,7 @@ Weather-driven daily quests + virtual pet companion. MVP implements the closed l
 - **Onboarding** (`Features/Onboarding`) – completes nickname/region setup, optional notification opt-in. Tied to `UserStats` persistence.
 - **Home** (`Features/Home`) – weather summary, progress, quick pet actions.
 - **Tasks** (`Features/Tasks`) – toggles daily quests with reward + streak logic (`RewardEngine`).
-- **Pet** (`Features/Pet`) – shows mood/hunger/level, pat & snack shortcuts via `PetEngine`.
+- **Pet** (`Features/Pet`) – shows mood/level, pat & snack shortcuts via `PetEngine`.
 - **Shop** (`Features/Shop`) – grouped catalog, purchase validation, energy deduction.
 - **Profile** (`Features/Profile`) – streak/energy overview & notification toggle sync.
 - **Chat** (`Features/Chat`) – placeholder Sunny dialog that responds deterministically based on weather + mood.
@@ -36,7 +36,7 @@ Weather-driven daily quests + virtual pet companion. MVP implements the closed l
 - `StorageService` bootstraps default templates/pet/stats/items and wraps SwiftData CRUD.
 - `TaskGeneratorService` derives 3–6 tasks/day per weather template.
 - `RewardEngine` handles +10 energy baseline (difficulty scaled) + streak increments + purchase deductions.
-- `PetEngine` syncs mood/hunger/xp progression after tasks/interactions.
+- `PetEngine` syncs bonding/xp progression after tasks/interactions.
 - `NotificationService` requests permission + schedules 8:00 & 20:30 reminders.
 - `WeatherService` randomizes weather type for MVP.
 - `ChatService` returns deterministic replies; swap with real AI later.

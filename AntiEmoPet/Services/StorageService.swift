@@ -139,6 +139,23 @@ final class StorageService {
         }
     }
 
+    func resetCompletionDates(for date: Date) {
+        do {
+            let calendar = TimeZoneManager.shared.calendar
+            let start = calendar.startOfDay(for: date)
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+            let predicate = #Predicate<UserTask> { task in
+                task.date >= start && task.date < end
+            }
+            let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+            let targets = try context.fetch(descriptor)
+            targets.forEach { $0.completedAt = nil }
+            saveContext(reason: "reset completion dates")
+        } catch {
+            logger.error("Failed to reset completion dates: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func persist() {
         saveContext(reason: "persist changes")
     }
@@ -251,7 +268,6 @@ enum DefaultSeeds {
         let assetName: String
         let costEnergy: Int
         let BondingBoost: Int
-        let hungerBoost: Int
     }
 
     private struct TaskTemplateSeed: Decodable {
@@ -272,8 +288,7 @@ enum DefaultSeeds {
                     name: seed.name,
                     assetName: seed.assetName,
                     costEnergy: seed.costEnergy,
-                    BondingBoost: seed.BondingBoost,
-                    hungerBoost: seed.hungerBoost
+                    BondingBoost: seed.BondingBoost
                 )
             }
         } catch {

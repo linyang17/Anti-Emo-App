@@ -2,7 +2,6 @@
   {
     "sku": "decor.heart.gift",
     "type": "decor",
-    "name": "晨露花礼",
     "assetName": "giftbox",
     "costEnergy": 100,
     "BondingBoost": 12,
@@ -11,7 +10,6 @@
   {
     "sku": "decor.aurora.chest",
     "type": "decor",
-    "name": "极光珍藏",
     "assetName": "giftbox-open",
     "costEnergy": 300,
     "BondingBoost": 18,
@@ -20,11 +18,9 @@
   {
     "sku": "clothing.heart.bag",
     "type": "clothing",
-    "name": "心语背包",
     "assetName": "heartbag",
     "costEnergy": 100,
-    "BondingBoost": 15,
-    "hungerBoost": 0
+    "BondingBoost": 15
   },
   {
     "sku": "clothing.sunrise.pack",
@@ -32,25 +28,20 @@
     "name": "晨光行囊",
     "assetName": "backpack",
     "costEnergy": 300,
-    "BondingBoost": 20,
-    "hungerBoost": 0
+    "BondingBoost": 20
   },
   {
     "sku": "shoes.bloom.suitcase",
     "type": "shoes",
-    "name": "花旅鞋柜",
     "assetName": "suitcase",
     "costEnergy": 100,
-    "BondingBoost": 10,
-    "hungerBoost": 0
+    "BondingBoost": 10
   },
   {
     "sku": "shoes.moon.mailbox",
     "type": "shoes",
-    "name": "月光鞋盒",
     "assetName": "mailbox",
     "costEnergy": 300,
-    "BondingBoost": 16,
-    "hungerBoost": 0
+    "BondingBoost": 16
   }
 ]
