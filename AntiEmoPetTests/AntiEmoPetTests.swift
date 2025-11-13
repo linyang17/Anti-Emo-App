@@ -67,13 +67,12 @@ struct AntiEmoPetTests {
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Lumio", bonding: .calm, hunger: 40, level: 1, xp: 95)
-        let snack = Item(sku: "snack.energy.bar", type: .snack, name: "Bar", costEnergy: 10, BondingBoost: 4, hungerBoost: 20)
+        let pet = Pet(name: "Lumio", bonding: .calm, level: 1, xp: 95)
+        let snack = Item(sku: "snack.energy.bar", type: .snack, name: "Bar", costEnergy: 10, BondingBoost: 4)
 
         let engine = PetEngine()
         engine.handleAction(.feed(item: snack), pet: pet)
 
-        #expect(pet.hunger > 40)
         #expect(pet.level == 2) // xp wraps to next level
         #expect(pet.xp < 10)
     }

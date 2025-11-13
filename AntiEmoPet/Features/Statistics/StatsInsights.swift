@@ -162,22 +162,22 @@ private extension MoodStatisticsViewModel.MoodSummary {
 		let energyLevel = energy.averageToday
 
 		// 情绪和能量都低 → 给温和、可执行的小目标
-		if moodLevel <= 3 && energyLevel <= 30 {
+		if moodLevel <= 30 && energyLevel <= 30 {
 			return "今天是不是有点累呢？别着急，不如先放松一下，完成一个小任务，或者试试一些轻松的运动活动。"
 		}
 
 		// 情绪低但能量高 → 引导把能量用在商店里
-		if moodLevel <= 4 && energyLevel >= 100 {
+		if moodLevel <= 40 && energyLevel >= 100 {
 			return "你是不是有点不开心呢？要不去商店里给Lumio买个新装扮，或者和它聊一聊，也许能让你心情稍微好一点呢。"
 		}
 
 		// 情绪一般但能量低 → 建议温和补充
-		if moodLevel >= 5 && energyLevel <= 30 {
+		if moodLevel >= 50 && energyLevel <= 30 {
 			return "最近你的心情好像一般，试试早点休息，做一件平时让你放松的小事，多关注自己，给自己一些鼓励吧。"
 		}
 
 		// 情绪不错
-		if moodLevel >= 7 {
+		if moodLevel >= 70 {
 			return "看来最近你有在好好生活呢！继续保持哦！"
 		}
 

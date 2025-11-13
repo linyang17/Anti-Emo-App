@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 
+
 struct WeatherWindow: Identifiable, Sendable, Hashable {
     let id: UUID
     let startDate: Date
@@ -23,6 +24,7 @@ struct SunTimes: Sendable, Hashable {
     let sunrise: Date
     let sunset: Date
 }
+
 
 struct WeatherReport: Sendable {
     let location: CLLocation?
@@ -47,4 +49,30 @@ struct WeatherReport: Sendable {
         let day = calendar.startOfDay(for: date)
         return sunEvents[day]
     }
+}
+
+enum WeatherType: String, Codable, CaseIterable, Identifiable {
+	case sunny, cloudy, rainy, snowy, windy
+
+	var id: String { rawValue }
+
+	var icon: String {
+		switch self {
+		case .sunny: return "sun.max"
+		case .cloudy: return "cloud"
+		case .rainy: return "cloud.rain"
+		case .snowy: return "snow"
+		case .windy: return "wind"
+		}
+	}
+
+	var title: String {
+		switch self {
+		case .sunny: return "晴"
+		case .cloudy: return "多云"
+		case .rainy: return "雨"
+		case .snowy: return "雪"
+		case .windy: return "风"
+		}
+	}
 }
