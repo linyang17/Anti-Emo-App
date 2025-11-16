@@ -101,13 +101,14 @@ struct OnboardingView: View {
 }
 
 private extension OnboardingView {
-	enum Step: Int, CaseIterable {
-		case intro
-		case name
-		case gender
-		case birthday
-		case access
-		case celebration
+enum Step: Int, CaseIterable {
+case intro
+case registration
+case name
+case gender
+case birthday
+case access
+case celebration
 
 		var next: Step? {
 			Step(rawValue: rawValue + 1)
@@ -118,47 +119,51 @@ private extension OnboardingView {
 		}
 	}
 
-	@ViewBuilder
-	var stepContent: some View {
-		switch step {
-		case .intro:
-			IntroStepView()
-		case .name:
-			NameStepView(
-				nickname: $viewModel.nickname,
-				focus: $isNameFocused,
-				onSubmit: handleAdvance
-			)
-		case .gender:
-			GenderStepView(selectedGender: $viewModel.selectedGender)
-		case .birthday:
-			BirthdayStepView(selectedDate: $viewModel.birthday)
-		case .access:
-			AccessStepView()
-		case .celebration:
-			WelcomeView {
-					finishOnboarding(shareLocation: true)
-					}
-		}
-	}
+        @ViewBuilder
+        var stepContent: some View {
+                switch step {
+                case .intro:
+                        IntroStepView()
+                case .registration:
+                        RegistrationStepView(viewModel: viewModel)
+                case .name:
+                        NameStepView(
+                                nickname: $viewModel.nickname,
+                                focus: $isNameFocused,
+                                onSubmit: handleAdvance
+                        )
+                case .gender:
+                        GenderStepView(selectedGender: $viewModel.selectedGender)
+                case .birthday:
+                        BirthdayStepView(selectedDate: $viewModel.birthday)
+                case .access:
+                        AccessStepView()
+                case .celebration:
+                        WelcomeView {
+                                        finishOnboarding(shareLocation: true)
+                                        }
+                }
+        }
 
-	var canAdvance: Bool {
-		switch step {
-		case .intro:
-			return true
-		case .name:
-			return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-		case .gender:
-			return viewModel.selectedGender != nil
-		case .birthday:
-			let birthday = viewModel.birthday
-			return birthday <= Date()
-		case .access:
-			return !isProcessingFinalStep
-		case .celebration:
-			return false
-		}
-	}
+        var canAdvance: Bool {
+                switch step {
+                case .intro:
+                        return true
+                case .registration:
+                        return viewModel.hasVerifiedAccount
+                case .name:
+                        return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                case .gender:
+                        return viewModel.selectedGender != nil
+                case .birthday:
+                        let birthday = viewModel.birthday
+                        return birthday <= Date()
+                case .access:
+                        return !isProcessingFinalStep
+                case .celebration:
+                        return false
+                }
+        }
 
 	func handleAdvance() {
 		guard canAdvance else { return }
@@ -293,6 +298,7 @@ private extension OnboardingView {
 			shareLocation: shareLocation,
 			gender: genderRaw,
 			birthday: viewModel.birthday,
+                        accountEmail: viewModel.accountEmail,
 			Onboard: true
 		)
 		hasCompletedOnboarding = true
@@ -328,16 +334,26 @@ private extension OnboardingView {
 
 
 struct LumioSay: View {
-	let text: String
+let text: String
+private static let maxBubbleWidth: CGFloat = {
+let characters = String(repeating: "W", count: 20)
+let preferredSize = UIFontMetrics.default.scaledValue(for: 22)
+let font = UIFont(name: "ABeeZee", size: preferredSize) ?? UIFont.preferredFont(forTextStyle: .title2)
+let size = (characters as NSString).size(withAttributes: [.font: font])
+return size.width
+}()
 
-	var body: some View {
-		Text(text)
-			.font(.system(.title2, design: .rounded).weight(.semibold))
-			.multilineTextAlignment(.center)
-			.foregroundStyle(.white)
-			.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
-			.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
-	}
+var body: some View {
+Text(text)
+.appFont(FontTheme.title2)
+.multilineTextAlignment(.center)
+.foregroundStyle(.white)
+.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
+.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
+.frame(maxWidth: LumioSay.maxBubbleWidth)
+}
+}
+
 }
 
 
@@ -345,6 +361,127 @@ private struct IntroStepView: View {
 	var body: some View {
 		LumioSay(text: "Hey! I'm Lumio, \n another fox from \n the little prince's planet.")
 	}
+}
+
+
+private struct RegistrationStepView: View {
+        @ObservedObject var viewModel: OnboardingViewModel
+
+        var body: some View {
+                VStack(spacing: 20) {
+                        LumioSay(text: "Choose how you'd like to register.")
+                        VStack(spacing: 12) {
+                                providerButton(title: "Continue with Google", systemImage: "g.circle", provider: .google)
+                                providerButton(title: "Continue with iCloud", systemImage: "icloud", provider: .icloud)
+                                providerButton(title: "Use email address", systemImage: "envelope.fill", provider: .email)
+                        }
+                        registrationDetails
+                }
+        }
+
+        @ViewBuilder
+        private var registrationDetails: some View {
+                if let provider = viewModel.selectedAccountProvider {
+                        switch provider {
+                        case .email:
+                                emailRegistrationView
+                        default:
+                                VStack(spacing: 8) {
+                                        Label("Connected via \(provider.title)\n\(viewModel.accountEmail)", systemImage: "checkmark.seal.fill")
+                                                .font(.footnote.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                        Text("Lumio only uses this email for gentle reminders.")
+                                                .font(.caption)
+                                                .foregroundStyle(.white.opacity(0.8))
+                                                .multilineTextAlignment(.center)
+                                }
+                        }
+                } else {
+                        Text("Pick Google, iCloud or email so Lumio can keep in touch.")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .multilineTextAlignment(.center)
+                }
+        }
+
+        private var emailRegistrationView: some View {
+                VStack(spacing: 12) {
+                        TextField("name@example.com", text: $viewModel.emailInput)
+                                .keyboardType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .disableAutocorrection(true)
+                                .tint(.white)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 14)
+                                .background(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                                                .background(
+                                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                                .fill(Color.white.opacity(0.15))
+                                                )
+                                )
+                                .foregroundStyle(.white)
+
+                        Button("发送确认邮件") {
+                                viewModel.sendEmailConfirmation()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.white.opacity(viewModel.isEmailInputValid ? 0.9 : 0.5))
+                        .foregroundStyle(.black)
+                        .disabled(!viewModel.isEmailInputValid)
+
+                        if viewModel.emailConfirmationSent {
+                                Button("我已点击邮件里的确认链接") {
+                                        viewModel.confirmEmailVerification()
+                                }
+                                .buttonStyle(.bordered)
+                                .foregroundStyle(.white)
+                                .tint(.white.opacity(0.5))
+                                .disabled(viewModel.isAccountVerified)
+
+                                if viewModel.isAccountVerified {
+                                        Label("邮箱已确认：\(viewModel.accountEmail)", systemImage: "checkmark.seal.fill")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                } else {
+                                        Text("请前往邮箱点击确认链接以继续下一步。")
+                                                .font(.caption2)
+                                                .foregroundStyle(.white.opacity(0.8))
+                                                .multilineTextAlignment(.center)
+                                }
+                        }
+                }
+        }
+
+        private func providerButton(title: String, systemImage: String, provider: OnboardingViewModel.AccountProvider) -> some View {
+                let isSelected = viewModel.selectedAccountProvider == provider
+                return Button {
+                        viewModel.selectAccountProvider(provider)
+                } label: {
+                        HStack {
+                                Image(systemName: systemImage)
+                                Text(title)
+                                        .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                if isSelected {
+                                        Image(systemName: "checkmark")
+                                }
+                        }
+                        .foregroundStyle(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color.white.opacity(isSelected ? 0.25 : 0.12))
+                        )
+                        .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(Color.white.opacity(isSelected ? 1 : 0.4), lineWidth: isSelected ? 1.5 : 0.8)
+                        )
+                }
+                .buttonStyle(.plain)
+        }
 }
 
 private struct NameStepView: View {

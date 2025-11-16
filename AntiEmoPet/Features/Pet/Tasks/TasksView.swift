@@ -15,57 +15,50 @@ struct TasksView: View {
     @State private var bannerTask: Task<Void, Never>?
 
     var body: some View {
-        ZStack(alignment: .top) {
-            List {
-                Section {
-                    ForEach(appModel.todayTasks) { task in
-					HStack {
-						VStack(alignment: .leading, spacing: 6) {
-							Text(task.title)
-								.font(.headline)
-							Text(viewModel.badge(for: task))
-								.font(.caption)
-								.foregroundStyle(.secondary)
-								}
-						Spacer()
-						Button {
-							appModel.completeTask(task)
-								}
-						label: {
-							Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
-								.foregroundStyle(task.status == .completed ? .black.opacity(0.5) : .secondary)
-								.imageScale(.large)
-						}
-						.buttonStyle(.plain)
-						.disabled(task.status == .completed)
-						}
-					.padding(.vertical, 6)
-                    }
-                }
-                if appModel.todayTasks.isEmpty {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            ZStack(alignment: .top) {
+                List {
                     Section {
-                        Text("暂无任务，稍后再试或检查网络")
+                        ForEach(appModel.todayTasks) { task in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(task.title)
+                                        .appFont(FontTheme.headline)
+                                    Text(viewModel.badge(for: task))
+                                        .appFont(FontTheme.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    appModel.completeTask(task)
+                                } label: {
+                                    Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(task.status == .completed ? .black.opacity(0.5) : .secondary)
+                                        .imageScale(.large)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(task.status == .completed)
+                            }
+                            .padding(.vertical, 6)
+                        }
+                    }
+                    if appModel.todayTasks.isEmpty {
+                        Section {
+                            Text("暂无任务，稍后再试或检查网络")
+                                .appFont(FontTheme.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-            }
-            .listStyle(.insetGrouped)
+                .listStyle(.insetGrouped)
 
-            if let reward = activeReward {
-                RewardToastView(event: reward)
-                    .opacity(rewardOpacity)
-                    .padding(.top, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .navigationTitle("Tasks")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if viewModel.isRefreshing {
-                    ProgressView()
-                } else {
-                    Button("刷新") {
-                        Task(priority: .userInitiated) { await viewModel.forceRefresh(appModel: appModel) }
-                    }
+                if let reward = activeReward {
+                    RewardToastView(event: reward)
+                        .opacity(rewardOpacity)
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
         }
@@ -89,6 +82,26 @@ struct TasksView: View {
         .onDisappear {
             bannerTask?.cancel()
         }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("Tasks")
+                .appFont(FontTheme.title2)
+                .foregroundStyle(.primary)
+            Spacer()
+            if viewModel.isRefreshing {
+                ProgressView()
+            } else {
+                Button("刷新") {
+                    Task(priority: .userInitiated) { await viewModel.forceRefresh(appModel: appModel) }
+                }
+                .appFont(FontTheme.caption)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
     }
 }
 

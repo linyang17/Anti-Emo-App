@@ -40,7 +40,7 @@ struct EnergyTrendSection: View {
 								.cornerRadius(4)
 						}
 						.chartScrollableAxes(.horizontal)
-						.chartXVisibleDomain(length: visibleLength(for: window))
+						.chartXScale(domain: xVisibleDomain(for: window, data: data))
 						.chartXAxis {
 							AxisMarks(values: xAxisValues(for: window)) { value in
 								AxisValueLabel {
@@ -90,23 +90,6 @@ struct EnergyTrendSection: View {
 		}
 
 	// MARK: - 动态 X 轴范围
-	private func visibleLength(for window: Int) -> TimeInterval {
-		let day: TimeInterval = 24 * 60 * 60
-		switch window {
-		case 1:
-			// Day: 1 day window
-			return day
-		case 7:
-			// Week: 7 days window
-			return 7 * day
-		case 30:
-			// Month: approx 31 days window
-			return 31 * day
-		default:
-			return 7 * day
-		}
-	}
-
 	// MARK: - 动态 X 轴刻度
 		private func xAxisValues(for window: Int) -> [Date] {
 			let cal = TimeZoneManager.shared.calendar

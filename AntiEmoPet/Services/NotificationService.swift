@@ -2,16 +2,31 @@ import Foundation
 import UserNotifications
 
 final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+    enum AuthorizationResult {
+        case granted
+        case denied
+        case requiresSettings
+    }
+
     private let center = UNUserNotificationCenter.current()
 
-    func requestNotiAuth(completion: @escaping (Bool) -> Void) {
-        center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            DispatchQueue.main.async {
-                completion(granted)
+    func requestNotiAuth(completion: @escaping (AuthorizationResult) -> Void) {
+        center.getNotificationSettings { [weak self] settings in
+            guard let self else { return }
+            switch settings.authorizationStatus {
+            case .denied:
+                DispatchQueue.main.async { completion(.requiresSettings) }
+            case .authorized, .provisional, .ephemeral:
+                DispatchQueue.main.async { completion(.granted) }
+            case .notDetermined:
+                self.center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                    DispatchQueue.main.async { completion(granted ? .granted : .denied) }
+                }
+                self.center.delegate = self
+            @unknown default:
+                DispatchQueue.main.async { completion(.denied) }
             }
         }
-        center.delegate = self
-        // TODO: Surface in-app banner when用户拒绝权限, guiding them to Settings per PRD 通知 fallback.
     }
 
     func scheduleDailyReminders() {
