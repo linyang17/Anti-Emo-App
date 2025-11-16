@@ -1,5 +1,18 @@
 import Foundation
 
+struct EnergyHistoryEntry: Identifiable, Codable {
+	let id: UUID
+	let date: Date
+	var totalEnergy: Int
+
+	init(id: UUID = UUID(), date: Date, totalEnergy: Int) {
+		self.id = id
+		self.date = date
+		self.totalEnergy = totalEnergy
+	}
+}
+
+
 struct EnergyEngine {
     static func add(_ amount: Int, to stats: UserStats) {
         stats.totalEnergy = clamp(stats.totalEnergy + amount)

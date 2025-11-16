@@ -7,55 +7,63 @@ struct EnergyTrendSection: View {
 	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
-		DashboardCard(title: "能量趋势", icon: "chart.bar.fill") {
-			VStack(alignment: .leading, spacing: 15) {
-                                Picker("窗口", selection: $window) {
-                                        Text("日").tag(1)
-                                        Text("周").tag(7)
-                                        Text("月").tag(30)
-                                        Text("季").tag(90)
-                                }
-                                .pickerStyle(.segmented)
+		DashboardCard(title: "Energy Trend", icon: "chart.bar.fill") {
+			VStack(alignment: .leading, spacing: 24) {
+								Picker("window", selection: $window) {
+										Text("Day").tag(1)
+										Text("Week").tag(7)
+										Text("Month").tag(30)
+								}
+								.pickerStyle(.segmented)
 
-                                Text(rangeDescription(for: window))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+								Text(rangeDescription(for: window))
+										.font(.caption)
+										.foregroundStyle(.secondary)
 
 				let data = dailyAdded(windowDays: window)
 
 				if data.isEmpty {
 					ContentUnavailableView(
-						"暂无数据",
+						"No Data",
 						systemImage: "chart.bar.fill",
-						description: Text("完成更多任务后可以解锁")
+						description: Text("Unlock when you complete tasks")
 					)
 					.frame(height: 200)
 					.frame(maxWidth: .infinity)
 				} else {
-                                        Chart(data.sorted(by: { $0.key < $1.key }), id: \.key) { day, added in
-                                                BarMark(
-                                                        x: .value(window == 1 ? "时间" : "日期", day),
-                                                        y: .value("补充能量", added)
-                                                )
-                                                .foregroundStyle(.green)
-                                                .cornerRadius(4)
-                                        }
-                                        .chartXScale(domain: xDomain(for: window))
-                                        .chartXAxis {
-                                                AxisMarks(values: xAxisValues(for: window)) { value in
-                                                        AxisValueLabel {
-                                                                if let date = value.as(Date.self) {
-                                                                        if window == 1 {
-                                                                                Text(date, format: .dateTime.hour())
-                                                                        } else {
-                                                                                Text(date, format: .dateTime.month().day())
-                                                                                        .font(.caption2)
-                                                                                        .rotationEffect(window > 1 ? .degrees(-35) : .zero)
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-                                        }
+						Chart(data.sorted(by: { $0.key < $1.key }), id: \.key) { day, added in
+								BarMark(
+									x: .value(window == 1 ? "hour" : "day", day),
+									y: .value("Energy Added", added)
+								)
+								.foregroundStyle(.green)
+								.cornerRadius(4)
+						}
+						.chartScrollableAxes(.horizontal)
+						.chartXVisibleDomain(length: visibleLength(for: window))
+						.chartXAxis {
+							AxisMarks(values: xAxisValues(for: window)) { value in
+								AxisValueLabel {
+									if let date = value.as(Date.self) {
+										switch window {
+										case 1:
+											Text(date, format: .dateTime.hour())
+										case 7:
+											// Week: show weekday abbreviation, e.g. Mon, Tue
+											Text(date, format: .dateTime.weekday(.abbreviated))
+												.font(.caption2)
+										case 30:
+											// Month: show day of month (dd) every tick
+											Text(date, format: .dateTime.day())
+												.font(.caption2)
+										default:
+											Text(date, format: .dateTime.day())
+												.font(.caption2)
+										}
+									}
+								}
+							}
+						}
 					.chartYAxis {
 						AxisMarks(position: .leading)
 					}
@@ -67,78 +75,174 @@ struct EnergyTrendSection: View {
 	}
 
 	// MARK: - 动态步进逻辑
-        private func strideStep(for window: Int) -> Int {
-                switch window {
-                case 90: return 15
-                case 30: return 5
-                case 7: return 2
-                default: return 3 // 日模式：每3小时一个刻度
-                }
-        }
+		private func strideStep(for window: Int) -> Int {
+			switch window {
+			case 30:
+				// Month：每 7 天一个刻度
+				return 7
+			case 7:
+				// Week：每天一个刻度
+				return 1
+			default:
+				// 日模式：每 3 小时一个刻度
+				return 3
+			}
+		}
 
 	// MARK: - 动态 X 轴范围
-	private func xDomain(for window: Int) -> ClosedRange<Date> {
-		let cal = TimeZoneManager.shared.calendar
-		let now = Date()
-
-		if window == 1 {
-			let start = cal.startOfDay(for: now)
-			let end = cal.date(byAdding: .hour, value: 23, to: start)!
-			return start...end
-		} else {
-			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-			return start...now
+	private func visibleLength(for window: Int) -> TimeInterval {
+		let day: TimeInterval = 24 * 60 * 60
+		switch window {
+		case 1:
+			// Day: 1 day window
+			return day
+		case 7:
+			// Week: 7 days window
+			return 7 * day
+		case 30:
+			// Month: approx 31 days window
+			return 31 * day
+		default:
+			return 7 * day
 		}
 	}
 
 	// MARK: - 动态 X 轴刻度
-        private func xAxisValues(for window: Int) -> [Date] {
-                let cal = TimeZoneManager.shared.calendar
-                let now = Date()
+		private func xAxisValues(for window: Int) -> [Date] {
+			let cal = TimeZoneManager.shared.calendar
+			let now = Date()
 
-                if window == 1 {
+			if window == 1 {
+				let start = cal.startOfDay(for: now)
+				return stride(from: 0, through: 24, by: strideStep(for: window))
+					.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+			} else {
+				let end = cal.startOfDay(for: now)
+				let stepDays = strideStep(for: window)
+
+				let start: Date
+				switch window {
+				case 7:
+					// 周：包含今天在内的前 7 天（共 7 天）
+					start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+				case 30:
+					// 月：前一个月到今天，例如 10.16 - 11.15
+					let monthAgoSameDay = cal.date(byAdding: .month, value: -1, to: end) ?? end
+					start = cal.date(byAdding: .day, value: 1, to: monthAgoSameDay) ?? monthAgoSameDay
+				default:
+					start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+				}
+
+				var values: [Date] = []
+				var cursor = start
+				while cursor <= end {
+					values.append(cursor)
+					guard let next = cal.date(byAdding: .day, value: stepDays, to: cursor) else { break }
+					cursor = next
+				}
+				if values.last != end {
+					values.append(end)
+				}
+				return values
+			}
+		}
+
+	private func xVisibleDomain(for window: Int, data: [Date: Int]) -> ClosedRange<Date> {
+		let cal = TimeZoneManager.shared.calendar
+		let now = Date()
+
+		if window == 1 {
+			// 日模式：X 轴固定为当天 0 点到第二天 0 点
 			let start = cal.startOfDay(for: now)
-			return stride(from: 0, through: 24, by: strideStep(for: window))
-				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+			let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
+			return start...end
 		} else {
-                        let stepDays = strideStep(for: window)
-                        let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-                        var values: [Date] = []
-                        var cursor = start
-                        while cursor <= now {
-                                values.append(cursor)
-                                guard let next = cal.date(byAdding: .day, value: stepDays, to: cursor) else { break }
-                                cursor = next
-                        }
-                        if values.last != cal.startOfDay(for: now) {
-                                values.append(cal.startOfDay(for: now))
-                        }
-                        return values
-                }
-        }
+			let end = cal.startOfDay(for: now)
+			let start: Date
 
-        private func rangeDescription(for window: Int) -> String {
-                let cal = TimeZoneManager.shared.calendar
-                let now = Date()
-                let formatter = DateFormatter()
-                formatter.calendar = cal
-                formatter.locale = Locale(identifier: "zh_CN")
-                formatter.dateFormat = "MM.dd"
+			switch window {
+			case 7:
+				// 周：包含今天在内的前 7 天
+				start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+			case 30:
+				// 月：前一个月到今天，例如 10.16 - 11.15
+				let monthAgoSameDay = cal.date(byAdding: .month, value: -1, to: end) ?? end
+				start = cal.date(byAdding: .day, value: 1, to: monthAgoSameDay) ?? monthAgoSameDay
+			default:
+				start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+			}
 
-                switch window {
-                case 1:
-                        let start = cal.startOfDay(for: now)
-                        let end = cal.date(byAdding: .hour, value: 23, to: start) ?? now
-                        let timeFormatter = DateFormatter()
-                        timeFormatter.calendar = cal
-                        timeFormatter.locale = formatter.locale
-                        timeFormatter.dateFormat = "HH:mm"
-                        return "范围：\(formatter.string(from: start)) \(timeFormatter.string(from: start)) – \(timeFormatter.string(from: end))"
-                default:
-                        let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-                        return "范围：\(formatter.string(from: start)) – \(formatter.string(from: now))"
-                }
-        }
+			return start...end
+		}
+	}
+
+		private func rangeDescription(for window: Int) -> String {
+		let cal = TimeZoneManager.shared.calendar
+		let now = Date()
+
+		let start: Date
+		let end: Date
+
+		switch window {
+		case 1:
+			end = cal.startOfDay(for: now)
+			start = end
+		case 7:
+			end = cal.startOfDay(for: now)
+			start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+		case 30:
+			end = cal.startOfDay(for: now)
+			let monthAgoSameDay = cal.date(byAdding: .month, value: -1, to: end) ?? end
+			start = cal.date(byAdding: .day, value: 1, to: monthAgoSameDay) ?? monthAgoSameDay
+		default:
+			end = cal.startOfDay(for: now)
+			start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+		}
+
+		let sameDay = cal.isDate(start, inSameDayAs: end)
+
+		let dfDay = DateFormatter()
+		dfDay.calendar = cal
+		dfDay.locale = Locale.current
+		dfDay.dateFormat = "d"
+
+		let dfDayMonth = DateFormatter()
+		dfDayMonth.calendar = cal
+		dfDayMonth.locale = dfDay.locale
+		dfDayMonth.dateFormat = "d MMM"
+
+		let dfFull = DateFormatter()
+		dfFull.calendar = cal
+		dfFull.locale = dfDay.locale
+		dfFull.dateFormat = "d MMM yyyy"
+
+		if sameDay {
+			let text = dfFull.string(from: end)
+			return "\(text), 00:00 - 23:59"
+		}
+
+		let startYear = cal.component(.year, from: start)
+		let endYear = cal.component(.year, from: end)
+		let startMonth = cal.component(.month, from: start)
+		let endMonth = cal.component(.month, from: end)
+
+		if startYear == endYear && startMonth == endMonth {
+			// 同月同年：9 - 15 Nov 2025
+			let s = dfDay.string(from: start)
+			let e = dfFull.string(from: end)
+			return "\(s) - \(e)"
+		} else if startYear == endYear {
+			// 同年不同月：16 Oct - 15 Nov 2025
+			let s = dfDayMonth.string(from: start)
+			let e = dfFull.string(from: end)
+			return "\(s) - \(e)"
+		} else {
+			// 跨年：28 Dec 2025 - 3 Jan 2026
+			let s = dfFull.string(from: start)
+			let e = dfFull.string(from: end)
+			return "\(s) - \(e)"
+		}
+	}
 
 	// MARK: - 动态数据计算
 	private func dailyAdded(windowDays: Int) -> [Date: Int] {
@@ -166,15 +270,11 @@ struct EnergyTrendSection: View {
 				prev = entry
 			}
 
-			// 当前小时使用实时 todayAdd
-			let currentHour = cal.date(bySetting: .minute, value: 0, of: now)!
-			hourly[currentHour, default: 0] += energy.todayAdd
 			return hourly
 		}
 
-		// 周 / 月 / 季 模式
-		let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(windowDays - 1), to: now)!)
-		let filtered = energyHistory.filter { $0.date >= start }
+		// 周 / 月 / 季 模式：先对全部历史做聚合，再通过 chart 的 visible domain 控制滚动窗口
+		let filtered = energyHistory
 			.sorted(by: { $0.date < $1.date })
 
 		var daily: [Date: Int] = [:]
@@ -190,18 +290,8 @@ struct EnergyTrendSection: View {
 		}
 
 		daily[cal.startOfDay(for: now)] = energy.todayAdd
-
-		if windowDays >= 30 {
-			var weekly: [Date: (sum: Int, count: Int)] = [:]
-			for (day, value) in daily {
-				if let weekStart = cal.dateInterval(of: .weekOfYear, for: day)?.start {
-					weekly[weekStart, default: (0, 0)].sum += value
-					weekly[weekStart]!.count += 1
-				}
-			}
-			return weekly.mapValues { $0.count > 0 ? $0.sum / $0.count : 0 }
-		}
-
+		
+		// Week 和 Month 都按天显示
 		return daily
 	}
 }

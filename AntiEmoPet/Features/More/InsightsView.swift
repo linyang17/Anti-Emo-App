@@ -21,7 +21,7 @@ struct InsightsView: View {
 			}
 			.padding()
 		}
-		.navigationTitle("洞察")
+		.navigationTitle("Insights")
 		.onAppear(perform: refreshSummaries)
 		.onReceive(appModel.$moodEntries) { _ in refreshSummaries() }
 		.onReceive(appModel.$energyHistory) { _ in refreshSummaries() }

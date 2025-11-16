@@ -1,5 +1,12 @@
 import SwiftUI
 
+
+struct RewardEvent: Identifiable, Equatable {
+	let id = UUID()
+	let energy: Int
+	let xp: Int
+}
+
 struct TasksView: View {
     @EnvironmentObject private var appModel: AppViewModel
     @StateObject private var viewModel = TasksViewModel()
@@ -12,26 +19,27 @@ struct TasksView: View {
             List {
                 Section {
                     ForEach(appModel.todayTasks) { task in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(task.title)
-                                    .font(.headline)
-                                Text(viewModel.badge(for: task))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button {
-                                appModel.completeTask(task)
-                            } label: {
-                                Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(task.status == .completed ? .black.opacity(0.5) : .secondary)
-                                    .imageScale(.large)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(task.status == .completed)
-                        }
-                        .padding(.vertical, 6)
+					HStack {
+						VStack(alignment: .leading, spacing: 6) {
+							Text(task.title)
+								.font(.headline)
+							Text(viewModel.badge(for: task))
+								.font(.caption)
+								.foregroundStyle(.secondary)
+								}
+						Spacer()
+						Button {
+							appModel.completeTask(task)
+								}
+						label: {
+							Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
+								.foregroundStyle(task.status == .completed ? .black.opacity(0.5) : .secondary)
+								.imageScale(.large)
+						}
+						.buttonStyle(.plain)
+						.disabled(task.status == .completed)
+						}
+					.padding(.vertical, 6)
                     }
                 }
                 if appModel.todayTasks.isEmpty {
@@ -101,7 +109,7 @@ private struct RewardToastView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(.thinMaterial, in: Capsule())
         .shadow(radius: 12)
         .padding(.horizontal, 32)
     }

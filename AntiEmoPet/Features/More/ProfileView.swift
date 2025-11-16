@@ -7,25 +7,20 @@ struct ProfileView: View {
     var body: some View {
         List {
             if let stats = appModel.userStats {
-                Section("概览") {
-                    Label("昵称：\(stats.nickname.isEmpty ? "未设置" : stats.nickname)", systemImage: "person.fill")
-                    Label("地区：\(stats.region.isEmpty ? "星球" : stats.region)", systemImage: "mappin.and.ellipse")
-                    Label("你已经陪伴Lumio \(stats.TotalDays) 天", systemImage: "flame")
-                    Label("完成任务：\(stats.completedTasksCount)", systemImage: "list.clipboard")
-                    Label("当前能量：\(stats.totalEnergy)", systemImage: "bolt")
+                Section("User Info") {
+                    Label("Username：\(stats.nickname.isEmpty ? "human unknown" : stats.nickname)", systemImage: "person.fill")
+                    Label("City：\(stats.region.isEmpty ? "city unknown" : stats.region)", systemImage: "mappin.and.ellipse")
+                    Label("You've met Lumio \(stats.TotalDays) days", systemImage: "flame")
+					// TODO: add current streak days
+                    Label("Tasks completed：\(stats.completedTasksCount)", systemImage: "list.clipboard")
                 }
 
-                Section("通知") {
-                    Toggle("提醒", isOn: Binding(
-                        get: { stats.notificationsEnabled },
-                        set: { newValue in
-                            stats.notificationsEnabled = newValue
-                            if newValue {
-                                appModel.requestNotifications()
-                            }
-                            appModel.persistState()
-                        }
-                    ))
+                Section("Membership Status") {
+					
+					// TODO: add membership status
+					
+					Label("Basic", systemImage: "questionmark")
+					
                 }
             }
         }

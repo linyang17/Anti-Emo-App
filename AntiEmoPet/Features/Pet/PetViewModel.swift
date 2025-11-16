@@ -107,9 +107,9 @@ final class PetViewModel: ObservableObject {
     private func petAsset(for bonding: PetBonding) -> String {
         switch bonding {
         case .ecstatic:
-            return "foxhappy"
+            return "foxlying"
         case .happy:
-            return "foxlooking"
+            return "foxnormal"
         case .calm:
             return "foxcurious"
         case .sleepy:

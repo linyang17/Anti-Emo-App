@@ -13,21 +13,16 @@ struct StatisticsView: View {
         var body: some View {
 			ScrollView {
 				VStack(spacing: 20) {
-					// 1️⃣ 总览卡片：今日 vs 趋势
-					//StatisticsOverviewSection(mood: moodSummary, energy: energySummary)
-
-					// 2️⃣ 情绪统计区
+					// 情绪统计区
 					MoodStatsSection(mood: moodSummary)
-
-					// 3️⃣ 能量统计区
-					EnergyStatsSection(energy: energySummary)
-
-					// 4️⃣ 趋势区：能量与情绪
-					EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
 					MoodTrendSection().environmentObject(appModel)
+
+					// 能量统计区
+					EnergyStatsSection(energy: energySummary)
+					EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
 					}
                 }
-                .navigationTitle("统计")
+                .navigationTitle("Statistics")
                 .onAppear(perform: refreshSummaries)
                 .onReceive(appModel.$moodEntries) { _ in refreshSummaries() }
                 .onReceive(appModel.$energyHistory) { _ in refreshSummaries() }

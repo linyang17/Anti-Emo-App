@@ -7,17 +7,17 @@ enum DayPeriod: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var dayPeriodTitle: String {
         switch self {
-        case .daylight: return "日间"
-        case .night: return "夜间"
+        case .daylight: return "Daylight"
+        case .night: return "Dark"
         }
     }
 }
 
 enum TrendDirection: String, Codable, Sendable {
-		case up = "arrow.up.right"
-		case down = "arrow.down.right"
+		case up = "⬆"
+		case down = "↓"
 		case flat = ""
 }
 
@@ -111,22 +111,23 @@ final class AnalysisViewModel: ObservableObject {
 
 	// 3) TODO: 情绪与日照时长关联度分析：
     private func daylightCorrelationText(slotAverages: [TimeSlot: Double]) -> String {
-        guard !slotAverages.isEmpty else { return "暂无足够的数据来生成分析。" }
+        guard !slotAverages.isEmpty else { return "Not enough data for analysis. Try to enter some moods and complete more tasks!" }
 
-        if let (slot, _) = slotAverages.min(by: { $0.value < $1.value }) {
-            switch slot {
-            case .morning:
-                return "上午时段的情绪平均偏低。可以考虑晒晒太阳或安排一杯热饮来开启一天。"
-            case .afternoon:
-                return "下午时段的情绪平均偏低。试着外出走走或做个轻运动，转换一下状态。"
-            case .evening:
-                return "傍晚时段的情绪平均偏低。安排一点放松活动，帮助过渡到夜间休息。"
-            case .night:
-                return "夜间时段的情绪平均偏低。试着提前一点休息，减少屏幕时间，改善睡眠质量。"
-            }
-        }
+		if let (slot, _) = slotAverages.min(by: { $0.value < $1.value }) {
+			switch slot {
+			case .morning:
+				return "Hmm... mornings seem a bit gloomy. Maybe a warm drink and a bit of sunshine will cheer you up!"
+			case .afternoon:
+				return "Afternoons seem a little slow. How about a short walk outside or a quick stretch?"
+			case .evening:
+				return "Evenings feel a bit low. Lumio will find you something cozy to do before the stars come out."
+			case .night:
+				return "Nights can feel heavy sometimes. Lumio reckon it’s time to take some good rest and dream under the moon."
+			}
+		}
 
-        return "各时段情绪较为均衡，暂无明显日照相关的波动。"
+		return "Your mood feel balanced across the day — no big sunshine swings this time!"
+
     }
 
     // 日间平均情绪

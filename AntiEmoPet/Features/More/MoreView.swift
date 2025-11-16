@@ -5,13 +5,13 @@ struct MoreView: View {
 
 	var body: some View {
 		List {
-			Section(header: Text("聊天")) {
+			Section(header: Text("Chat")) {
 				NavigationLink(destination: ChatView().environmentObject(appModel)) {
 					Label("Chat", systemImage: "message")
 				}
 			}
 
-			Section(header: Text("统计")) {
+			Section(header: Text("Statistics")) {
 				NavigationLink(destination: StatisticsView().environmentObject(appModel)) {
 					Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
 				}
@@ -20,6 +20,19 @@ struct MoreView: View {
 					Label("Insights", systemImage: "lightbulb.max")
 				}
 			}
+			Section(header: Text("User")) {
+				NavigationLink(destination: ProfileView().environmentObject(appModel)) {
+					Label("Profile", systemImage: "person")
+				}
+			}
+			Section(header: Text("Settings")) {
+				NavigationLink(destination: SettingView().environmentObject(appModel)) {
+					Label("Settings", systemImage: "gearshape")
+				}
+			}
+				
+				// TODO: add more relevant settings
+			
 		}
 		.navigationTitle("More")
 		.listStyle(.insetGrouped)

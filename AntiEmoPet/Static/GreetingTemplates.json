@@ -2,68 +2,68 @@
   "base":
   {
 	"morning": [
-	  "Good morning, {name}! \\nLet's start today gently.",
-	  "Morning, {name}. \\nLumio's here with you.",
-	  "A new day, {name}. \\nOne small step at a time."
+	  "Good morning, {name}! \nLet's start today gently.",
+	  "Morning, {name}. \nLumio's here with you.",
+	  "A new day, {name}. \nOne small step at a time."
 	],
 	
 	"afternoon": [
-	  "Welcome back, {name}! \\nHow is your day going?",
-	  "Hey {name}, \\nLumio's thinking of you.",
-	  "Nice to see you again, {name}. \\nLet's take a small break together."
+	  "Welcome back, {name}! \nHow is your day going?",
+	  "Hey {name}, \nLumio's thinking of you.",
+	  "Nice to see you again, {name}. \nLet's take a small break together."
 	],
 	
 	"evening": [
-	  "Good evening, {name}. \\nYou made it through today.",
-	  "Hi {name}, \\nlet's wind down together.",
-	  "Evening, {name}. \\nLumio saved a quiet moment just for you."
+	  "Good evening, {name}. \nYou made it through today.",
+	  "Hi {name}, \nlet's wind down together.",
+	  "Evening, {name}. \nLumio saved a quiet moment just for you."
 	],
 	
 	"night": [
-	  "It's late, {name}. \\nThanks for stopping by.",
-	  "Hey {name}, \\nLumio is here if you need a soft landing tonight.",
-	  "Quiet night, {name}. \\nLet's take a deep breath together."
+	  "It's late, {name}. \nThanks for stopping by.",
+	  "Hey {name}, \nLumio is here if you need\n a soft landing tonight.",
+	  "Quiet night, {name}. \nLet's take a deep breath together."
 	]
   },
   
   "weather":
   {
 	"sunny": [
-	  "Good day, {name}. \\nThe sky looks kind today. A bit of sunlight might feel good.",
-	  "Sunny outside, {name}. \\nIf you have the energy, a tiny walk could feel nice."
+	  "Good day, {name}. \nThe sky looks kind today.\n A bit of sunlight might feel good.",
+	  "Sunny outside, {name}. \nIf you have the energy, \n a tiny walk could feel nice."
 	],
 	
 	"cloudy": [
-	  "Cloudy days can feel heavy, {name}. \\nLet's move gently today.",
-	  "Grey sky, soft pace. \\nIt's okay to take it slow, {name}."
+	  "Cloudy days can feel heavy, {name}. \nLet's move gently today.",
+	  "Grey sky, soft pace. \nIt's okay to take it slow, {name}."
 	],
 	
 	"rainy": [
-	  "It's rainy out there, {name}. \\nStaying cozy is absolutely allowed.",
-	  "Rainy weather is a good excuse for warm drinks and soft blankets, {name}."
+	  "It's rainy out there, {name}. \nStaying cozy is absolutely allowed.",
+	  "Rainy weather is a good excuse \n for warm drinks and soft blankets, {name}."
 	],
 	
 	"snowy": [
-	  "Snow makes everything quieter, {name}. \\nLet's enjoy a calm moment together.",
-	  "Snowy day, {name}. \\nYou don't have to do much to make today count."
+	  "Snow makes everything quieter, {name}. \nLet's enjoy a calm moment together.",
+	  "Snowy day, {name}. \nYou don't have to do much\n to make today count."
 	]
   },
   
   "mood":
   {
 	"low": [
-	  "If things feel heavy lately, {name}, \\nit's okay to move very slowly today.",
-	  "You've been carrying a lot, {name}. \\nWe can take today one tiny step at a time."
+	  "If things feel\n heavy lately, {name}, \nit's okay to move very slowly today.",
+	  "You've been carrying a lot, {name}. \nWe can take today\n one tiny step at a time."
 	],
 	
 	"neutral": [
-	  "Not every day has to be special, {name}. \\nShowing up is already enough.",
-	  "A balanced day is still progress, {name}. \\nGentle is good."
+	  "Not every day\n has to be special,\n {name}. \nShowing up is already enough.",
+	  "Balance is also progress,\n {name}. \nGentle is good."
 	],
 	
 	"high": [
-	  "Your mood has been quite warm lately, {name}. \\nMaybe we can try one small adventure today.",
-	  "You seem a bit lighter these days, {name}. \\nLet's use that energy kindly."
+	  "Your mood has been quite\n warm lately, {name}. \nMaybe we can try one small adventure today.",
+	  "You seem a bit lighter, {name}. \nLet's use that energy kindly."
 	]
   }
 }
