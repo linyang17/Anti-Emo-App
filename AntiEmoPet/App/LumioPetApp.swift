@@ -16,7 +16,6 @@ struct LumioPetApp: App {
 			MoodEntry.self
 		])
 
-		// 使用持久化配置，确保数据在重启后保持一致
 		let configuration = ModelConfiguration(schema: schema)
 
 		do {
@@ -42,11 +41,9 @@ struct LumioPetApp: App {
 				.environmentObject(appModel)
                                 .environment(\.font, FontTheme.body)
 				.task {
-					// 应用启动时加载数据（task 自动在主 actor 上运行）
 					await appModel.load()
 				}
 				.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-					// 应用回到前台时刷新
 					Task { await appModel.refreshIfNeeded() }
 				}
 		}

@@ -23,20 +23,20 @@ final class OnboardingViewModel: ObservableObject {
 		}
 	}
 	
-        enum AccountProvider: String, CaseIterable, Identifiable {
-                case google
-                case icloud
-                case email
+	enum AccountProvider: String, CaseIterable, Identifiable {
+			case google
+			case icloud
+			case email
 
-                var id: String { rawValue }
+			var id: String { rawValue }
 
-                var title: String {
-                        switch self {
-                        case .google: return "Google"
-                        case .icloud: return "iCloud"
-                        case .email: return "Email"
-                        }
-                }
+			var title: String {
+					switch self {
+					case .google: return "Google"
+					case .icloud: return "iCloud"
+					case .email: return "Email"
+					}
+			}
         }
 
 	@Published var nickname: String = ""
@@ -47,48 +47,49 @@ final class OnboardingViewModel: ObservableObject {
 	@Published var hasWeatherPermission: Bool = false
 	@Published var selectedGender: GenderOption?
 	@Published var birthday: Date
-        @Published var selectedAccountProvider: AccountProvider?
-        @Published var accountEmail: String = ""
-        @Published var emailInput: String = ""
-        @Published var emailConfirmationSent: Bool = false
-        @Published var isAccountVerified: Bool = false
+	@Published var selectedAccountProvider: AccountProvider?
+	@Published var accountEmail: String = ""
+	@Published var emailInput: String = ""
+	@Published var emailConfirmationSent: Bool = false
+	@Published var isAccountVerified: Bool = false
 
 
-        var canSubmit: Bool {
-                !nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                selectedGender != nil &&
-                enableLocationAndWeather &&
-                hasLocationPermission &&
-                hasWeatherPermission &&
-                birthday <= Date() &&
-                hasVerifiedAccount
-        }
-        var hasVerifiedAccount: Bool {
-                guard selectedAccountProvider != nil else { return false }
-                return isAccountVerified && !accountEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
+	var canSubmit: Bool {
+			!nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+			selectedGender != nil &&
+			enableLocationAndWeather &&
+			hasLocationPermission &&
+			hasWeatherPermission &&
+			birthday <= Date() &&
+			hasVerifiedAccount
+	}
+	
+	var hasVerifiedAccount: Bool {
+			guard selectedAccountProvider != nil else { return false }
+			return isAccountVerified && !accountEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+	}
 
-        var isEmailInputValid: Bool {
-                let trimmed = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed.contains("@") && trimmed.contains(".")
-        }
+	var isEmailInputValid: Bool {
+			let trimmed = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
+			return trimmed.contains("@") && trimmed.contains(".")
+	}
 
 
 
 	var statusText: String {
 		if !enableLocationAndWeather {
-			return "请开启定位与天气访问以继续"
+			return "Please allow location access to continue."
 		}
 		if !hasLocationPermission {
-			return "等待定位权限…"
+			return "Awaiting permission..."
 		}
 		if !hasWeatherPermission {
-			return "等待天气权限…"
+			return "Awaiting permission..."
 		}
 		if region.isEmpty {
-			return "正在解析城市…"
+			return "Locating"
 		}
-		return "已准备好"
+		return "Ready"
 	}
 
 	func updateLocationStatus(_ status: CLAuthorizationStatus) {
@@ -98,51 +99,52 @@ final class OnboardingViewModel: ObservableObject {
 	func setWeatherPermission(_ granted: Bool) {
 		hasWeatherPermission = granted
 	}
-        func selectAccountProvider(_ provider: AccountProvider) {
-                selectedAccountProvider = provider
-                switch provider {
-                case .google:
-                        accountEmail = makePlaceholderEmail(domain: "gmail.com")
-                        emailInput = ""
-                        isAccountVerified = true
-                        emailConfirmationSent = false
-                case .icloud:
-                        accountEmail = makePlaceholderEmail(domain: "icloud.com")
-                        emailInput = ""
-                        isAccountVerified = true
-                        emailConfirmationSent = false
-                case .email:
-                        if !accountEmail.isEmpty {
-                                emailInput = accountEmail
-                        }
-                        accountEmail = ""
-                        isAccountVerified = false
-                        emailConfirmationSent = false
-                }
-        }
+	
+	func selectAccountProvider(_ provider: AccountProvider) {
+			selectedAccountProvider = provider
+			switch provider {
+			case .google:
+					accountEmail = makePlaceholderEmail(domain: "gmail.com")
+					emailInput = ""
+					isAccountVerified = true
+					emailConfirmationSent = false
+			case .icloud:
+					accountEmail = makePlaceholderEmail(domain: "icloud.com")
+					emailInput = ""
+					isAccountVerified = true
+					emailConfirmationSent = false
+			case .email:
+					if !accountEmail.isEmpty {
+							emailInput = accountEmail
+					}
+					accountEmail = ""
+					isAccountVerified = false
+					emailConfirmationSent = false
+			}
+	}
 
-        func sendEmailConfirmation() {
-                guard selectedAccountProvider == .email, isEmailInputValid else { return }
-                emailConfirmationSent = true
-                isAccountVerified = false
-        }
+	func sendEmailConfirmation() {
+			guard selectedAccountProvider == .email, isEmailInputValid else { return }
+			emailConfirmationSent = true
+			isAccountVerified = false
+	}
 
-        func confirmEmailVerification() {
-                guard selectedAccountProvider == .email, emailConfirmationSent, isEmailInputValid else { return }
-                accountEmail = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                isAccountVerified = true
-        }
+	func confirmEmailVerification() {
+			guard selectedAccountProvider == .email, emailConfirmationSent, isEmailInputValid else { return }
+			accountEmail = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
+			isAccountVerified = true
+	}
 
-        private func makePlaceholderEmail(domain: String) -> String {
-                let base = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-                let allowed = base.lowercased().map { character -> Character? in
-                        if character.isLetter || character.isNumber { return character }
-                        if character == " " { return "." }
-                        return nil
-                }.compactMap { $0 }
-                let username = allowed.isEmpty ? "lumio.friend" : String(allowed)
-                return "\(username)@\(domain)"
-        }
+	private func makePlaceholderEmail(domain: String) -> String {
+			let base = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+			let allowed = base.lowercased().map { character -> Character? in
+					if character.isLetter || character.isNumber { return character }
+					if character == " " { return "." }
+					return nil
+			}.compactMap { $0 }
+			let username = allowed.isEmpty ? "lumio.friend" : String(allowed)
+			return "\(username)@\(domain)"
+	}
 
 
 	init(defaultBirthday: Date = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .now) {

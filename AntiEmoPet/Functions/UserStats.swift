@@ -51,7 +51,7 @@ final class UserStats: Identifiable {
         shareLocationAndWeather: Bool = false,
         gender: String = GenderIdentity.unspecified.rawValue,
         birthday: Date? = nil,
-        accountEmail: String = ""
+        accountEmail: String = "",
 		Onboard: Bool = false
     ) {
         self.id = id

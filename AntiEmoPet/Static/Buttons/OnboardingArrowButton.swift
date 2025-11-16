@@ -1,5 +1,27 @@
 import SwiftUI
 
+struct LumioSay: View {
+	let text: String
+	private static let maxBubbleWidth: CGFloat = {
+		let characters = String(repeating: "W", count: 20)
+		let preferredSize = UIFontMetrics.default.scaledValue(for: 18)
+		let font = UIFont(name: "ABeeZee", size: preferredSize) ?? UIFont.preferredFont(forTextStyle: .title2)
+		let size = (characters as NSString).size(withAttributes: [.font: font])
+		return size.width
+	}()
+	
+	var body: some View {
+		Text(text)
+			.appFont(FontTheme.title2)
+			.multilineTextAlignment(.center)
+			.foregroundStyle(.white)
+			.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
+			.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
+			.frame(maxWidth: LumioSay.maxBubbleWidth)
+	}
+}
+
+
 struct OnboardingArrowButton: View {
     let isEnabled: Bool
     let isLoading: Bool
