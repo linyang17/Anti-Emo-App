@@ -40,6 +40,7 @@ struct LumioPetApp: App {
 		WindowGroup {
 			ContentView()
 				.environmentObject(appModel)
+                                .environment(\.font, FontTheme.body)
 				.task {
 					// 应用启动时加载数据（task 自动在主 actor 上运行）
 					await appModel.load()

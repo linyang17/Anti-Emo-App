@@ -156,6 +156,18 @@ final class StorageService {
         }
     }
 
+    func resetAllCompletionDates() {
+        do {
+            let descriptor = FetchDescriptor<UserTask>()
+            let targets = try context.fetch(descriptor)
+            guard !targets.isEmpty else { return }
+            targets.forEach { $0.completedAt = nil }
+            saveContext(reason: "reset all completion dates")
+        } catch {
+            logger.error("Failed to reset all completion dates: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func persist() {
         saveContext(reason: "persist changes")
     }

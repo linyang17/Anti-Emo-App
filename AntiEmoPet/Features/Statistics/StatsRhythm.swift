@@ -32,6 +32,7 @@ struct StatsRhythmSection: View {
 		.onAppear(perform: refreshRhythms)
 		.onReceive(appModel.$moodEntries) { _ in refreshRhythms() }
 		.onReceive(appModel.$todayTasks) { _ in refreshRhythms() }
+                .onReceive(appModel.$weatherReport) { _ in refreshRhythms() }
 	}
 
         private func refreshRhythms() {

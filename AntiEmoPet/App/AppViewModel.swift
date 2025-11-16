@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 import Combine
 import CoreLocation
+import UIKit
 
 extension Font {
 	static func app(_ size: CGFloat) -> Font {
@@ -27,6 +28,7 @@ final class AppViewModel: ObservableObject {
 	@Published var showSleepReminder = false
 	@Published var rewardBanner: RewardEvent?
 	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+        @Published var shouldShowNotificationSettingsPrompt = false
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -106,6 +108,7 @@ final class AppViewModel: ObservableObject {
 		}
 
 		await refreshWeather(using: locationService.lastKnownLocation)
+                storage.resetAllCompletionDates()
 
 		if todayTasks.isEmpty {
 			let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
@@ -183,6 +186,7 @@ final class AppViewModel: ObservableObject {
 		shareLocation: Bool,
 		gender: String,
 		birthday: Date?,
+                accountEmail: String,
 		Onboard: Bool
 	) {
 		userStats?.nickname = nickname
@@ -190,6 +194,7 @@ final class AppViewModel: ObservableObject {
 		userStats?.shareLocationAndWeather = shareLocation
 		userStats?.gender = gender
 		userStats?.birthday = birthday
+                userStats?.accountEmail = accountEmail
 		userStats?.Onboard = true
 		storage.persist()
 		showOnboarding = false
@@ -212,15 +217,27 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func requestNotifications() {
-		notificationService.requestNotiAuth { [weak self] granted in
+		shouldShowNotificationSettingsPrompt = false
+		notificationService.requestNotiAuth { [weak self] result in
 			guard let self, let stats = self.userStats else { return }
-			stats.notificationsEnabled = granted
-			if granted {
+			switch result {
+			case .granted:
+				stats.notificationsEnabled = true
 				self.notificationService.scheduleDailyReminders()
 				self.scheduleTaskNotifications()
+			case .denied:
+				stats.notificationsEnabled = false
+			case .requiresSettings:
+				stats.notificationsEnabled = false
+				self.shouldShowNotificationSettingsPrompt = true
 			}
 			self.storage.persist()
 		}
+	}
+
+	func openNotificationSettings() {
+		guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+		UIApplication.shared.open(url)
 	}
 
 	func persistState() {
@@ -397,6 +414,7 @@ final class AppViewModel: ObservableObject {
 			beginLocationUpdates()
 		}
 		await refreshWeather(using: locationService.lastKnownLocation)
+                storage.resetAllCompletionDates()
 		if let retained {
 			retained.status = .pending
 			retained.completedAt = nil
