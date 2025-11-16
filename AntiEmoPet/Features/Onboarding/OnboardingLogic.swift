@@ -45,9 +45,7 @@ struct StepFactory: View {
 			AccessStepView()
 
 		case .celebration:
-			WelcomeView {
-				onAdvance()
-			}
+			WelcomeView(onTap: onAdvance)
 		}
 	}
 }

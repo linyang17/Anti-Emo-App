@@ -24,7 +24,9 @@ struct OnboardingView: View {
 		ZStack {
 			GPUCachedBackground("bg-main")
 
-			LazyVStack(spacing: 24) {
+			VStack {
+				Spacer(minLength: 50)
+				
 				StepFactory(
 					step: step,
 					viewModel: viewModel,
@@ -33,23 +35,26 @@ struct OnboardingView: View {
 				.id(step.rawValue)
 				.animation(.easeInOut(duration: 0.3), value: step)
 				
+				Spacer(minLength: 520)
+			}
+			
+			VStack (spacing: 24) {
+				Spacer(minLength: 300)
+				
 				if step != .celebration {
 					OnboardingArrowButton(
 						isEnabled: canAdvance,
 						isLoading: isProcessingFinalStep,
 						action: handleAdvance
 					)
-					.padding(.top, 12)
+					.gesture(backSwipeGesture)
 				}
-			Spacer(minLength: 100)
+				
+				if step != .celebration {
+					FoxCharacterLayer()
+				}
 			}
-			.padding(.bottom, 120)
-			.offset(x: dragOffset)
-			.gesture(backSwipeGesture)
-			
-			if step != .celebration {
-				FoxCharacterLayer()
-			}
+			.padding(.bottom, 50)
 		}
 		.background(NavigationGestureDisabler(isDisabled: true))
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
@@ -81,8 +86,7 @@ extension OnboardingView {
 	var canAdvance: Bool {
 		switch step {
 		case .intro: return true
-			// TODO: amend logic for registration - email authorisation confirmed
-		case .registration: return true
+		case .registration: return !viewModel.accountEmail.isEmpty
 		case .name: return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 		case .gender: return viewModel.selectedGender != nil
 		case .birthday: return viewModel.birthday <= Date()
@@ -95,6 +99,10 @@ extension OnboardingView {
 		guard canAdvance else { return }
 		switch step {
 		case .access: handleAccessFlow()
+			
+		case .celebration:
+			finishOnboarding(shareLocation: true)
+			
 		default:
 			if let next = step.next {
 				withAnimation(.snappy(duration: 0.32)) { step = next }
@@ -154,7 +162,7 @@ extension OnboardingView {
 	}
 
 	func prepareInitialData() async {
-		await viewModel.updateLocationStatus(locationService.authorizationStatus)
+		viewModel.updateLocationStatus(locationService.authorizationStatus)
 		if let cachedCity = await OnboardingCache.shared.getCity() {
 			viewModel.region = cachedCity
 		} else if !locationService.lastKnownCity.isEmpty {
@@ -173,14 +181,13 @@ extension OnboardingView {
 		isProcessingFinalStep = false
 		
 		let trimmedName = viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-		let trimmedRegion = viewModel.region.trimmingCharacters(in: .whitespacesAndNewlines)
 		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
 
 		viewModel.enableLocationAndWeather = shareLocation
 
 		appModel.updateProfile(
 			nickname: trimmedName,
-			region: trimmedRegion,
+			region: viewModel.region,
 			shareLocation: shareLocation,
 			gender: genderRaw,
 			birthday: viewModel.birthday,

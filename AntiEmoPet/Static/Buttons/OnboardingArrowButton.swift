@@ -4,7 +4,7 @@ struct LumioSay: View {
 	let text: String
 	private static let maxBubbleWidth: CGFloat = {
 		let characters = String(repeating: "W", count: 20)
-		let preferredSize = UIFontMetrics.default.scaledValue(for: 18)
+		let preferredSize = UIFontMetrics.default.scaledValue(for: 16)
 		let font = UIFont(name: "ABeeZee", size: preferredSize) ?? UIFont.preferredFont(forTextStyle: .title2)
 		let size = (characters as NSString).size(withAttributes: [.font: font])
 		return size.width
@@ -12,7 +12,7 @@ struct LumioSay: View {
 	
 	var body: some View {
 		Text(text)
-			.appFont(FontTheme.title2)
+			.appFont(FontTheme.title3)
 			.multilineTextAlignment(.center)
 			.foregroundStyle(.white)
 			.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)

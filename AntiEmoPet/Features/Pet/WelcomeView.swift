@@ -11,7 +11,7 @@ struct WelcomeView: View {
 		if appModel.userStats?.Onboard == true {
 			LumioSay(text: greeting)
 		} else {
-			LumioSay(text: "Now we know each other.\n Our Journey \n has begun!")
+			LumioSay(text: "Now we know each other.\n Our Journey has begun!")
 		}
 	}
 	

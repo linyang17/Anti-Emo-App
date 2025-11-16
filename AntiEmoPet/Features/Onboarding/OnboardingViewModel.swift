@@ -1,9 +1,13 @@
 import Foundation
 import Combine
 import CoreLocation
+import GoogleSignIn
+import AuthenticationServices
+import UIKit
+
 
 @MainActor
-final class OnboardingViewModel: ObservableObject {
+final class OnboardingViewModel: NSObject, ObservableObject {
 	enum GenderOption: String, CaseIterable, Identifiable {
 		case male
 		case female
@@ -26,7 +30,6 @@ final class OnboardingViewModel: ObservableObject {
 	enum AccountProvider: String, CaseIterable, Identifiable {
 			case google
 			case icloud
-			case email
 
 			var id: String { rawValue }
 
@@ -34,10 +37,9 @@ final class OnboardingViewModel: ObservableObject {
 					switch self {
 					case .google: return "Google"
 					case .icloud: return "iCloud"
-					case .email: return "Email"
 					}
 			}
-        }
+		}
 
 	@Published var nickname: String = ""
 	@Published var region: String = ""
@@ -49,29 +51,16 @@ final class OnboardingViewModel: ObservableObject {
 	@Published var birthday: Date
 	@Published var selectedAccountProvider: AccountProvider?
 	@Published var accountEmail: String = ""
-	@Published var emailInput: String = ""
-	@Published var emailConfirmationSent: Bool = false
-	@Published var isAccountVerified: Bool = false
 
 
 	var canSubmit: Bool {
-			!nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-			selectedGender != nil &&
-			enableLocationAndWeather &&
-			hasLocationPermission &&
-			hasWeatherPermission &&
-			birthday <= Date() &&
-			hasVerifiedAccount
-	}
-	
-	var hasVerifiedAccount: Bool {
-			guard selectedAccountProvider != nil else { return false }
-			return isAccountVerified && !accountEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-	}
-
-	var isEmailInputValid: Bool {
-			let trimmed = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
-			return trimmed.contains("@") && trimmed.contains(".")
+		accountEmail != "" &&
+		!nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+		selectedGender != nil &&
+		enableLocationAndWeather &&
+		hasLocationPermission &&
+		hasWeatherPermission &&
+		birthday <= Date()
 	}
 
 
@@ -100,55 +89,77 @@ final class OnboardingViewModel: ObservableObject {
 		hasWeatherPermission = granted
 	}
 	
+	// MARK: - Core Login
 	func selectAccountProvider(_ provider: AccountProvider) {
-			selectedAccountProvider = provider
-			switch provider {
-			case .google:
-					accountEmail = makePlaceholderEmail(domain: "gmail.com")
-					emailInput = ""
-					isAccountVerified = true
-					emailConfirmationSent = false
-			case .icloud:
-					accountEmail = makePlaceholderEmail(domain: "icloud.com")
-					emailInput = ""
-					isAccountVerified = true
-					emailConfirmationSent = false
-			case .email:
-					if !accountEmail.isEmpty {
-							emailInput = accountEmail
-					}
-					accountEmail = ""
-					isAccountVerified = false
-					emailConfirmationSent = false
-			}
+		selectedAccountProvider = provider
+		connectToProvider(provider)
 	}
 
-	func sendEmailConfirmation() {
-			guard selectedAccountProvider == .email, isEmailInputValid else { return }
-			emailConfirmationSent = true
-			isAccountVerified = false
+	private func connectToProvider(_ provider: AccountProvider) {
+		switch provider {
+		case .google: connectWithGoogle()
+		case .icloud: connectWithICloud()
+		}
 	}
 
-	func confirmEmailVerification() {
-			guard selectedAccountProvider == .email, emailConfirmationSent, isEmailInputValid else { return }
-			accountEmail = emailInput.trimmingCharacters(in: .whitespacesAndNewlines)
-			isAccountVerified = true
-	}
+	private func connectWithGoogle() {
+		guard let rootVC = UIApplication.shared.connectedScenes
+			.compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
+			.first else { return }
 
-	private func makePlaceholderEmail(domain: String) -> String {
-			let base = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-			let allowed = base.lowercased().map { character -> Character? in
-					if character.isLetter || character.isNumber { return character }
-					if character == " " { return "." }
-					return nil
-			}.compactMap { $0 }
-			let username = allowed.isEmpty ? "lumio.friend" : String(allowed)
-			return "\(username)@\(domain)"
+		GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { [weak self] result, _ in
+			guard let self,
+				  let user = result?.user,
+				  let email = user.profile?.email else { return }
+			self.accountEmail = email
+			self.selectedAccountProvider = .google
+		}
 	}
+	
+	
+	private func connectWithICloud() {
+		let request = ASAuthorizationAppleIDProvider().createRequest()
+		request.requestedScopes = [.email]
 
+		let controller = ASAuthorizationController(authorizationRequests: [request])
+		controller.delegate = self
+		controller.presentationContextProvider = self
+		controller.performRequests()
+	}
+	
 
 	init(defaultBirthday: Date = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .now) {
 		self.birthday = defaultBirthday
+		super.init()
 	}
 }
 
+extension OnboardingViewModel: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+	func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+		// Use the key window as the presentation anchor
+		if let window = UIApplication.shared.connectedScenes
+			.compactMap({ $0 as? UIWindowScene })
+			.flatMap({ $0.windows })
+			.first(where: { $0.isKeyWindow }) {
+			return window
+		}
+		return UIWindow()
+	}
+
+	func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+		if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+			// New sign-in may include email (first time)
+			if let email = appleIDCredential.email {
+				self.accountEmail = email
+			} else if let email = appleIDCredential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) {
+				// Fallback: try to decode email from the identity token if available
+				self.accountEmail = email
+			}
+			self.selectedAccountProvider = .icloud
+		}
+	}
+
+	func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+		print("Apple sign in failed: \(error.localizedDescription)")
+	}
+}

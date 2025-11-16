@@ -186,7 +186,7 @@ final class AppViewModel: ObservableObject {
 		shareLocation: Bool,
 		gender: String,
 		birthday: Date?,
-                accountEmail: String,
+		accountEmail: String,
 		Onboard: Bool
 	) {
 		userStats?.nickname = nickname
@@ -194,7 +194,7 @@ final class AppViewModel: ObservableObject {
 		userStats?.shareLocationAndWeather = shareLocation
 		userStats?.gender = gender
 		userStats?.birthday = birthday
-                userStats?.accountEmail = accountEmail
+		userStats?.accountEmail = accountEmail
 		userStats?.Onboard = true
 		storage.persist()
 		showOnboarding = false
