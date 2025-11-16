@@ -4,27 +4,26 @@ struct EnergyStatsSection: View {
 	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
-		DashboardCard(title: "能量摘要", icon: "bolt.fill") {
+		DashboardCard(title: "Energy Added Summary", icon: "bolt.fill") {
 			VStack(alignment: .leading, spacing: 8) {
-				Text("今日补充：\(String(format: "%.0f", energy.todayAdd)) \(trendArrow(for: energy))")
-					.font(.title3.weight(.semibold))
+				Text("Today：\(String(format: "%.0f", energy.todayAdd)) \(energy.trend.rawValue)")
+					.font(.title2.weight(.semibold))
+				
+				Divider().padding(.vertical, 6)
 
-				Text("过去一周日均补充：\(String(format: "%.0f", energy.averageDailyAddPastWeek))")
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-
-				Text(energy.comment.isEmpty ? "暂无补充说明" : energy.comment)
+				VStack(alignment: .leading, spacing: 5) {
+					Text("Avg Past Week")
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
+					Text("\(energy.averageDailyAddPastWeek)")
+						.font(.title2.weight(.medium))
+				}
+				.padding(.bottom, 12)
+				
+				Text(energy.comment.isEmpty ? "Come more often for summary" : energy.comment)
 						.font(.subheadline)
 						.foregroundStyle(.secondary)
 			}
-		}
-	}
-
-	private func trendArrow(for energy: EnergyStatisticsViewModel.EnergySummary) -> String {
-		switch energy.trend {
-		case .up: return "↑"
-		case .down: return "↓"
-		default: return ""
 		}
 	}
 }

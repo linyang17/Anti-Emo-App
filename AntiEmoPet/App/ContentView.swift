@@ -44,23 +44,10 @@ struct ContentView: View {
 
 struct MainTabView: View {
 	@EnvironmentObject private var appModel: AppViewModel
-	@State private var selectedTab = "Pet" // 默认打开 Pet
 
 	var body: some View {
-		TabView(selection: $selectedTab) {
-			NavigationStack { WeatherView() }
-				.tabItem { Label("Weather", systemImage: "sun.max") }
-				.tag("Weather")
-
 			NavigationStack { PetView() }
-				.tabItem { Label("Pet", systemImage: "pawprint") }
-				.tag("Pet")
-
-			NavigationStack { SettingsView() }
-				.tabItem { Label("Settings", systemImage: "gearshape") }
-				.tag("Settings")
-		}
-		.fullScreenCover(isPresented: Binding(
+			.fullScreenCover(isPresented: Binding(
 			get: { appModel.showOnboarding },
 			set: { appModel.showOnboarding = $0 }
 		)) {
@@ -69,7 +56,7 @@ struct MainTabView: View {
 		}
 		.interactiveDismissDisabled(true)
 		.alert(
-			"早点休息哦",
+			"Time for bed",
 			isPresented: Binding(
 				get: { appModel.showSleepReminder && !appModel.showOnboarding },
 				set: { newValue in
@@ -79,11 +66,11 @@ struct MainTabView: View {
 				}
 			)
 		) {
-			Button("知道了", role: .cancel) {
+			Button("Okay", role: .cancel) {
 				appModel.dismissSleepReminder()
 			}
 		} message: {
-			Text("已经很晚啦，Lumio建议你早点休息，明天再来哦。")
+			Text("It seems quite late for you, take some rest and we shall catch up tomorrow!")
 		}
 		}
 }

@@ -285,7 +285,6 @@ enum DefaultSeeds {
                 Item(
                     sku: seed.sku,
                     type: seed.type,
-                    name: seed.name,
                     assetName: seed.assetName,
                     costEnergy: seed.costEnergy,
                     BondingBoost: seed.BondingBoost

@@ -123,8 +123,8 @@ struct StatsRhythmSection: View {
 			VStack(alignment: .leading, spacing: 12) {
 				Chart(daylightAnimator.displayData) { item in
 					BarMark(
-						x: .value("情绪", item.value),
-						y: .value("时段", item.period.title)
+						x: .value("Mood", item.value),
+						y: .value("Slot", item.period.dayPeriodTitle)
 					)
 					.foregroundStyle(theme.gradient(for: .sunny))
 					.cornerRadius(6)

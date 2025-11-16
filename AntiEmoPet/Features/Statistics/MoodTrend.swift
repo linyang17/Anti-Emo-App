@@ -6,13 +6,13 @@ struct MoodTrendSection: View {
 	@State private var window: Int = 7
 
 	var body: some View {
-		DashboardCard(title: "情绪趋势", icon: "chart.line.uptrend.xyaxis") {
+		DashboardCard(title: "Mood Trend", icon: "chart.line.uptrend.xyaxis") {
 			VStack(alignment: .leading, spacing: 12) {
-				Picker("窗口", selection: $window) {
-					Text("日").tag(1)
-					Text("周").tag(7)
-					Text("月").tag(30)
-					Text("季").tag(90)
+				Picker("window", selection: $window) {
+					Text("Day").tag(1)
+					Text("Week").tag(7)
+					Text("Month").tag(30)
+					Text("3M").tag(90)
 				}
 				.pickerStyle(.segmented)
 
@@ -20,24 +20,24 @@ struct MoodTrendSection: View {
 
 				if data.isEmpty {
 					ContentUnavailableView(
-						"暂无数据",
+						"No Data",
 						systemImage: "chart.line.uptrend.xyaxis",
-						description: Text("记录更多情绪后解锁")
+						description: Text("Unlock when you record more moods")
 					)
 					.frame(height: 200)
 					.frame(maxWidth: .infinity)
 				} else {
 					Chart(data.sorted(by: { $0.date < $1.date })) { point in
 						LineMark(
-							x: .value("时间", point.date),
-							y: .value("平均情绪", point.average)
+							x: .value("time", point.date),
+							y: .value("Avg Mood", point.average)
 						)
 						.interpolationMethod(.catmullRom)
 						.foregroundStyle(.blue)
 
 						PointMark(
-							x: .value("时间", point.date),
-							y: .value("平均情绪", point.average)
+							x: .value("time", point.date),
+							y: .value("Avg Mood", point.average)
 						)
 						.foregroundStyle(.blue)
 					}
