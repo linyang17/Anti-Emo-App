@@ -5,6 +5,13 @@ struct RewardEvent: Identifiable, Equatable {
 	let id = UUID()
 	let energy: Int
 	let xp: Int
+	let snackName: String?
+
+	init(energy: Int, xp: Int, snackName: String? = nil) {
+		self.energy = energy
+		self.xp = xp
+		self.snackName = snackName
+	}
 }
 
 struct TasksView: View {
@@ -221,6 +228,10 @@ private struct RewardToastView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Energy +\(event.energy)")
                 Text("Xp +\(event.xp)")
+				if let snack = event.snackName {
+					Text("获得零食：\(snack)")
+						.font(.caption2)
+				}
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)

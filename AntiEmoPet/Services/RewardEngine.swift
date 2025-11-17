@@ -11,6 +11,14 @@ final class RewardEngine {
         return energy
     }
 
+		/// Returns a random snack item from the provided catalog.
+		/// Keeping the logic inside RewardEngine allows future reuse for
+		/// commemorative drops or probability tuning.
+		func randomSnackReward(from items: [Item]) -> Item? {
+			let snacks = items.filter { $0.type == .snack }
+			return snacks.randomElement()
+		}
+
     func evaluateAllClear(tasks: [UserTask], stats: UserStats) -> Bool {
         guard tasks.allSatisfy({ $0.status == .completed }) else { return false }
         stats.TotalDays += 1

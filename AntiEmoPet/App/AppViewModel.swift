@@ -216,13 +216,22 @@ final class AppViewModel: ObservableObject {
 		task.energyReward = task.category.energyReward
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
 		petEngine.applyTaskCompletion(pet: pet)
+
+		// 随机掉落一份 snack 奖励
+		var snackName: String?
+		if let snack = rewardEngine.randomSnackReward(from: shopItems) {
+			incrementInventory(for: snack)
+			snackName = snackDisplayName(for: snack)
+			analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
+		}
+
 		analytics.log(event: "task_completed", metadata: ["title": task.title])
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 		incrementTaskCompletion(for: Date(), timeSlot: slot)
 		if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
 			analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
 		}
-		rewardBanner = RewardEvent(energy: energyReward, xp: 1)
+		rewardBanner = RewardEvent(energy: energyReward, xp: 1, snackName: snackName)
 		logTodayEnergySnapshot()
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
@@ -660,5 +669,12 @@ final class AppViewModel: ObservableObject {
 		if !hasLoggedMoodToday {
 			shouldForceMoodCapture = true
 		}
+	}
+
+	private func snackDisplayName(for item: Item) -> String {
+		if !item.assetName.isEmpty {
+			return item.assetName
+		}
+		return item.sku
 	}
 }
