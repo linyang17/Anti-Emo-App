@@ -46,31 +46,50 @@ struct MainTabView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 
 	var body: some View {
-			NavigationStack { PetView() }
+		NavigationStack { PetView() }
 			.fullScreenCover(isPresented: Binding(
-			get: { appModel.showOnboarding },
-			set: { appModel.showOnboarding = $0 }
-		)) {
-			OnboardingView(locationService: appModel.locationService)
-				.environmentObject(appModel)
-		}
-		.interactiveDismissDisabled(true)
-		.alert(
-			"Time for bed...",
-			isPresented: Binding(
-				get: { appModel.showSleepReminder && !appModel.showOnboarding },
-				set: { newValue in
-					if !newValue {
-						appModel.dismissSleepReminder()
+				get: { appModel.showOnboarding },
+				set: { appModel.showOnboarding = $0 }
+			)) {
+				OnboardingView(locationService: appModel.locationService)
+					.environmentObject(appModel)
+			}
+			.interactiveDismissDisabled(true)
+			// 每日首次打开时强制情绪记录弹窗
+			.fullScreenCover(isPresented: Binding(
+				get: { appModel.shouldForceMoodCapture && !appModel.showOnboarding },
+				set: { _ in }
+			)) {
+				ZStack {
+					Color.black.opacity(0.3)
+						.ignoresSafeArea()
+					
+					MoodCaptureOverlayView(
+						title: "早上好！今天感觉如何？",
+						source: .appOpen,
+						initial: 50
+					) { value, source in
+						appModel.addMoodEntry(value: value, source: source)
 					}
 				}
-			)
-		) {
-			Button("Okay", role: .cancel) {
-				appModel.dismissSleepReminder()
 			}
-		} message: {
-			Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
-		}
-		}
+			.interactiveDismissDisabled(appModel.shouldForceMoodCapture && !appModel.showOnboarding)
+			.alert(
+				"Time for bed...",
+				isPresented: Binding(
+					get: { appModel.showSleepReminder && !appModel.showOnboarding },
+					set: { newValue in
+						if !newValue {
+							appModel.dismissSleepReminder()
+						}
+					}
+				)
+			) {
+				Button("Okay", role: .cancel) {
+					appModel.dismissSleepReminder()
+				}
+			} message: {
+				Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
+			}
+	}
 }
