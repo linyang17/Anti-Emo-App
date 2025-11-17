@@ -39,7 +39,7 @@ enum TaskStatus: String, Codable, CaseIterable, Sendable {
 }
 
 @Model
-final class UserTask: Identifiable, Sendable {
+final class UserTask: Identifiable {
 	@Attribute(.unique) var id: UUID
 	var title: String
 	var weatherType: WeatherType
@@ -47,10 +47,10 @@ final class UserTask: Identifiable, Sendable {
 	var category: TaskCategory
 	var energyReward: Int = 0
 	var date: Date
-	var status: TaskStatus
-	var startedAt: Date?
-	var canCompleteAfter: Date?
-	var completedAt: Date?
+	var status: TaskStatus = TaskStatus.pending
+	var startedAt: Date? = nil
+	var canCompleteAfter: Date? = nil
+	var completedAt: Date? = nil
 
 	init(
 		id: UUID = UUID(),

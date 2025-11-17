@@ -498,4 +498,22 @@ final class AppViewModel: ObservableObject {
 	func dismissSleepReminder() {
 		sleepReminderService.acknowledgeReminder()
 	}
+
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		let loggedToday = moodEntries.contains { entry in
+			entry.date >= startOfDay && entry.date < endOfDay
+		}
+		hasLoggedMoodToday = loggedToday
+		shouldForceMoodCapture = !loggedToday
+	}
+
+	private func recordMoodOnLaunch() {
+		refreshMoodLoggingState()
+		if !hasLoggedMoodToday {
+			shouldForceMoodCapture = true
+		}
+	}
 }

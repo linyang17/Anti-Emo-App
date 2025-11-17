@@ -189,10 +189,10 @@ final class StorageService {
 
 	func fetchSunEvents(limit: Int = 60) -> [Date: SunTimes] {
 		do {
-			let descriptor = FetchDescriptor<SunTimesRecord>(
-				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)],
-				fetchLimit: limit
+			var descriptor = FetchDescriptor<SunTimesRecord>(
+				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)]
 			)
+			descriptor.fetchLimit = limit
 			let records = try context.fetch(descriptor)
 			let calendar = TimeZoneManager.shared.calendar
 			var result: [Date: SunTimes] = [:]
@@ -215,7 +215,8 @@ final class StorageService {
 			for (rawDay, sun) in events {
 				let day = calendar.startOfDay(for: rawDay)
 				let predicate = #Predicate<SunTimesRecord> { $0.day == day }
-				let descriptor = FetchDescriptor<SunTimesRecord>(predicate: predicate, fetchLimit: 1)
+				var descriptor = FetchDescriptor<SunTimesRecord>(predicate: predicate)
+				descriptor.fetchLimit = 1
 				if let existing = try context.fetch(descriptor).first {
 					if existing.sunrise != sun.sunrise || existing.sunset != sun.sunset {
 						existing.sunrise = sun.sunrise
