@@ -237,28 +237,28 @@
 
 ### 2.3 任务刷新按钮限制（每个时间段一次）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 当前任务全部完成后出现刷新按钮，每个时间段可刷新一次。
 
 **具体实施步骤**:
-- 在`TasksView.swift`中：
+- [x] 在`TasksView.swift`中：
   - 检查当前时间段是否已经刷新过
   - 只有所有任务都完成且当前时间段未刷新过，才显示刷新按钮
-- 实现时间段刷新状态追踪：
+- [x] 实现时间段刷新状态追踪：
   - 使用UserDefaults存储每个时间段的刷新时间戳
   - 检查当前时间段的刷新状态
-- 刷新时：
+- [x] 刷新时：
   - 获取当前天气
   - 根据天气生成3个新任务
   - 记录当前时间段的刷新时间戳
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift`
-- `AntiEmoPet/Features/Pet/Tasks/TasksViewModel.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
+- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift` ✅
+- `AntiEmoPet/Features/Pet/Tasks/TasksViewModel.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
 **注意事项**:
-- 时间段计算需复用 `TimeSlot.from(date:)`，避免多处重复；刷新记录应写入 `UserDefaults` 并在跨日时自动清理，防止新一天无法刷新。
+- 时间段计算复用 `TimeSlot.from(date:)`，刷新记录写入 `UserDefaults` 并在跨日时只保留当日数据，确保每天有一次刷新机会。
 
 ---
 
