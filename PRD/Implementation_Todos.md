@@ -348,24 +348,21 @@
 
 ### 3.3 抚摸限制（每天3次）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: PRD要求抚摸动作同一天内限三次。
 
 **具体实施步骤**:
-- 在`AppViewModel`中添加每日抚摸次数追踪：
-  - 使用UserDefaults存储当前抚摸次数
-  - 在`petting()`方法中检查当天是否已达到3次
-  - 显示提示消息，例如"今天已经抚摸过1/3次了"
-- 如果已达到3次：
-  - 不执行抚摸逻辑
-- 每天0点重置计数
+- [x] 在`AppViewModel`中新增每日抚摸计数（UserDefaults），`petting()` 超过 3 次即提前返回。
+- [x] 每次抚摸返回剩余额度提示，超过上限弹“Lumio要休息啦”提示。
+- [x] `PetView` 显示顶部浮层提示，Tap/Drag 手势基于返回值决定是否播放爱心动画。
+- [x] 次日自动重置计数。
 
 **相关文件路径**:
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Features/Pet/PetView.swift`
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Features/Pet/PetView.swift` ✅
 **注意事项**:
-- 同一天下多设备登录需要统一计数，可将计数保存在 `UserStats` 或共享 UserDefaults；提示文案要避免重复弹出。
+- 计数存储在 ISO 日期 key 下，每天自动清理，仅当前天有效。
 
 ---
 

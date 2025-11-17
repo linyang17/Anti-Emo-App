@@ -65,6 +65,9 @@ struct PetView: View {
 				petStage(for: pet)
 					.padding(24)
 			}
+			.overlay(alignment: .top) {
+				pettingNoticeOverlay()
+			}
 		} else {
 			VStack(spacing: 16) {
 				Image(systemName: "pawprint.circle")
@@ -266,7 +269,7 @@ struct PetView: View {
 	}
 
 	private func triggerPettingInteraction() {
-		appModel.petting()
+		guard appModel.petting() else { return }
 		pettingEffectTask?.cancel()
 		withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
 			showPettingHearts = true
@@ -290,6 +293,20 @@ struct PetView: View {
 						.scaleEffect(1 + CGFloat(index) * 0.2)
 				}
 			}
+		}
+	}
+
+	@ViewBuilder
+	private func pettingNoticeOverlay() -> some View {
+		if let notice = appModel.pettingNotice {
+			Text(notice)
+				.appFont(FontTheme.subheadline)
+				.padding(.horizontal, 18)
+				.padding(.vertical, 10)
+				.background(.ultraThinMaterial, in: Capsule())
+				.shadow(radius: 6)
+				.padding(.top, 12)
+				.transition(.move(edge: .top).combined(with: .opacity))
 		}
 	}
 	

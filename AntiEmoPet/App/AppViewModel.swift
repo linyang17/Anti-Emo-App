@@ -39,7 +39,7 @@ final class AppViewModel: ObservableObject {
 	@Published var pendingMoodFeedbackTask: UserTask?
 	@Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
-	@Published var penaltyBanner: String?
+	@Published var pettingNotice: String?
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -54,10 +54,12 @@ final class AppViewModel: ObservableObject {
 	private let refreshRecordsKey = "taskRefreshRecords"
 	private let slotScheduleKey = "taskSlotSchedule"
 	private let slotGenerationKey = "taskSlotGenerationRecords"
+	private let pettingLimitKey = "dailyPettingLimit"
 	private typealias RefreshRecordMap = [String: [String: Double]]
 	private typealias SlotScheduleMap = [String: [String: Double]]
 	private typealias SlotGenerationMap = [String: [String: Bool]]
 	private var slotMonitorTask: Task<Void, Never>?
+	private var pettingNoticeTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
 		let formatter = ISO8601DateFormatter()
 		formatter.formatOptions = [.withFullDate]
@@ -78,6 +80,7 @@ final class AppViewModel: ObservableObject {
 
 	deinit {
 		slotMonitorTask?.cancel()
+		pettingNoticeTask?.cancel()
 	}
 
 	var totalEnergy: Int {
@@ -269,14 +272,24 @@ final class AppViewModel: ObservableObject {
 		pendingMoodFeedbackTask = nil
 	}
 
-	func petting() {
-		guard let pet else { return }
+	@discardableResult
+	func petting() -> Bool {
+		guard let pet else { return false }
+		let count = pettingCount()
+		guard count < 3 else {
+			showPettingNotice("今天已经抚摸 3/3 次啦")
+			return false
+		}
 		petEngine.handleAction(.pat, pet: pet)
 		incrementPetInteractionCount()
+		incrementPettingCount()
 		storage.persist()
 		objectWillChange.send()
-		analytics.log(event: "pet_pat")
+		analytics.log(event: "pet_pat", metadata: ["count": "\(count + 1)"])
 		dailyMetricsCache = makeDailyActivityMetrics()
+		let remaining = max(0, 3 - (count + 1))
+		showPettingNotice(remaining > 0 ? "已抚摸 \(count + 1)/3 次，今日还可 \(remaining) 次" : "已抚摸 3/3 次，Lumio 要休息啦")
+		return true
 	}
 
 	func feed(item: Item) {
@@ -367,8 +380,13 @@ final class AppViewModel: ObservableObject {
 	func consumeRewardBanner() {
 		rewardBanner = nil
 	}
-	func consumePenaltyBanner() {
-		penaltyBanner = nil
+	private func showPettingNotice(_ message: String) {
+		pettingNoticeTask?.cancel()
+		pettingNotice = message
+		pettingNoticeTask = Task { @MainActor in
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
+			pettingNotice = nil
+		}
 	}
 
 	func addMoodEntry(
@@ -645,6 +663,27 @@ final class AppViewModel: ObservableObject {
 		var filtered: SlotGenerationMap = [:]
 		if let current = records[day] {
 			filtered[day] = current
+		}
+		return filtered
+	}
+
+	private func pettingCount(on date: Date = Date()) -> Int {
+		let dict = (UserDefaults.standard.dictionary(forKey: pettingLimitKey) as? [String: Int]) ?? [:]
+		return dict[dayKey(for: date)] ?? 0
+	}
+
+	private func incrementPettingCount(on date: Date = Date()) {
+		let dkey = dayKey(for: date)
+		var dict = (UserDefaults.standard.dictionary(forKey: pettingLimitKey) as? [String: Int]) ?? [:]
+		dict = purgePettingCounts(dict, keeping: dkey)
+		dict[dkey, default: 0] += 1
+		UserDefaults.standard.set(dict, forKey: pettingLimitKey)
+	}
+
+	private func purgePettingCounts(_ dict: [String: Int], keeping day: String) -> [String: Int] {
+		var filtered: [String: Int] = [:]
+		if let value = dict[day] {
+			filtered[day] = value
 		}
 		return filtered
 	}
