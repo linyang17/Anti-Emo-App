@@ -214,23 +214,24 @@
 
 ### 2.2 任务完成后随机食物奖励
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 完成任务后，随机获得商店中一种食物（owned amount +1）和经验值+1。
 
 **具体实施步骤**:
-- 在`AppViewModel.completeTask()`中添加食物奖励逻辑：
+- [x] 在`AppViewModel.completeTask()`中添加食物奖励逻辑：
   - 从`shopItems`中筛选出`type == .snack`的食物
   - 随机选择一种食物
   - 调用`incrementInventory(for: item)`增加该食物的拥有数量
-- 显示获得食物的提示消息（类似奖励banner）
-- 在`AppViewModel.completeTask()`中添加经验值奖励逻辑
+- [x] 显示获得食物的提示消息（类似奖励banner）
+- [x] 在`AppViewModel.completeTask()`中添加经验值奖励逻辑（与 `PetEngine.applyTaskCompletion` 一致）
 
 **相关文件路径**:
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Services/RewardEngine.swift`
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Services/RewardEngine.swift` ✅
+- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift` ✅
 **注意事项**:
-- 需要与未来的“纪念品掉落”逻辑兼容，建议将奖励封装为 `RewardEngine` 的新方法，并处理无 snack 项目时的回退提示。
+- 奖励逻辑封装在 `RewardEngine.randomSnackReward` 中，后续可复用；若无 snack 则跳过掉落并保持提示一致。
 
 ---
 
