@@ -1,9 +1,11 @@
 import SwiftUI
 
 struct MoodCaptureOverlayView: View {
-    let title: String
-    @State private var value: Int
-    let onSave: (Int) -> Void
+	private enum Constants {
+		static let minValue = 10.0
+		static let maxValue = 100.0
+		static let step = 10.0
+	}
 
     init(title: String = "How do you feel now?", initial: Int = 50, onSave: @escaping (Int) -> Void) {
         self.title = title

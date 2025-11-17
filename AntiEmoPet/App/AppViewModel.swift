@@ -30,7 +30,9 @@ final class AppViewModel: ObservableObject {
 	@Published var rewardBanner: RewardEvent?
 	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
         @Published var shouldShowNotificationSettingsPrompt = false
-	@Published var showMoodCapture = false  // 控制情绪记录弹窗显示
+	@Published private(set) var hasLoggedMoodToday = false
+	@Published var shouldForceMoodCapture = false
+	@Published var pendingMoodFeedbackTask: UserTask?
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -101,6 +103,7 @@ final class AppViewModel: ObservableObject {
 		shopItems = StaticItemLoader.loadAllItems()
 
 		moodEntries = storage.fetchMoodEntries()
+		refreshMoodLoggingState()
 		sunEvents = storage.fetchSunEvents()
 		inventory = storage.fetchInventory()
 
@@ -133,6 +136,7 @@ final class AppViewModel: ObservableObject {
 		isLoading = false
 
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+		recordMoodOnLaunch()
 	}
 	
 	/// 检查今天是否已记录情绪，如果没有则显示弹窗
