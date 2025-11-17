@@ -19,6 +19,7 @@ final class AppViewModel: ObservableObject {
 	@Published var shopItems: [Item] = []
 	@Published var weather: WeatherType = .sunny
 	@Published var weatherReport: WeatherReport?
+	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = false
 	@Published var moodEntries: [MoodEntry] = []
@@ -29,6 +30,7 @@ final class AppViewModel: ObservableObject {
 	@Published var rewardBanner: RewardEvent?
 	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
         @Published var shouldShowNotificationSettingsPrompt = false
+	@Published var showMoodCapture = false  // 控制情绪记录弹窗显示
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -81,7 +83,7 @@ final class AppViewModel: ObservableObject {
 
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
-			stats.totalEnergy = 50
+			stats.totalEnergy = 100
 		}
 
 		// Load stored energy history (for daily totalEnergy snapshots)
@@ -99,6 +101,7 @@ final class AppViewModel: ObservableObject {
 		shopItems = StaticItemLoader.loadAllItems()
 
 		moodEntries = storage.fetchMoodEntries()
+		sunEvents = storage.fetchSunEvents()
 		inventory = storage.fetchInventory()
 
 		todayTasks = storage.fetchTasks(for: .now)
@@ -121,17 +124,51 @@ final class AppViewModel: ObservableObject {
 		scheduleTaskNotifications()
 
 		showOnboarding = !(userStats?.Onboard ?? false)
+		
+		// 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
+		
 		isLoading = false
 
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
 	}
 	
+	/// 检查今天是否已记录情绪，如果没有则显示弹窗
+	private func checkAndShowMoodCapture() {
+		guard !hasLoggedMoodToday() else { return }
+		showMoodCapture = true
+	}
+	
+	/// 检查今天是否已经记录过情绪
+	func hasLoggedMoodToday() -> Bool {
+		let calendar = TimeZoneManager.shared.calendar
+		let today = calendar.startOfDay(for: Date())
+		let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86400)
+		
+		return moodEntries.contains { entry in
+			entry.date >= today && entry.date < tomorrow
+		}
+	}
+	
+	/// 记录情绪并关闭弹窗
+	func recordMoodOnLaunch(value: Int) {
+		addMoodEntry(value: value, source: .appOpen)
+		showMoodCapture = false
+	}
+	
 	func refreshIfNeeded() async {
 		await load()
+		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
 	}
 
 	func completeTask(_ task: UserTask) {
-		guard let stats = userStats, let pet, task.status == .pending else { return }
+		guard let stats = userStats, let pet, task.status != .completed else { return }
+		guard task.status.isCompletable else { return }
 		task.status = .completed
 		task.completedAt = Date()
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
@@ -230,6 +267,10 @@ final class AppViewModel: ObservableObject {
 		if shareLocation {
 			beginLocationUpdates()
 		}
+		// Onboarding 完成后检查是否需要显示情绪记录弹窗
+		if !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
 		storage.resetCompletionDates(for: Date())
 		storage.deleteTasks(for: Date())
 		let starter = taskGenerator.makeOnboardingTasks(for: Date())
@@ -277,8 +318,20 @@ final class AppViewModel: ObservableObject {
 		rewardBanner = nil
 	}
 
-	func addMoodEntry(value: Int) {
-		let entry = MoodEntry(value: value)
+	func addMoodEntry(
+		value: Int,
+		source: MoodEntry.Source = .appOpen,
+		delta: Int? = nil,
+		relatedTaskCategory: TaskCategory? = nil,
+		relatedWeather: WeatherType? = nil
+	) {
+		let entry = MoodEntry(
+			value: value,
+			source: source,
+			delta: delta,
+			relatedTaskCategory: relatedTaskCategory,
+			relatedWeather: relatedWeather ?? weatherReport?.currentWeather
+		)
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 	}
@@ -466,6 +519,11 @@ final class AppViewModel: ObservableObject {
 		let report = await weatherService.fetchWeather(for: location, locality: locality)
 		weatherReport = report
 		weather = report.currentWeather
+		if !report.sunEvents.isEmpty {
+			storage.saveSunEvents(report.sunEvents)
+			let merged = storage.fetchSunEvents()
+			sunEvents = merged
+		}
 		if let city = report.locality, !(city.isEmpty) {
 			userStats?.region = city
 			storage.persist()
@@ -506,6 +564,28 @@ final class AppViewModel: ObservableObject {
 
 	func dismissSleepReminder() {
 		sleepReminderService.acknowledgeReminder()
+		// Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
+		if !showOnboarding {
+			checkAndShowMoodCapture()
+		}
+	}
+
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		let loggedToday = moodEntries.contains { entry in
+			entry.date >= startOfDay && entry.date < endOfDay
+		}
+		hasLoggedMoodToday = loggedToday
+		shouldForceMoodCapture = !loggedToday
+	}
+
+	private func recordMoodOnLaunch() {
+		refreshMoodLoggingState()
+		if !hasLoggedMoodToday {
+			shouldForceMoodCapture = true
+		}
 	}
 
 	private func refreshMoodLoggingState(reference date: Date = Date()) {

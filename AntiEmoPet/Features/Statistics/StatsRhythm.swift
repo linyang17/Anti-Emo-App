@@ -32,13 +32,13 @@ struct StatsRhythmSection: View {
 		.onAppear(perform: refreshRhythms)
 		.onReceive(appModel.$moodEntries) { _ in refreshRhythms() }
 		.onReceive(appModel.$todayTasks) { _ in refreshRhythms() }
-                .onReceive(appModel.$weatherReport) { _ in refreshRhythms() }
+		.onReceive(appModel.$sunEvents) { _ in refreshRhythms() }
 	}
 
         private func refreshRhythms() {
-                Task(priority: .userInitiated) {
-                        await analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks, sunEvents: appModel.weatherReport?.sunEvents ?? [:])
-                }
+		Task(priority: .userInitiated) {
+			await analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks, sunEvents: appModel.sunEvents)
+		}
         }
 
 	// MARK: - 时段图

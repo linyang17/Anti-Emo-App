@@ -187,6 +187,58 @@ final class StorageService {
         saveContext(reason: "save mood entry")
     }
 
+	func fetchSunEvents(limit: Int = 60) -> [Date: SunTimes] {
+		do {
+			var descriptor = FetchDescriptor<SunTimesRecord>(
+				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)]
+			)
+			descriptor.fetchLimit = limit
+			let records = try context.fetch(descriptor)
+			let calendar = TimeZoneManager.shared.calendar
+			var result: [Date: SunTimes] = [:]
+			for record in records {
+				let day = calendar.startOfDay(for: record.day)
+				result[day] = SunTimes(sunrise: record.sunrise, sunset: record.sunset)
+			}
+			return result
+		} catch {
+			logger.error("Failed to fetch sun events: \(error.localizedDescription, privacy: .public)")
+			return [:]
+		}
+	}
+
+	func saveSunEvents(_ events: [Date: SunTimes], keepLatest limit: Int = 90) {
+		guard !events.isEmpty else { return }
+		let calendar = TimeZoneManager.shared.calendar
+		var didMutate = false
+		do {
+			for (rawDay, sun) in events {
+				let day = calendar.startOfDay(for: rawDay)
+				let predicate = #Predicate<SunTimesRecord> { $0.day == day }
+				var descriptor = FetchDescriptor<SunTimesRecord>(predicate: predicate)
+				descriptor.fetchLimit = 1
+				if let existing = try context.fetch(descriptor).first {
+					if existing.sunrise != sun.sunrise || existing.sunset != sun.sunset {
+						existing.sunrise = sun.sunrise
+						existing.sunset = sun.sunset
+						existing.updatedAt = Date()
+						didMutate = true
+					}
+				} else {
+					let record = SunTimesRecord(day: day, sunrise: sun.sunrise, sunset: sun.sunset)
+					context.insert(record)
+					didMutate = true
+				}
+			}
+			if didMutate {
+				trimSunEvents(keeping: limit)
+				saveContext(reason: "save sun events")
+			}
+		} catch {
+			logger.error("Failed to save sun events: \(error.localizedDescription, privacy: .public)")
+		}
+	}
+
     func fetchInventory() -> [InventoryEntry] {
         do {
             let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])
@@ -212,6 +264,35 @@ final class StorageService {
         } catch {
             logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
+    }
+    
+    // MARK: - SunTimes Persistence
+    /// 保存日照时间数据（用于统计分析）
+    func saveSunTimes(_ sunTimes: [Date: SunTimes]) {
+        guard let data = try? JSONEncoder().encode(SunTimesSnapshot(sunTimes: sunTimes)) else {
+            logger.error("Failed to encode sun times")
+            return
+        }
+        UserDefaults.standard.set(data, forKey: "cached_sun_times")
+        logger.info("Saved \(sunTimes.count) sun time entries")
+    }
+    
+    /// 获取缓存的日照时间数据
+    func fetchSunTimes() -> [Date: SunTimes] {
+        guard let data = UserDefaults.standard.data(forKey: "cached_sun_times"),
+              let snapshot = try? JSONDecoder().decode(SunTimesSnapshot.self, from: data) else {
+            return [:]
+        }
+        return snapshot.toDictionary()
+    }
+    
+    /// 更新指定日期的日照时间
+    func updateSunTime(for date: Date, sunTimes: SunTimes) {
+        var current = fetchSunTimes()
+        let calendar = TimeZoneManager.shared.calendar
+        let day = calendar.startOfDay(for: date)
+        current[day] = sunTimes
+        saveSunTimes(current)
     }
 
     func decrementInventory(forSKU sku: String) {
@@ -269,6 +350,43 @@ final class StorageService {
         } catch {
             logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+	private func trimSunEvents(keeping limit: Int) {
+		guard limit > 0 else { return }
+		do {
+			let descriptor = FetchDescriptor<SunTimesRecord>(
+				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)]
+			)
+			let records = try context.fetch(descriptor)
+			guard records.count > limit else { return }
+			for record in records.dropFirst(limit) {
+				context.delete(record)
+			}
+		} catch {
+			logger.error("Failed to trim sun events: \(error.localizedDescription, privacy: .public)")
+		}
+	}
+}
+
+// MARK: - SunTimes Persistence Helper
+private struct SunTimesSnapshot: Codable {
+    let entries: [SunTimesEntry]
+    
+    init(sunTimes: [Date: SunTimes]) {
+        entries = sunTimes.map { SunTimesEntry(date: $0.key, sunrise: $0.value.sunrise, sunset: $0.value.sunset) }
+    }
+    
+    func toDictionary() -> [Date: SunTimes] {
+        Dictionary(uniqueKeysWithValues: entries.map { entry in
+            (entry.date, SunTimes(sunrise: entry.sunrise, sunset: entry.sunset))
+        })
+    }
+    
+    private struct SunTimesEntry: Codable {
+        let date: Date
+        let sunrise: Date
+        let sunset: Date
     }
 }
 

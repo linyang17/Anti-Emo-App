@@ -27,9 +27,15 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum TaskStatus: String, Codable, CaseIterable {
-    case pending
-    case completed
+enum TaskStatus: String, Codable, CaseIterable, Sendable {
+	case pending
+	case started
+	case ready
+	case completed
+
+	var isCompletable: Bool {
+		self == .ready || self == .pending
+	}
 }
 
 @Model
@@ -42,6 +48,8 @@ final class UserTask: Identifiable {
     var energyReward: Int = 0
     var date: Date
     var status: TaskStatus
+    var startedAt: Date?  // 任务开始时间
+    var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?
 
     init(
@@ -53,6 +61,8 @@ final class UserTask: Identifiable {
         energyReward: Int,
         date: Date,
         status: TaskStatus = .pending,
+        startedAt: Date? = nil,
+        canCompleteAfter: Date? = nil,
         completedAt: Date? = nil
     ) {
         self.id = id
@@ -63,6 +73,8 @@ final class UserTask: Identifiable {
         self.energyReward = energyReward
         self.date = date
         self.status = status
+        self.startedAt = startedAt
+        self.canCompleteAfter = canCompleteAfter
         self.completedAt = completedAt
     }
 }
