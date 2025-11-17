@@ -27,11 +27,15 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum TaskStatus: String, Codable, CaseIterable {
-    case pending
-    case started
-    case ready
-    case completed
+enum TaskStatus: String, Codable, CaseIterable, Sendable {
+	case pending
+	case started
+	case ready
+	case completed
+
+	var isCompletable: Bool {
+		self == .ready || self == .pending
+	}
 }
 
 @Model

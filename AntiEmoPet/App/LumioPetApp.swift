@@ -13,7 +13,8 @@ struct LumioPetApp: App {
 			Item.self,
 			UserStats.self,
 			InventoryEntry.self,
-			MoodEntry.self
+			MoodEntry.self,
+			SunTimesRecord.self
 		])
 
 		let configuration = ModelConfiguration(schema: schema)

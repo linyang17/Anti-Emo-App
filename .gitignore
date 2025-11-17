@@ -64,6 +64,7 @@ Carthage/Build/
 # Custom
 # =====================================
 *.plist
+!AntiEmoPet/Info.plist
 .DS_Store
 AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate
 AntiEmoPet.xcodeproj/project.xcworkspace/xcuserdata/selena69.xcuserdatad/UserInterfaceState.xcuserstate

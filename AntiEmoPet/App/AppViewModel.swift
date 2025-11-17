@@ -19,6 +19,7 @@ final class AppViewModel: ObservableObject {
 	@Published var shopItems: [Item] = []
 	@Published var weather: WeatherType = .sunny
 	@Published var weatherReport: WeatherReport?
+	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = false
 	@Published var moodEntries: [MoodEntry] = []
@@ -100,6 +101,7 @@ final class AppViewModel: ObservableObject {
 		shopItems = StaticItemLoader.loadAllItems()
 
 		moodEntries = storage.fetchMoodEntries()
+		sunEvents = storage.fetchSunEvents()
 		inventory = storage.fetchInventory()
 
 		todayTasks = storage.fetchTasks(for: .now)
@@ -165,7 +167,8 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func completeTask(_ task: UserTask) {
-		guard let stats = userStats, let pet, task.status == .pending else { return }
+		guard let stats = userStats, let pet, task.status != .completed else { return }
+		guard task.status.isCompletable else { return }
 		task.status = .completed
 		task.completedAt = Date()
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
@@ -286,15 +289,9 @@ final class AppViewModel: ObservableObject {
 		rewardBanner = nil
 	}
 
-	/// 添加情绪记录（向后兼容方法）
-	func addMoodEntry(value: Int) {
-		addMoodEntry(value: value, source: .appOpen, delta: nil, relatedTaskCategory: nil, relatedWeather: nil)
-	}
-	
-	/// 添加情绪记录（完整方法）
 	func addMoodEntry(
 		value: Int,
-		source: MoodSource = .appOpen,
+		source: MoodEntry.Source = .appOpen,
 		delta: Int? = nil,
 		relatedTaskCategory: TaskCategory? = nil,
 		relatedWeather: WeatherType? = nil
@@ -304,7 +301,7 @@ final class AppViewModel: ObservableObject {
 			source: source,
 			delta: delta,
 			relatedTaskCategory: relatedTaskCategory,
-			relatedWeather: relatedWeather
+			relatedWeather: relatedWeather ?? weatherReport?.currentWeather
 		)
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
@@ -493,12 +490,11 @@ final class AppViewModel: ObservableObject {
 		let report = await weatherService.fetchWeather(for: location, locality: locality)
 		weatherReport = report
 		weather = report.currentWeather
-		
-		// 保存 SunTimes 到 StorageService 供统计分析模块复用
 		if !report.sunEvents.isEmpty {
-			storage.saveSunTimes(report.sunEvents)
+			storage.saveSunEvents(report.sunEvents)
+			let merged = storage.fetchSunEvents()
+			sunEvents = merged
 		}
-		
 		if let city = report.locality, !(city.isEmpty) {
 			userStats?.region = city
 			storage.persist()
@@ -542,6 +538,24 @@ final class AppViewModel: ObservableObject {
 		// Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
 		if !showOnboarding {
 			checkAndShowMoodCapture()
+		}
+	}
+
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		let loggedToday = moodEntries.contains { entry in
+			entry.date >= startOfDay && entry.date < endOfDay
+		}
+		hasLoggedMoodToday = loggedToday
+		shouldForceMoodCapture = !loggedToday
+	}
+
+	private func recordMoodOnLaunch() {
+		refreshMoodLoggingState()
+		if !hasLoggedMoodToday {
+			shouldForceMoodCapture = true
 		}
 	}
 }
