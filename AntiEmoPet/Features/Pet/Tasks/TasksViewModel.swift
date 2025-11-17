@@ -16,10 +16,11 @@ final class TasksViewModel: ObservableObject {
 
     func forceRefresh(appModel: AppViewModel) async {
         guard !isRefreshing else { return }
+        guard appModel.canRefreshCurrentSlot else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         let pending = appModel.todayTasks.filter { $0.status != .completed }
         let retained = pending.randomElement()
-        await appModel.refreshTasks(retaining: retained)
+        await appModel.refreshCurrentSlotTasks(retaining: retained)
     }
 }

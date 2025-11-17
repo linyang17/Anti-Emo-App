@@ -13,7 +13,11 @@ extension Font {
 
 @MainActor
 final class AppViewModel: ObservableObject {
-	@Published var todayTasks: [UserTask] = []
+	@Published var todayTasks: [UserTask] = [] {
+		didSet {
+			updateTaskRefreshEligibility()
+		}
+	}
 	@Published var pet: Pet?
 	@Published var userStats: UserStats?
 	@Published var shopItems: [Item] = []
@@ -33,6 +37,8 @@ final class AppViewModel: ObservableObject {
 	@Published private(set) var hasLoggedMoodToday = false
 	@Published var shouldForceMoodCapture = false
 	@Published var pendingMoodFeedbackTask: UserTask?
+	@Published private(set) var canRefreshCurrentSlot = false
+	@Published private(set) var hasUsedRefreshThisSlot = false
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -44,6 +50,8 @@ final class AppViewModel: ObservableObject {
 	private let analytics = AnalyticsService()
 	private var cancellables: Set<AnyCancellable> = []
 	private let sleepReminderService = SleepReminderService()
+	private let refreshRecordsKey = "taskRefreshRecords"
+	private typealias RefreshRecordMap = [String: [String: Double]]
 	private let isoDayFormatter: ISO8601DateFormatter = {
 		let formatter = ISO8601DateFormatter()
 		formatter.formatOptions = [.withFullDate]
@@ -168,6 +176,13 @@ final class AppViewModel: ObservableObject {
 		if !showOnboarding && !showSleepReminder {
 			checkAndShowMoodCapture()
 		}
+	}
+
+	func refreshCurrentSlotTasks(retaining retained: UserTask? = nil) async {
+		guard canRefreshCurrentSlot else { return }
+		await refreshTasks(retaining: retained)
+		markCurrentSlotRefreshed()
+		updateTaskRefreshEligibility()
 	}
 	
 	/// 开始任务,设置buffer时间
@@ -489,6 +504,53 @@ final class AppViewModel: ObservableObject {
 		inner[timeSlot.rawValue, default: 0] += 1
 		outer[dkey] = inner
 		UserDefaults.standard.set(outer, forKey: timeSlotKey)
+	}
+
+	private func updateTaskRefreshEligibility(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let slot = TimeSlot.from(date: date, using: calendar)
+		let alreadyRefreshed = hasRefreshedTasks(for: slot, on: date)
+		hasUsedRefreshThisSlot = alreadyRefreshed
+		let allCompleted = !todayTasks.isEmpty && todayTasks.allSatisfy { $0.status == .completed }
+		canRefreshCurrentSlot = allCompleted && !alreadyRefreshed
+	}
+
+	private func hasRefreshedTasks(for slot: TimeSlot, on date: Date = Date()) -> Bool {
+		let records = loadRefreshRecords()
+		let dkey = dayKey(for: date)
+		guard let slotDict = records[dkey], let timestamp = slotDict[slot.rawValue] else {
+			return false
+		}
+		let storedDate = Date(timeIntervalSince1970: timestamp)
+		return TimeZoneManager.shared.calendar.isDate(storedDate, inSameDayAs: date)
+	}
+
+	private func markCurrentSlotRefreshed(on date: Date = Date()) {
+		var records = loadRefreshRecords()
+		let dkey = dayKey(for: date)
+		let slot = TimeSlot.from(date: date, using: TimeZoneManager.shared.calendar)
+		var slotDict = records[dkey] ?? [:]
+		slotDict[slot.rawValue] = date.timeIntervalSince1970
+		records = purgeRefreshRecords(records, keepingDay: dkey)
+		records[dkey] = slotDict
+		saveRefreshRecords(records)
+		hasUsedRefreshThisSlot = true
+	}
+
+	private func loadRefreshRecords() -> RefreshRecordMap {
+		(UserDefaults.standard.dictionary(forKey: refreshRecordsKey) as? RefreshRecordMap) ?? [:]
+	}
+
+	private func saveRefreshRecords(_ records: RefreshRecordMap) {
+		UserDefaults.standard.set(records, forKey: refreshRecordsKey)
+	}
+
+	private func purgeRefreshRecords(_ records: RefreshRecordMap, keepingDay currentDay: String) -> RefreshRecordMap {
+		var filtered: RefreshRecordMap = [:]
+		if let current = records[currentDay] {
+			filtered[currentDay] = current
+		}
+		return filtered
 	}
 
 	func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {

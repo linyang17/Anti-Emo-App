@@ -24,6 +24,7 @@ struct TasksView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
+                header
                 
                 ZStack(alignment: .top) {
                     List {
@@ -89,16 +90,32 @@ struct TasksView: View {
             Spacer()
             if viewModel.isRefreshing {
                 ProgressView()
-            } else {
-                Button("Refresh") {
-                    Task(priority: .userInitiated) { await viewModel.forceRefresh(appModel: appModel) }
+            } else if appModel.canRefreshCurrentSlot {
+                Button {
+                    Task(priority: .userInitiated) {
+                        await viewModel.forceRefresh(appModel: appModel)
+                    }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .appFont(FontTheme.caption)
+            } else if allTasksCompleted {
+                Text(appModel.hasUsedRefreshThisSlot ? "本时段刷新次数已用" : "完成奖励已结算")
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("完成全部任务可刷新一次")
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 8)
+    }
+    
+    private var allTasksCompleted: Bool {
+        !appModel.todayTasks.isEmpty && appModel.todayTasks.allSatisfy { $0.status == .completed }
     }
 }
 
