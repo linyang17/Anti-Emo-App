@@ -113,17 +113,17 @@
 
 ### 1.2 应用打开时强制情绪记录弹窗
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 目前 `ContentView` 只有 onboarding 的全屏遮罩，没有“每日首次打开强制记录”逻辑，且 `MoodCaptureOverlayView` 的 Slider 仍允许 0，用户可以绕过记录。
 
 **具体实施步骤**:
-- [ ] 在 `AppViewModel` 中添加 `hasLoggedMoodToday`（基于 `moodEntries` 与日历分组）以及 `recordMoodOnLaunch()`。
-- [ ] `MainTabView` or `ContentView` 监听该状态，使用 `.fullScreenCover` 或 `.overlay` 展示 `MoodCaptureOverlayView`，并调用 `.interactiveDismissDisabled(true)`。
-- [ ] 改造 `MoodCaptureOverlayView`：
+- [x] 在 `AppViewModel` 中添加 `hasLoggedMoodToday`（基于 `moodEntries` 与日历分组）以及 `recordMoodOnLaunch()`。
+- [x] `MainTabView` or `ContentView` 监听该状态，使用 `.fullScreenCover` 或 `.overlay` 展示 `MoodCaptureOverlayView`，并调用 `.interactiveDismissDisabled(true)`。
+- [x] 改造 `MoodCaptureOverlayView`：
   - Slider 改为 `10...100`，`step = 10`，默认值 50。
   - 支持将 `source` 作为参数传给 `onSave` 回调。
-- [ ] 成功记录后设置 `source = .appOpen` 并立即刷新 `moodEntries` 列表，确保当天不再弹窗；跨日需重置。
+- [x] 成功记录后设置 `source = .appOpen` 并立即刷新 `moodEntries` 列表，确保当天不再弹窗；跨日需重置。
 
 **相关文件路径**:
 - `AntiEmoPet/App/ContentView.swift`
