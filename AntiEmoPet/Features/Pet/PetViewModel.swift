@@ -54,7 +54,7 @@ final class PetViewModel: ObservableObject {
 
         if let pet {
             summary.bond = bondValue(for: pet.bonding)
-            let requirement = xpRequirement(for: pet.level)
+            let requirement = XPProgression.requirement(for: pet.level)
             let clampedRequirement = max(requirement, 1)
             let progress = Double(max(0, min(pet.xp, clampedRequirement))) / Double(clampedRequirement)
             summary.experienceProgress = min(max(progress, 0), 1)
@@ -152,22 +152,4 @@ final class PetViewModel: ObservableObject {
         }
     }
 
-    private func xpRequirement(for level: Int) -> Int {
-        switch level {
-        case ..<1:
-            return 10
-        case 1:
-            return 10
-        case 2:
-            return 25
-        case 3:
-            return 50
-        case 4:
-            return 75
-        case 5:
-            return 100
-        default:
-            return 100
-        }
-    }
 }

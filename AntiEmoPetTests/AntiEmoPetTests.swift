@@ -67,20 +67,44 @@ struct AntiEmoPetTests {
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Lumio", bondingScore: 60, level: 1, xp: 95)
+        let pet = Pet(name: "Lumio", bondingScore: 60, level: 1, xp: 9)
         let accessory = Item(
-            sku: "decor.energy.bar",
-            type: .decor,
-            assetName: "giftbox",
-            costEnergy: 10,
+            sku: "snack.apple",
+            type: .snack,
+            assetName: "apple",
+            costEnergy: 2,
             BondingBoost: 4
         )
 
         let engine = PetEngine()
         engine.handleAction(.feed(item: accessory), pet: pet)
 
-        #expect(pet.level == 2) // xp wraps to next level
-        #expect(pet.xp < 10)
+        #expect(pet.level == 2) // XP should carry to the next level
+        #expect(pet.xp == 1)
+        #expect(pet.bondingScore == 62)
+    }
+
+    @Test("Purchase reward applies PRD bonding and XP gains") func purchaseRewardMatchesPRD() {
+        let pet = Pet(name: "Lumio", bondingScore: 50, level: 1, xp: 0)
+        let engine = PetEngine()
+
+        engine.applyPurchaseReward(pet: pet)
+
+        #expect(pet.bondingScore == 60)
+        #expect(pet.level == 2)
+        #expect(pet.xp == 10) // 20 XP should roll over with the 10 XP requirement
+    }
+
+    @Test("XP progression uses PRD curve and carries surplus") func xpCurveCarriesSurplus() {
+        let pet = Pet(name: "Lumio", bondingScore: 50, level: 2, xp: 24)
+        let engine = PetEngine()
+
+        engine.applyPurchaseReward(pet: pet, xpGain: 70, bondingBoost: 0)
+
+        #expect(pet.level == 4)
+        #expect(pet.xp == 19)
+        #expect(XPProgression.requirement(for: 3) == 50)
+        #expect(XPProgression.requirement(for: 6) == 100)
     }
 
     @Test("ChatService stub responds with bonding line") func chatServiceResponds() {

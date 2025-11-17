@@ -27,19 +27,20 @@ final class AppViewModel: ObservableObject {
 	@Published var isLoading = true
 	@Published var showOnboarding = false
 	@Published var moodEntries: [MoodEntry] = []
-	@Published var energyHistory: [EnergyHistoryEntry] = []
-	@Published var inventory: [InventoryEntry] = []
-	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
-	@Published var showSleepReminder = false
-	@Published var rewardBanner: RewardEvent?
-	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+        @Published var energyHistory: [EnergyHistoryEntry] = []
+        @Published var inventory: [InventoryEntry] = []
+        @Published var dailyMetricsCache: [DailyActivityMetrics] = []
+        @Published var showSleepReminder = false
+        @Published var rewardBanner: RewardEvent?
+        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
         @Published var shouldShowNotificationSettingsPrompt = false
-	@Published private(set) var hasLoggedMoodToday = false
-	@Published var shouldForceMoodCapture = false
-	@Published var pendingMoodFeedbackTask: UserTask?
-	@Published private(set) var canRefreshCurrentSlot = false
-	@Published private(set) var hasUsedRefreshThisSlot = false
-	@Published var pettingNotice: String?
+        @Published private(set) var hasLoggedMoodToday = false
+        @Published var showMoodCapture = false
+        @Published var shouldForceMoodCapture = false
+        @Published var pendingMoodFeedbackTask: UserTask?
+        @Published private(set) var canRefreshCurrentSlot = false
+        @Published private(set) var hasUsedRefreshThisSlot = false
+        @Published var pettingNotice: String?
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -51,13 +52,15 @@ final class AppViewModel: ObservableObject {
 	private let analytics = AnalyticsService()
 	private var cancellables: Set<AnyCancellable> = []
 	private let sleepReminderService = SleepReminderService()
-	private let refreshRecordsKey = "taskRefreshRecords"
-	private let slotScheduleKey = "taskSlotSchedule"
-	private let slotGenerationKey = "taskSlotGenerationRecords"
-	private let pettingLimitKey = "dailyPettingLimit"
-	private typealias RefreshRecordMap = [String: [String: Double]]
-	private typealias SlotScheduleMap = [String: [String: Double]]
-	private typealias SlotGenerationMap = [String: [String: Bool]]
+        private let refreshRecordsKey = "taskRefreshRecords"
+        private let slotScheduleKey = "taskSlotSchedule"
+        private let slotGenerationKey = "taskSlotGenerationRecords"
+        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+        private let pettingLimitKey = "dailyPettingLimit"
+        private typealias RefreshRecordMap = [String: [String: Double]]
+        private typealias SlotScheduleMap = [String: [String: Double]]
+        private typealias SlotGenerationMap = [String: [String: Bool]]
+        private typealias SlotPenaltyMap = [String: [String: Bool]]
 	private var slotMonitorTask: Task<Void, Never>?
 	private var pettingNoticeTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
@@ -99,11 +102,11 @@ final class AppViewModel: ObservableObject {
 		UserDefaults.standard.set(code, forKey: "selectedLanguage")
 	}
 
-	func load() async {
-		storage.bootstrapIfNeeded()
-		pet = storage.fetchPet()
-		normalizePetBondingState()
-		userStats = storage.fetchStats()
+        func load() async {
+                storage.bootstrapIfNeeded()
+                pet = storage.fetchPet()
+                normalizePetBondingState()
+                userStats = storage.fetchStats()
 
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
@@ -147,29 +150,34 @@ final class AppViewModel: ObservableObject {
 			weather = weatherReport?.currentWeather ?? weather
 		}
 
-		scheduleTaskNotifications()
-		prepareSlotGenerationSchedule(for: Date())
-		checkSlotGenerationTrigger()
-		startSlotMonitor()
+                scheduleTaskNotifications()
+                prepareSlotGenerationSchedule(for: Date())
+                checkSlotGenerationTrigger()
+                startSlotMonitor()
 
-		showOnboarding = !(userStats?.Onboard ?? false)
-		
-		// 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
-		if !showOnboarding && !showSleepReminder {
-			checkAndShowMoodCapture()
-		}
-		
-		isLoading = false
+                showOnboarding = !(userStats?.Onboard ?? false)
 
-		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
-		recordMoodOnLaunch()
-	}
-	
-	/// 检查今天是否已记录情绪，如果没有则显示弹窗
-	private func checkAndShowMoodCapture() {
-		guard !hasLoggedMoodToday() else { return }
-		showMoodCapture = true
-	}
+                // 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
+                if !showOnboarding && !showSleepReminder {
+                        checkAndShowMoodCapture()
+                }
+
+                isLoading = false
+
+                dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+                recordMoodOnLaunch()
+        }
+
+        /// 检查今天是否已记录情绪，如果没有则显示弹窗
+        private func checkAndShowMoodCapture() {
+                guard !hasLoggedMoodToday() else {
+                        showMoodCapture = false
+                        shouldForceMoodCapture = false
+                        return
+                }
+                shouldForceMoodCapture = true
+                showMoodCapture = true
+        }
 	
 	/// 检查今天是否已经记录过情绪
 	func hasLoggedMoodToday() -> Bool {
@@ -182,11 +190,17 @@ final class AppViewModel: ObservableObject {
 		}
 	}
 	
-	/// 记录情绪并关闭弹窗
-	func recordMoodOnLaunch(value: Int) {
-		addMoodEntry(value: value, source: .appOpen)
-		showMoodCapture = false
-	}
+        /// 记录情绪并关闭弹窗
+        func recordMoodOnLaunch(value: Int? = nil) {
+                refreshMoodLoggingState()
+                guard let value else {
+                        showMoodCapture = shouldForceMoodCapture
+                        return
+                }
+                addMoodEntry(value: value, source: .appOpen)
+                showMoodCapture = false
+                shouldForceMoodCapture = false
+        }
 	
 	func refreshIfNeeded() async {
 		await load()
@@ -325,25 +339,25 @@ final class AppViewModel: ObservableObject {
 		return true
 	}
 
-	func feed(item: Item) {
-		guard let pet else { return }
-		petEngine.handleAction(.feed(item: item), pet: pet)
-		incrementPetInteractionCount()
-		storage.persist()
+        func feed(item: Item) {
+                guard let pet else { return }
+                petEngine.handleAction(.feed(item: item), pet: pet)
+                incrementPetInteractionCount()
+                storage.persist()
 		dailyMetricsCache = makeDailyActivityMetrics()
 	}
 
 	func purchase(item: Item) -> Bool {
-		guard let stats = userStats, let pet else { return false }
-		let success = rewardEngine.purchase(item: item, stats: stats)
-		guard success else { return false }
-		incrementInventory(for: item)
-		petEngine.applyPurchaseReward(pet: pet)
-		storage.persist()
-		objectWillChange.send()
-		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
-		logTodayEnergySnapshot()
-		return true
+                guard let stats = userStats, let pet else { return false }
+                let success = rewardEngine.purchase(item: item, stats: stats)
+                guard success else { return false }
+                incrementInventory(for: item)
+                petEngine.applyPurchaseReward(pet: pet, xpGain: 20, bondingBoost: 10)
+                storage.persist()
+                objectWillChange.send()
+                analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
+                logTodayEnergySnapshot()
+                return true
 	}
 
 	func updateProfile(
@@ -443,13 +457,14 @@ final class AppViewModel: ObservableObject {
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 		
-		// 刷新今日情绪记录状态
-		refreshMoodLoggingState()
-		
-		// 如果是应用打开时的记录,关闭强制弹窗
-		if source == .appOpen {
-			shouldForceMoodCapture = false
-		}
+                // 刷新今日情绪记录状态
+                refreshMoodLoggingState()
+
+                // 如果是应用打开时的记录,关闭强制弹窗
+                if source == .appOpen {
+                        shouldForceMoodCapture = false
+                        showMoodCapture = false
+                }
 		
 		analytics.log(event: "mood_entry_added", metadata: [
 			"source": source.rawValue,
@@ -617,16 +632,17 @@ final class AppViewModel: ObservableObject {
 	private func startSlotMonitor() {
 		slotMonitorTask?.cancel()
 		slotMonitorTask = Task.detached { [weak self] in
-			while !Task.isCancelled {
-				try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
-				await MainActor.run {
-					guard let self else { return }
-					self.prepareSlotGenerationSchedule(for: Date())
-					self.checkSlotGenerationTrigger()
-				}
-			}
-		}
-	}
+                                while !Task.isCancelled {
+                                        try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
+                                        await MainActor.run {
+                                                guard let self else { return }
+                                                self.prepareSlotGenerationSchedule(for: Date())
+                                                self.checkSlotGenerationTrigger()
+                                                self.updateTaskRefreshEligibility()
+                                        }
+                                }
+                        }
+        }
 
 	private func checkSlotGenerationTrigger(reference date: Date = Date()) {
 		let schedule = loadSlotSchedule()
@@ -688,21 +704,37 @@ final class AppViewModel: ObservableObject {
 		return filtered
 	}
 
-	private func loadSlotGenerationRecords() -> SlotGenerationMap {
-		(UserDefaults.standard.dictionary(forKey: slotGenerationKey) as? SlotGenerationMap) ?? [:]
-	}
+        private func loadSlotGenerationRecords() -> SlotGenerationMap {
+                (UserDefaults.standard.dictionary(forKey: slotGenerationKey) as? SlotGenerationMap) ?? [:]
+        }
 
-	private func saveSlotGenerationRecords(_ records: SlotGenerationMap) {
-		UserDefaults.standard.set(records, forKey: slotGenerationKey)
-	}
+        private func saveSlotGenerationRecords(_ records: SlotGenerationMap) {
+                UserDefaults.standard.set(records, forKey: slotGenerationKey)
+        }
 
-	private func purgeSlotGenerationRecords(_ records: SlotGenerationMap, keepingDay day: String) -> SlotGenerationMap {
-		var filtered: SlotGenerationMap = [:]
-		if let current = records[day] {
-			filtered[day] = current
-		}
-		return filtered
-	}
+        private func purgeSlotGenerationRecords(_ records: SlotGenerationMap, keepingDay day: String) -> SlotGenerationMap {
+                var filtered: SlotGenerationMap = [:]
+                if let current = records[day] {
+                        filtered[day] = current
+                }
+                return filtered
+        }
+
+        private func loadPenaltyRecords() -> SlotPenaltyMap {
+                (UserDefaults.standard.dictionary(forKey: penaltyRecordsKey) as? SlotPenaltyMap) ?? [:]
+        }
+
+        private func savePenaltyRecords(_ records: SlotPenaltyMap) {
+                UserDefaults.standard.set(records, forKey: penaltyRecordsKey)
+        }
+
+        private func purgePenaltyRecords(_ records: SlotPenaltyMap, keepingDay day: String) -> SlotPenaltyMap {
+                var filtered: SlotPenaltyMap = [:]
+                if let current = records[day] {
+                        filtered[day] = current
+                }
+                return filtered
+        }
 
 	private func pettingCount(on date: Date = Date()) -> Int {
 		let dict = (UserDefaults.standard.dictionary(forKey: pettingLimitKey) as? [String: Int]) ?? [:]
@@ -733,25 +765,47 @@ final class AppViewModel: ObservableObject {
 		pet.bonding = PetBonding.from(score: pet.bondingScore)
 	}
 
-	private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
-		guard let stats = userStats, let pet else { return }
-		let calendar = TimeZoneManager.shared.calendar
-		let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
-		let today = calendar.startOfDay(for: date)
+        private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
+                guard let stats = userStats, let pet else { return }
+                let calendar = TimeZoneManager.shared.calendar
+                let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
+                let today = calendar.startOfDay(for: date)
 		guard today > lastDay else {
 			stats.lastActiveDate = date
 			return
 		}
 		let decayDays = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
 		guard decayDays > 0 else { return }
-		petEngine.applyDailyDecay(pet: pet, days: decayDays)
-		stats.lastActiveDate = date
-		storage.persist()
-	}
+                petEngine.applyDailyDecay(pet: pet, days: decayDays)
+                stats.lastActiveDate = date
+                storage.persist()
+        }
 
-	func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
-		// Placeholder – implemented in later subsections
-	}
+        func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
+                guard let pet else { return }
+                let calendar = TimeZoneManager.shared.calendar
+                let dkey = dayKey(for: date)
+                var penaltyRecords = purgePenaltyRecords(loadPenaltyRecords(), keepingDay: dkey)
+                var slotMap = penaltyRecords[dkey] ?? [:]
+                guard slotMap[slot.rawValue] != true else { return }
+
+                let intervals = taskGenerator.scheduleIntervals(for: date)
+                guard let interval = intervals[slot] else { return }
+
+                let slotTasks = todayTasks.filter { task in
+                        guard calendar.isDate(task.date, inSameDayAs: date) else { return false }
+                        return interval.contains(task.date)
+                }
+
+                guard slotTasks.contains(where: { $0.status != .completed }) else { return }
+
+                petEngine.applyLightPenalty(to: pet)
+                storage.persist()
+                slotMap[slot.rawValue] = true
+                penaltyRecords[dkey] = slotMap
+                savePenaltyRecords(penaltyRecords)
+                showPettingNotice("Lumio felt a little lonely (-5 bond)")
+        }
 
 	private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {
 		let slotIntervals = taskGenerator.scheduleIntervals(for: date)
@@ -899,54 +953,29 @@ final class AppViewModel: ObservableObject {
 		sleepReminderService.startMonitoring()
 	}
 
-	func dismissSleepReminder() {
-		sleepReminderService.acknowledgeReminder()
-		// Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
-		if !showOnboarding {
-			checkAndShowMoodCapture()
-		}
-	}
+        func dismissSleepReminder() {
+                sleepReminderService.acknowledgeReminder()
+                // Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
+                if !showOnboarding {
+                        checkAndShowMoodCapture()
+                }
+        }
 
-	private func refreshMoodLoggingState(reference date: Date = Date()) {
-		let calendar = TimeZoneManager.shared.calendar
-		let startOfDay = calendar.startOfDay(for: date)
-		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-		let loggedToday = moodEntries.contains { entry in
-			entry.date >= startOfDay && entry.date < endOfDay
-		}
-		hasLoggedMoodToday = loggedToday
-		shouldForceMoodCapture = !loggedToday
-	}
+        private func refreshMoodLoggingState(reference date: Date = Date()) {
+                let calendar = TimeZoneManager.shared.calendar
+                let startOfDay = calendar.startOfDay(for: date)
+                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+                let loggedToday = moodEntries.contains { entry in
+                        entry.date >= startOfDay && entry.date < endOfDay
+                }
+                hasLoggedMoodToday = loggedToday
+                shouldForceMoodCapture = !loggedToday
+        }
 
-	private func recordMoodOnLaunch() {
-		refreshMoodLoggingState()
-		if !hasLoggedMoodToday {
-			shouldForceMoodCapture = true
-		}
-	}
-
-	private func refreshMoodLoggingState(reference date: Date = Date()) {
-		let calendar = TimeZoneManager.shared.calendar
-		let startOfDay = calendar.startOfDay(for: date)
-		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-		let loggedToday = moodEntries.contains { entry in
-			entry.date >= startOfDay && entry.date < endOfDay
-		}
-		hasLoggedMoodToday = loggedToday
-		shouldForceMoodCapture = !loggedToday
-	}
-
-	private func recordMoodOnLaunch() {
-		refreshMoodLoggingState()
-		if !hasLoggedMoodToday {
-			shouldForceMoodCapture = true
-		}
-	}
-
-	private func snackDisplayName(for item: Item) -> String {
-		if !item.assetName.isEmpty {
-			return item.assetName
-		}
-		return item.sku
+        private func snackDisplayName(for item: Item) -> String {
+                if !item.assetName.isEmpty {
+                        return item.assetName
+                }
+                return item.sku
 	}
 }
