@@ -81,7 +81,7 @@ final class AppViewModel: ObservableObject {
 
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
-			stats.totalEnergy = 50
+			stats.totalEnergy = 100
 		}
 
 		// Load stored energy history (for daily totalEnergy snapshots)
