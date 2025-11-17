@@ -93,14 +93,14 @@
 **问题**: `MoodEntry` 仅含 `id/date/value`，`AppViewModel.addMoodEntry()` 也只写入数值，无法记录来源、任务绑定与天气，导致 PRD 中“AI 分析”所需的上下文缺失。
 
 **具体实施步骤**:
-- [ ] 在 `MoodEntry.swift` 中新增：
+- [x] 在 `MoodEntry.swift` 中新增：
   - `source: MoodEntry.Source`（枚举封装 `"app_open"` / `"after_task"`）
   - `delta: Int?`
   - `relatedTaskCategory: TaskCategory?`
   - `relatedWeather: WeatherType?`
   - 更新 `@Model` 初始化方法和 `@Attribute(.unique)` 迁移。
-- [ ] 修改 `StorageService.saveMoodEntry(_:)` 与 `AppViewModel.addMoodEntry(...)`/任务完成反馈调用，确保这些字段被赋值。
-- [ ] 为 `MoodEntry` 提供 `Codable`/`Sendable` 支持，以便未来上传聚合时直接复用。
+- [x] 修改 `StorageService.saveMoodEntry(_:)` 与 `AppViewModel.addMoodEntry(...)`/任务完成反馈调用，确保这些字段被赋值。
+- [x] 为 `MoodEntry` 提供 `Codable`/`Sendable` 支持，以便未来上传聚合时直接复用。
 
 **相关文件路径**:
 - `AntiEmoPet/Functions/MoodEntry.swift`
@@ -292,9 +292,9 @@
 **问题**: 未完成当前时段全部任务，bonding数值-1
 
 **具体实施步骤**:
-- [ ] 在 `AppViewModel` 中新增 `evaluateBondingPenalty(for:)`，在每个 `TimeSlot` 结束或刷新前调用。
-- [ ] 若当前时段仍有 `status != .completed` 的任务，则调用 `PetEngine` 新方法减少 1 点 bonding，并记录本时段已处罚。
-- [ ] 使用 `UserDefaults` 或 SwiftData 保存处罚日志，防止重复扣减，同时触发 UI 提示。
+- [x] 在 `AppViewModel` 中新增 `evaluateBondingPenalty(for:)`，在每个 `TimeSlot` 结束或刷新前调用。
+- [x] 若当前时段仍有 `status != .completed` 的任务，则调用 `PetEngine` 新方法减少 1 点 bonding，并记录本时段已处罚。
+- [x] 使用 `UserDefaults` 或 SwiftData 保存处罚日志，防止重复扣减，同时触发 UI 提示。
 
 **相关文件路径**:
 - `AntiEmoPet/App/AppViewModel.swift`
