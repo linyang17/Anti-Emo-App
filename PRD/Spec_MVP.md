@@ -1,7 +1,7 @@
-# 📘 iOS 技术说明书 --- SunnyPet MVP
+# 📘 MVP Spec
 
-**App 名称：** SunnyPet\
-**平台：** iOS 17+\
+**App 名称：** Lumio\
+**平台：** iOS 18+\
 **语言/框架：** Swift + SwiftUI + MVVM + SwiftData\
 **开发目标：** 构建一款天气驱动任务打卡 + 虚拟宠物陪伴应用\
 **版本范围：** MVP 可运行闭环（任务→奖励→宠物反馈→商店消费）

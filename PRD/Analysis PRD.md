@@ -1,11 +1,5 @@
 # 统计分析PRD
 
-Status: Not started
-Priority: Core
-Created: 9 November 2025 15:25
-Last edited: 16 November 2025 15:27
-Tasks: 优化数据和权限部分的structure和性能 (https://www.notion.so/structure-2a99ab714701801c8d83fd267c1cb9e7?pvs=21)
-
 能量值（Energy System）包括完整的**时间序列数据结构**：
 
 - 每次记录有时间戳（DateTime）
