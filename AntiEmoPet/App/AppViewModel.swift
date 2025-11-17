@@ -169,12 +169,51 @@ final class AppViewModel: ObservableObject {
 			checkAndShowMoodCapture()
 		}
 	}
+	
+	/// 开始任务,设置buffer时间
+	func startTask(_ task: UserTask) {
+		guard task.status == .pending else { return }
+		
+		let now = Date()
+		task.status = .started
+		task.startedAt = now
+		task.canCompleteAfter = now.addingTimeInterval(task.category.bufferDuration)
+		
+		storage.persist()
+		todayTasks = storage.fetchTasks(for: .now)
+		
+		analytics.log(event: "task_started", metadata: [
+			"title": task.title,
+			"category": task.category.rawValue,
+			"buffer": "\(task.category.bufferDuration)"
+		])
+		
+		// 设置定时器在buffer时间后更新状态为ready
+		Task { @MainActor in
+			try? await Task.sleep(nanoseconds: UInt64(task.category.bufferDuration * 1_000_000_000))
+			if task.status == .started, let canComplete = task.canCompleteAfter, Date() >= canComplete {
+				task.status = .ready
+				storage.persist()
+				todayTasks = storage.fetchTasks(for: .now)
+				objectWillChange.send()
+			}
+		}
+	}
 
 	func completeTask(_ task: UserTask) {
 		guard let stats = userStats, let pet, task.status != .completed else { return }
+		
+		// 检查是否可以完成:pending直接完成,或者已达到buffer时间
 		guard task.status.isCompletable else { return }
+		if task.status == .started, let canComplete = task.canCompleteAfter, Date() < canComplete {
+			// 未到buffer时间,不能完成
+			return
+		}
 		task.status = .completed
 		task.completedAt = Date()
+		
+		// 确保使用category标准能量奖励
+		task.energyReward = task.category.energyReward
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
 		petEngine.applyTaskCompletion(pet: pet)
 		analytics.log(event: "task_completed", metadata: ["title": task.title])
