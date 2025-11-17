@@ -264,31 +264,23 @@
 
 ### 2.4 当前任务生成逻辑检查
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 初始任务全部完成后，刷新没有生成新的任务。在每个时间段开始的时候任务系统没有更新和生成任务。
 
 **具体实施步骤**:
-- 根据时间和天气状况，在每个时间段内随机的时刻基于实时天气生成3个任务，并发送推送通知。
-    - 时间段：上午6-12、下午12-17、傍晚17-22、晚上22-6
-        - 晚上不生成任务，并且如果用户还在app内，在petview界面里弹出窗口提醒用户睡觉。
-    - 这个随机时刻的生成时间会在每个时间段的开始时间决定。比如6点决定上午时间段在6-12中的什么时候生成任务。
-        - 极大增加在晴天的时候生成的概率，比如在早上6点、阴天的情况下，在上午的天气预报里预计9：20-9：40是晴天，那么任务一定会在这20分钟的窗口里生成。
-        - 减少在下雨的时候生成的概率。其他天气随机。
-        - 颗粒度根据weatherkit实际可获取的天气预报颗粒度对齐
-	- 到任务生成时间，获取用户当前的天气和一小时内的天气预报。当前天气后面需要存入对应的数据流中，所以可以使用一个temp的数值，每个时间段更新任务时更新。
-- 根据天气随机在相关任务类型中抽取任务。任务分为6类，
-    - 下雨：不包括户外任务
-    - 晴天：不包括indoor digital和petcare
-    - 其他：包括所有任务类型
+- [x] 根据时间和天气状况，在每个时间段内随机的时刻基于实时天气生成任务并发送推送通知（早/午/晚三个时段，夜间不生成）。
+- [x] 每个时段开始时确定随机触发时间，并在触发点调用 `TaskGeneratorService.generateTasks(for:slot:)`。
+- [x] 根据天气随机在相关任务类型中抽取任务，并在本地推送中提示“新任务已解锁”。
+- [x] 生成后的任务写入 SwiftData，刷新 UI 与通知调度。
 
 **相关文件路径**:
-- `AntiEmoPet/Services/TaskGeneratorService.swift`
-- `AntiEmoPet/Services/NotificationService.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Services/WeatherService.swift`
+- `AntiEmoPet/Services/TaskGeneratorService.swift` ✅
+- `AntiEmoPet/Services/NotificationService.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Services/WeatherService.swift` ✅
 **注意事项**:
-- 现有 `TaskGeneratorService` 已按 `TimeSlot` 生成任务，需要在不破坏当前生成逻辑的情况下加入「时间段内随机触发 + 推送」调度；注意晚上 22-6 不生成但要触发 `SleepReminder`。
+- 复用 `TimeSlot.from(date:)` 计算时间段，随机调度仅覆盖早/午/晚；夜间保持现有的睡眠提醒逻辑。
 
 ---
 

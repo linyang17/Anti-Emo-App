@@ -9,38 +9,80 @@ final class TaskGeneratorService {
         self.storage = storage
     }
 
-    func generateDailyTasks(for date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
-        let templates = storage.fetchAllTaskTemplates()
-        guard !templates.isEmpty else { return [] }
+	private let slotOrder: [TimeSlot] = [.morning, .afternoon, .evening]
 
-        let intervals = activeSlotIntervals(for: date)
-        var usedTitles = reservedTitles
-        var tasks: [UserTask] = []
+	func generateDailyTasks(for date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
+		let templates = storage.fetchAllTaskTemplates()
+		guard !templates.isEmpty else { return [] }
 
-        for (_, interval) in intervals {
-            let windows = overlappingWindows(interval: interval, report: report)
-            let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
-            guard count > 0 else { continue }
+		let intervals = slotIntervals(for: date)
+		var usedTitles = reservedTitles
+		var tasks: [UserTask] = []
 
-            for _ in 0..<count {
-                guard let template = pickTemplate(from: templates, used: &usedTitles, windows: windows, defaultWeather: report?.currentWeather ?? .sunny) else {
-                    continue
-                }
-                let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
-                let task = UserTask(
-                    title: template.title,
-                    weatherType: scheduled.weather,
-                    difficulty: template.difficulty,
-                    category: template.category,
-                    energyReward: template.energyReward,
-                    date: scheduled.date
-                )
-                tasks.append(task)
-            }
-        }
+		for slot in slotOrder {
+			guard let interval = intervals[slot] else { continue }
+			let windows = overlappingWindows(interval: interval, report: report)
+			let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
+			guard count > 0 else { continue }
 
-        return tasks.sorted { $0.date < $1.date }
-    }
+			for _ in 0..<count {
+				guard let template = pickTemplate(from: templates, used: &usedTitles, windows: windows, defaultWeather: report?.currentWeather ?? .sunny) else {
+					continue
+				}
+				let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
+				let task = UserTask(
+					title: template.title,
+					weatherType: scheduled.weather,
+					difficulty: template.difficulty,
+					category: template.category,
+					energyReward: template.energyReward,
+					date: scheduled.date
+				)
+				tasks.append(task)
+			}
+		}
+
+		return tasks.sorted { $0.date < $1.date }
+	}
+
+	func generateTasks(for slot: TimeSlot, date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
+		let templates = storage.fetchAllTaskTemplates()
+		guard !templates.isEmpty else { return [] }
+		let intervals = slotIntervals(for: date)
+		guard let interval = intervals[slot] else { return [] }
+
+		let windows = overlappingWindows(interval: interval, report: report)
+		let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
+		guard count > 0 else { return [] }
+
+		var usedTitles = reservedTitles
+		var tasks: [UserTask] = []
+
+		for _ in 0..<count {
+			guard let template = pickTemplate(from: templates, used: &usedTitles, windows: windows, defaultWeather: report?.currentWeather ?? .sunny) else {
+				continue
+			}
+			let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
+			let task = UserTask(
+				title: template.title,
+				weatherType: scheduled.weather,
+				difficulty: template.difficulty,
+				category: template.category,
+				energyReward: template.energyReward,
+				date: scheduled.date
+			)
+			tasks.append(task)
+		}
+
+		return tasks.sorted { $0.date < $1.date }
+	}
+
+	func generationTriggerTime(for slot: TimeSlot, date: Date, report: WeatherReport?) -> Date? {
+		guard let interval = slotIntervals(for: date)[slot] else { return nil }
+		let windows = overlappingWindows(interval: interval, report: report)
+		let schedule = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
+		return schedule.date
+	}
 
     func makeOnboardingTasks(for date: Date) -> [UserTask] {
         let titles = [
@@ -61,25 +103,25 @@ final class TaskGeneratorService {
         }
     }
 
-    private func activeSlotIntervals(for date: Date) -> [(TimeSlot, DateInterval)] {
-        let startOfDay = calendar.startOfDay(for: date)
-        let slotStartHours: [(TimeSlot, Int)] = [(.morning, 6), (.afternoon, 12), (.evening, 17)]
-        var intervals: [(TimeSlot, DateInterval)] = []
+	private func slotIntervals(for date: Date) -> [TimeSlot: DateInterval] {
+		let startOfDay = calendar.startOfDay(for: date)
+		let slotStartHours: [(TimeSlot, Int)] = [(.morning, 6), (.afternoon, 12), (.evening, 17)]
+		var intervals: [TimeSlot: DateInterval] = [:]
 
-        for (index, pair) in slotStartHours.enumerated() {
-            let (slot, hour) = pair
-            guard let start = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: startOfDay) else { continue }
-            let endHour: Int
-            if index + 1 < slotStartHours.count {
-                endHour = slotStartHours[index + 1].1
-            } else {
-                endHour = 22
-            }
-            let end = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay) ?? start.addingTimeInterval(5 * 3_600)
-            intervals.append((slot, DateInterval(start: start, end: end)))
-        }
-        return intervals
-    }
+		for (index, pair) in slotStartHours.enumerated() {
+			let (slot, hour) = pair
+			guard let start = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: startOfDay) else { continue }
+			let endHour: Int
+			if index + 1 < slotStartHours.count {
+				endHour = slotStartHours[index + 1].1
+			} else {
+				endHour = 22
+			}
+			let end = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay) ?? start.addingTimeInterval(5 * 3_600)
+			intervals[slot] = DateInterval(start: start, end: end)
+		}
+		return intervals
+	}
 
     private func overlappingWindows(interval: DateInterval, report: WeatherReport?) -> [WeatherWindow] {
         guard let report else { return [] }

@@ -35,7 +35,7 @@ struct TasksView: View {
                     }
                     if appModel.todayTasks.isEmpty {
                         Section {
-                            Text("No tasks right now,please check your permissions.")
+                            Text("当前时段暂无任务，请稍候或留意 Lumio 的通知。")
                                 .appFont(FontTheme.body)
                         }
                     }

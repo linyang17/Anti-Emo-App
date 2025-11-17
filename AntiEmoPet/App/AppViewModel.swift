@@ -51,7 +51,12 @@ final class AppViewModel: ObservableObject {
 	private var cancellables: Set<AnyCancellable> = []
 	private let sleepReminderService = SleepReminderService()
 	private let refreshRecordsKey = "taskRefreshRecords"
+	private let slotScheduleKey = "taskSlotSchedule"
+	private let slotGenerationKey = "taskSlotGenerationRecords"
 	private typealias RefreshRecordMap = [String: [String: Double]]
+	private typealias SlotScheduleMap = [String: [String: Double]]
+	private typealias SlotGenerationMap = [String: [String: Bool]]
+	private var slotMonitorTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
 		let formatter = ISO8601DateFormatter()
 		formatter.formatOptions = [.withFullDate]
@@ -68,6 +73,10 @@ final class AppViewModel: ObservableObject {
 		bindLocationUpdates()
 		bindSleepReminder()
 		configureSleepReminderMonitoring()
+	}
+
+	deinit {
+		slotMonitorTask?.cancel()
 	}
 
 	var totalEnergy: Int {
@@ -133,6 +142,9 @@ final class AppViewModel: ObservableObject {
 		}
 
 		scheduleTaskNotifications()
+		prepareSlotGenerationSchedule(for: Date())
+		checkSlotGenerationTrigger()
+		startSlotMonitor()
 
 		showOnboarding = !(userStats?.Onboard ?? false)
 		isLoading = false
@@ -149,7 +161,11 @@ final class AppViewModel: ObservableObject {
 		guard canRefreshCurrentSlot else { return }
 		await refreshTasks(retaining: retained)
 		markCurrentSlotRefreshed()
+		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+		markSlotTasksGenerated(slot, on: Date())
 		updateTaskRefreshEligibility()
+		prepareSlotGenerationSchedule(for: Date())
+		checkSlotGenerationTrigger()
 	}
 	
 	/// 开始任务,设置buffer时间
@@ -516,6 +532,111 @@ final class AppViewModel: ObservableObject {
 		return filtered
 	}
 
+	private func prepareSlotGenerationSchedule(for date: Date) {
+		let dkey = dayKey(for: date)
+		var schedule = purgeSlotSchedule(loadSlotSchedule(), keepingDay: dkey)
+		var slotMap = schedule[dkey] ?? [:]
+		for slot in activeTaskSlots where slotMap[slot.rawValue] == nil {
+			if let trigger = taskGenerator.generationTriggerTime(for: slot, date: date, report: weatherReport) {
+				slotMap[slot.rawValue] = trigger.timeIntervalSince1970
+			}
+		}
+		schedule[dkey] = slotMap
+		saveSlotSchedule(schedule)
+
+		let generation = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
+		saveSlotGenerationRecords(generation)
+	}
+
+	private func startSlotMonitor() {
+		slotMonitorTask?.cancel()
+		slotMonitorTask = Task.detached { [weak self] in
+			while !(Task.isCancelled) {
+				try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
+				await MainActor.run {
+					self?.prepareSlotGenerationSchedule(for: Date())
+					self?.checkSlotGenerationTrigger()
+				}
+			}
+		}
+	}
+
+	private func checkSlotGenerationTrigger(reference date: Date = Date()) {
+		let schedule = loadSlotSchedule()
+		let dkey = dayKey(for: date)
+		guard let slotMap = schedule[dkey] else { return }
+		for slot in activeTaskSlots {
+			guard let epoch = slotMap[slot.rawValue] else { continue }
+			let triggerDate = Date(timeIntervalSince1970: epoch)
+			guard date >= triggerDate else { continue }
+			guard !hasGeneratedSlotTasks(slot, on: date) else { continue }
+			generateTasksForSlot(slot, reference: date)
+		}
+	}
+
+	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date()) {
+		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
+		guard !generated.isEmpty else { return }
+		storage.deleteTasks(in: slot, on: date)
+		storage.save(tasks: generated)
+		todayTasks = storage.fetchTasks(for: .now)
+		scheduleTaskNotifications()
+		markSlotTasksGenerated(slot, on: date)
+		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
+		if userStats?.notificationsEnabled == true {
+			notificationService.notifyTasksUnlocked(for: slot)
+		}
+	}
+
+	private var activeTaskSlots: [TimeSlot] { [.morning, .afternoon, .evening] }
+
+	private func hasGeneratedSlotTasks(_ slot: TimeSlot, on date: Date = Date()) -> Bool {
+		let map = loadSlotGenerationRecords()
+		let dkey = dayKey(for: date)
+		return map[dkey]?[slot.rawValue] == true
+	}
+
+	private func markSlotTasksGenerated(_ slot: TimeSlot, on date: Date = Date()) {
+		let dkey = dayKey(for: date)
+		var map = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
+		var slotDict = map[dkey] ?? [:]
+		slotDict[slot.rawValue] = true
+		map[dkey] = slotDict
+		saveSlotGenerationRecords(map)
+	}
+
+	private func loadSlotSchedule() -> SlotScheduleMap {
+		(UserDefaults.standard.dictionary(forKey: slotScheduleKey) as? SlotScheduleMap) ?? [:]
+	}
+
+	private func saveSlotSchedule(_ schedule: SlotScheduleMap) {
+		UserDefaults.standard.set(schedule, forKey: slotScheduleKey)
+	}
+
+	private func purgeSlotSchedule(_ schedule: SlotScheduleMap, keepingDay day: String) -> SlotScheduleMap {
+		var filtered: SlotScheduleMap = [:]
+		if let current = schedule[day] {
+			filtered[day] = current
+		}
+		return filtered
+	}
+
+	private func loadSlotGenerationRecords() -> SlotGenerationMap {
+		(UserDefaults.standard.dictionary(forKey: slotGenerationKey) as? SlotGenerationMap) ?? [:]
+	}
+
+	private func saveSlotGenerationRecords(_ records: SlotGenerationMap) {
+		UserDefaults.standard.set(records, forKey: slotGenerationKey)
+	}
+
+	private func purgeSlotGenerationRecords(_ records: SlotGenerationMap, keepingDay day: String) -> SlotGenerationMap {
+		var filtered: SlotGenerationMap = [:]
+		if let current = records[day] {
+			filtered[day] = current
+		}
+		return filtered
+	}
+
 	func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
 		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
@@ -618,6 +739,8 @@ final class AppViewModel: ObservableObject {
 			userStats?.region = city
 			storage.persist()
 		}
+		prepareSlotGenerationSchedule(for: Date())
+		checkSlotGenerationTrigger()
 	}
 
 	private func bindLocationUpdates() {
