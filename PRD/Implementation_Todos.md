@@ -140,24 +140,24 @@
 
 ### 1.3 任务完成后强制情绪反馈弹窗
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: `AppViewModel.completeTask` 目前只更新能量/奖励，没有触发情绪反馈；`TasksView` 也没有 UI 钩子来展示强制弹窗。
 
 **具体实施步骤**:
-- 在`AppViewModel.completeTask()`方法中，任务完成后显示情绪反馈弹窗
-- 反馈选项：`worse` (-5), `unchanged` (0), `better` (+5), `much better` (+10)
-- 记录情绪时：
+- [x] 在`AppViewModel.completeTask()`方法中，任务完成后显示情绪反馈弹窗
+- [x] 反馈选项：`worse` (-5), `unchanged` (0), `better` (+5), `much better` (+10)
+- [x] 记录情绪时：
   - 设置`source = "after_task"`
   - 设置`delta`为选择的反馈选项的数值
   - 设置`related_task_category`为完成的任务分类
-- 使用全屏覆盖层，`.interactiveDismissDisabled(true)`确保不能关闭
-- 记录后自动关闭并继续任务完成流程
+- [x] 使用全屏覆盖层，`.interactiveDismissDisabled(true)`确保不能关闭
+- [x] 记录后自动关闭并继续任务完成流程
 
 **相关文件路径**:
-- `AntiEmoPet/App/AppViewModel.swift` 
-- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift`
-- 需要创建新的`MoodFeedbackOverlayView.swift`用于任务完成后的反馈
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift` ✅
+- `AntiEmoPet/Services/MoodFeedbackOverlayView.swift` ✅ 已创建
 **注意事项**:
 - 需要确保反馈结果与任务奖励逻辑解耦（避免在同一个 `completeTask` 调用里重复保存任务状态）；同时保证在多任务并发完成时只弹一次。
 

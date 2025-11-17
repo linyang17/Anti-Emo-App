@@ -184,6 +184,35 @@ final class AppViewModel: ObservableObject {
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
 		todayTasks = storage.fetchTasks(for: .now)
+		
+		// 触发强制情绪反馈弹窗
+		pendingMoodFeedbackTask = task
+	}
+	
+	/// 提交任务完成后的情绪反馈
+	/// - Parameters:
+	///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
+	///   - task: 完成的任务
+	func submitMoodFeedback(delta: Int, for task: UserTask) {
+		let entry = MoodEntry(
+			date: Date(),
+			value: max(10, min(100, 50 + delta)), // 基准值50,加上delta并限制在10-100范围
+			source: .afterTask,
+			delta: delta,
+			relatedTaskCategory: task.category,
+			relatedWeather: weather
+		)
+		storage.saveMoodEntry(entry)
+		moodEntries = storage.fetchMoodEntries()
+		
+		analytics.log(event: "mood_feedback_after_task", metadata: [
+			"delta": "\(delta)",
+			"category": task.category.rawValue,
+			"weather": weather.rawValue
+		])
+		
+		// 清除待处理的反馈任务
+		pendingMoodFeedbackTask = nil
 	}
 
 	func petting() {
@@ -538,6 +567,24 @@ final class AppViewModel: ObservableObject {
 		// Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
 		if !showOnboarding {
 			checkAndShowMoodCapture()
+		}
+	}
+
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		let loggedToday = moodEntries.contains { entry in
+			entry.date >= startOfDay && entry.date < endOfDay
+		}
+		hasLoggedMoodToday = loggedToday
+		shouldForceMoodCapture = !loggedToday
+	}
+
+	private func recordMoodOnLaunch() {
+		refreshMoodLoggingState()
+		if !hasLoggedMoodToday {
+			shouldForceMoodCapture = true
 		}
 	}
 
