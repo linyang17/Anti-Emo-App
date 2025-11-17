@@ -20,43 +20,45 @@ struct OnboardingView: View {
 		_locationService = ObservedObject(wrappedValue: locationService ?? LocationService())
 	}
 
-	var body: some View {
-		ZStack {
-			GPUCachedBackground("bg-main")
+        var body: some View {
+                ZStack {
+                        GPUCachedBackground("bg-main")
 
-			VStack {
-				Spacer(minLength: 50)
-				
-				StepFactory(
-					step: step,
-					viewModel: viewModel,
-					onAdvance: handleAdvance
-				)
-				.id(step.rawValue)
-				.animation(.easeInOut(duration: 0.3), value: step)
-				
-				Spacer(minLength: 520)
-			}
-			
-			VStack (spacing: 24) {
-				Spacer(minLength: 300)
-				
-				if step != .celebration {
-					OnboardingArrowButton(
-						isEnabled: canAdvance,
-						isLoading: isProcessingFinalStep,
-						action: handleAdvance
-					)
-					.gesture(backSwipeGesture)
-				}
-				
-				if step != .celebration {
-					FoxCharacterLayer()
-				}
-			}
-			.padding(.bottom, 50)
-		}
-		.background(NavigationGestureDisabler(isDisabled: true))
+                        if step == .celebration {
+                                WelcomeView(onTap: handleAdvance)
+                                        .id(step.rawValue)
+                                        .transition(.opacity)
+                        } else {
+                                VStack {
+                                        Spacer(minLength: 50)
+
+                                        StepFactory(
+                                                step: step,
+                                                viewModel: viewModel,
+                                                onAdvance: handleAdvance
+                                        )
+                                        .id(step.rawValue)
+                                        .animation(.easeInOut(duration: 0.3), value: step)
+
+                                        Spacer(minLength: 520)
+                                }
+
+                                VStack (spacing: 24) {
+                                        Spacer(minLength: 300)
+
+                                        OnboardingArrowButton(
+                                                isEnabled: canAdvance,
+                                                isLoading: isProcessingFinalStep,
+                                                action: handleAdvance
+                                        )
+                                        .gesture(backSwipeGesture)
+
+                                        FoxCharacterLayer()
+                                }
+                                .padding(.bottom, 50)
+                        }
+                }
+                .background(NavigationGestureDisabler(isDisabled: true))
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
 			Button("Go to settings") {
 				if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
