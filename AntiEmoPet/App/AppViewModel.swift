@@ -127,14 +127,47 @@ final class AppViewModel: ObservableObject {
 		scheduleTaskNotifications()
 
 		showOnboarding = !(userStats?.Onboard ?? false)
+		
+		// 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
+		
 		isLoading = false
 
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
 		recordMoodOnLaunch()
 	}
 	
+	/// 检查今天是否已记录情绪，如果没有则显示弹窗
+	private func checkAndShowMoodCapture() {
+		guard !hasLoggedMoodToday() else { return }
+		showMoodCapture = true
+	}
+	
+	/// 检查今天是否已经记录过情绪
+	func hasLoggedMoodToday() -> Bool {
+		let calendar = TimeZoneManager.shared.calendar
+		let today = calendar.startOfDay(for: Date())
+		let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86400)
+		
+		return moodEntries.contains { entry in
+			entry.date >= today && entry.date < tomorrow
+		}
+	}
+	
+	/// 记录情绪并关闭弹窗
+	func recordMoodOnLaunch(value: Int) {
+		addMoodEntry(value: value, source: .appOpen)
+		showMoodCapture = false
+	}
+	
 	func refreshIfNeeded() async {
 		await load()
+		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
 	}
 
 	func completeTask(_ task: UserTask) {
@@ -237,6 +270,10 @@ final class AppViewModel: ObservableObject {
 		showOnboarding = false
 		if shareLocation {
 			beginLocationUpdates()
+		}
+		// Onboarding 完成后检查是否需要显示情绪记录弹窗
+		if !showSleepReminder {
+			checkAndShowMoodCapture()
 		}
 		storage.resetCompletionDates(for: Date())
 		storage.deleteTasks(for: Date())
@@ -544,6 +581,28 @@ final class AppViewModel: ObservableObject {
 
 	func dismissSleepReminder() {
 		sleepReminderService.acknowledgeReminder()
+		// Sleep reminder 关闭后检查是否需要显示情绪记录弹窗
+		if !showOnboarding {
+			checkAndShowMoodCapture()
+		}
+	}
+
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		let loggedToday = moodEntries.contains { entry in
+			entry.date >= startOfDay && entry.date < endOfDay
+		}
+		hasLoggedMoodToday = loggedToday
+		shouldForceMoodCapture = !loggedToday
+	}
+
+	private func recordMoodOnLaunch() {
+		refreshMoodLoggingState()
+		if !hasLoggedMoodToday {
+			shouldForceMoodCapture = true
+		}
 	}
 
 	private func refreshMoodLoggingState(reference date: Date = Date()) {

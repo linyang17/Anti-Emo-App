@@ -40,41 +40,41 @@ enum TaskStatus: String, Codable, CaseIterable, Sendable {
 
 @Model
 final class UserTask: Identifiable {
-	@Attribute(.unique) var id: UUID
-	var title: String
-	var weatherType: WeatherType
-	var difficulty: TaskDifficulty
-	var category: TaskCategory
-	var energyReward: Int = 0
-	var date: Date
-	var status: TaskStatus = TaskStatus.pending
-	var startedAt: Date? = nil
-	var canCompleteAfter: Date? = nil
-	var completedAt: Date? = nil
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var weatherType: WeatherType
+    var difficulty: TaskDifficulty
+    var category: TaskCategory
+    var energyReward: Int = 0
+    var date: Date
+    var status: TaskStatus
+    var startedAt: Date?  // 任务开始时间
+    var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
+    var completedAt: Date?
 
-	init(
-		id: UUID = UUID(),
-		title: String,
-		weatherType: WeatherType,
-		difficulty: TaskDifficulty,
-		category: TaskCategory,
-		energyReward: Int,
-		date: Date,
-		status: TaskStatus = .pending,
-		startedAt: Date? = nil,
-		canCompleteAfter: Date? = nil,
-		completedAt: Date? = nil
-	) {
-		self.id = id
-		self.title = title
-		self.weatherType = weatherType
-		self.difficulty = difficulty
-		self.category = category
-		self.energyReward = energyReward
-		self.date = date
-		self.status = status
-		self.startedAt = startedAt
-		self.canCompleteAfter = canCompleteAfter
-		self.completedAt = completedAt
-	}
+    init(
+        id: UUID = UUID(),
+        title: String,
+        weatherType: WeatherType,
+        difficulty: TaskDifficulty,
+        category: TaskCategory,
+        energyReward: Int,
+        date: Date,
+        status: TaskStatus = .pending,
+        startedAt: Date? = nil,
+        canCompleteAfter: Date? = nil,
+        completedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.weatherType = weatherType
+        self.difficulty = difficulty
+        self.category = category
+        self.energyReward = energyReward
+        self.date = date
+        self.status = status
+        self.startedAt = startedAt
+        self.canCompleteAfter = canCompleteAfter
+        self.completedAt = completedAt
+    }
 }

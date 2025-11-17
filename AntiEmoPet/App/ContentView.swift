@@ -65,7 +65,7 @@ struct MainTabView: View {
 						.ignoresSafeArea()
 					
 					MoodCaptureOverlayView(
-						title: "早上好！今天感觉如何？",
+						title: "How do you feel now？",
 						source: .appOpen,
 						initial: 50
 					) { value, source in
