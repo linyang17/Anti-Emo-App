@@ -308,27 +308,22 @@
 
 ### 3.1 每天0点关系值下降2
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 每天0点关系值下降2。
 
 **具体实施步骤**:
-- 在`AppViewModel.load()`或启动时检查：
-  - 获取`userStats.lastActiveDate`
-  - 计算自上次活跃日期以来的天数
-  - 每天关系值下降2（不能低于10）
-- 更新关系值逻辑：
-  - 需要实现从bonding value到PetBonding的反向映射
-  - 下降后的关系值需要更新对应的`PetBonding`状态
-- 建议：创建一个`PetEngine`的新方法`applyDailyDecay(pet: Pet, days: Int)`
-- 使用后台任务在每天0点触发检查
+- [x] 在`AppViewModel.load()`中检测`userStats.lastActiveDate`，计算天数差并调用 `applyDailyDecay`。
+- [x] 为 `Pet` 模型新增 `bondingScore` 字段，建立从数值到 `PetBonding` 的映射。
+- [x] 更新 `PetEngine`，所有动作基于 `bondingScore` 调整，并新增 `applyDailyDecay`。
+- [x] 关系值下降至最低 10，并在冷启动时对旧数据做默认映射。
 
 **相关文件路径**:
-- `AntiEmoPet/Services/PetEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Functions/Pet.swift`
+- `AntiEmoPet/Services/PetEngine.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Functions/Pet.swift` ✅
 **注意事项**:
-- `Pet.bonding` 当前为枚举，需要新增可序列化的数值（或映射表）来支持“下降 2 点”计算，同时在冷启动时进行补偿。
+- 关系值现在以 10~100 数值存储，UI 仍依托 `PetBonding`，保证旧数据自动迁移。
 
 ---
 

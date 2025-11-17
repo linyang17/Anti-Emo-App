@@ -99,6 +99,7 @@ final class AppViewModel: ObservableObject {
 	func load() async {
 		storage.bootstrapIfNeeded()
 		pet = storage.fetchPet()
+		normalizePetBondingState()
 		userStats = storage.fetchStats()
 
 		// Ensure initial defaults per MVP PRD
@@ -126,6 +127,7 @@ final class AppViewModel: ObservableObject {
 		inventory = storage.fetchInventory()
 
 		todayTasks = storage.fetchTasks(for: .now)
+		applyDailyBondingDecayIfNeeded()
 
 		if let stats = userStats, stats.shareLocationAndWeather {
 			beginLocationUpdates()
@@ -560,11 +562,12 @@ final class AppViewModel: ObservableObject {
 	private func startSlotMonitor() {
 		slotMonitorTask?.cancel()
 		slotMonitorTask = Task.detached { [weak self] in
-			while !(Task.isCancelled) {
+			while !Task.isCancelled {
 				try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
 				await MainActor.run {
-					self?.prepareSlotGenerationSchedule(for: Date())
-					self?.checkSlotGenerationTrigger()
+					guard let self else { return }
+					self.prepareSlotGenerationSchedule(for: Date())
+					self.checkSlotGenerationTrigger()
 				}
 			}
 		}
@@ -644,6 +647,34 @@ final class AppViewModel: ObservableObject {
 			filtered[day] = current
 		}
 		return filtered
+	}
+
+	private func normalizePetBondingState() {
+		guard let pet else { return }
+		if pet.bondingScore == 0 {
+			pet.bondingScore = PetBonding.defaultScore(for: pet.bonding)
+		}
+		pet.bonding = PetBonding.from(score: pet.bondingScore)
+	}
+
+	private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
+		guard let stats = userStats, let pet else { return }
+		let calendar = TimeZoneManager.shared.calendar
+		let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
+		let today = calendar.startOfDay(for: date)
+		guard today > lastDay else {
+			stats.lastActiveDate = date
+			return
+		}
+		let decayDays = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
+		guard decayDays > 0 else { return }
+		petEngine.applyDailyDecay(pet: pet, days: decayDays)
+		stats.lastActiveDate = date
+		storage.persist()
+	}
+
+	func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
+		// Placeholder – implemented in later subsections
 	}
 
 	private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {

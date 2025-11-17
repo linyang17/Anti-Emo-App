@@ -67,7 +67,7 @@ struct AntiEmoPetTests {
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Lumio", bonding: .curious, level: 1, xp: 95)
+        let pet = Pet(name: "Lumio", bondingScore: 60, level: 1, xp: 95)
         let accessory = Item(
             sku: "decor.energy.bar",
             type: .decor,
