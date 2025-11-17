@@ -308,73 +308,61 @@
 
 ### 3.1 每天0点关系值下降2
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 每天0点关系值下降2。
 
 **具体实施步骤**:
-- 在`AppViewModel.load()`或启动时检查：
-  - 获取`userStats.lastActiveDate`
-  - 计算自上次活跃日期以来的天数
-  - 每天关系值下降2（不能低于10）
-- 更新关系值逻辑：
-  - 需要实现从bonding value到PetBonding的反向映射
-  - 下降后的关系值需要更新对应的`PetBonding`状态
-- 建议：创建一个`PetEngine`的新方法`applyDailyDecay(pet: Pet, days: Int)`
-- 使用后台任务在每天0点触发检查
+- [x] 在`AppViewModel.load()`中检测`userStats.lastActiveDate`，计算天数差并调用 `applyDailyDecay`。
+- [x] 为 `Pet` 模型新增 `bondingScore` 字段，建立从数值到 `PetBonding` 的映射。
+- [x] 更新 `PetEngine`，所有动作基于 `bondingScore` 调整，并新增 `applyDailyDecay`。
+- [x] 关系值下降至最低 10，并在冷启动时对旧数据做默认映射。
 
 **相关文件路径**:
-- `AntiEmoPet/Services/PetEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Functions/Pet.swift`
+- `AntiEmoPet/Services/PetEngine.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Functions/Pet.swift` ✅
 **注意事项**:
-- `Pet.bonding` 当前为枚举，需要新增可序列化的数值（或映射表）来支持“下降 2 点”计算，同时在冷启动时进行补偿。
+- 关系值现在以 10~100 数值存储，UI 仍依托 `PetBonding`，保证旧数据自动迁移。
 
 ---
 
 ### 3.2 宠物抚摸手势交互（点击+上下滑动）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: PRD要求点击狐狸并上下滑动可以完成抚摸动作。当前只有`petting()`方法，但没有UI手势交互。
 
 **具体实施步骤**:
-- 在`PetView.swift`的`petStage(for:)`中添加手势识别：
-  - 使用`DragGesture`或组合`onTapGesture`和`onLongPressGesture`
-  - 检测上下滑动手势（大致上下即可）
-  - 手势成功后调用`appModel.petting()`
-- 添加视觉反馈：
-  - 抚摸时显示动画效果（爱心）
-- 限制：同一天内限三次（见3.3）
+- [x] 在`PetView.swift`的`petStage(for:)`中添加 Tap/Drag 手势，垂直滑动或点击均触发 `appModel.petting()`。
+- [x] 添加视觉反馈动画（多层心形上浮），确保 VoiceOver 也可触发。
+- [x] 手势与任务、商店按钮同时存在但互不冲突。
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Pet/PetView.swift`
-- `AntiEmoPet/App/AppViewModel.swift` (petting方法已存在)
+- `AntiEmoPet/Features/Pet/PetView.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` (petting 方法沿用) ✅
 **注意事项**:
-- 需确保 DragGesture 不与任务/商店按钮手势冲突，可通过限定手势区域或使用 `simultaneousGesture`；要兼容动画帧率与命中测试。
+- Gesture 采用 `simultaneousGesture`，并在 `VoiceOver` 可访问性动作中提供“Pet Lumio”指令。
 
 ---
 
 ### 3.3 抚摸限制（每天3次）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: PRD要求抚摸动作同一天内限三次。
 
 **具体实施步骤**:
-- 在`AppViewModel`中添加每日抚摸次数追踪：
-  - 使用UserDefaults存储当前抚摸次数
-  - 在`petting()`方法中检查当天是否已达到3次
-  - 显示提示消息，例如"今天已经抚摸过1/3次了"
-- 如果已达到3次：
-  - 不执行抚摸逻辑
-- 每天0点重置计数
+- [x] 在`AppViewModel`中新增每日抚摸计数（UserDefaults），`petting()` 超过 3 次即提前返回。
+- [x] 每次抚摸返回剩余额度提示，超过上限弹“Lumio要休息啦”提示。
+- [x] `PetView` 显示顶部浮层提示，Tap/Drag 手势基于返回值决定是否播放爱心动画。
+- [x] 次日自动重置计数。
 
 **相关文件路径**:
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Features/Pet/PetView.swift`
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Features/Pet/PetView.swift` ✅
 **注意事项**:
-- 同一天下多设备登录需要统一计数，可将计数保存在 `UserStats` 或共享 UserDefaults；提示文案要避免重复弹出。
+- 计数存储在 ISO 日期 key 下，每天自动清理，仅当前天有效。
 
 ---
 

@@ -78,7 +78,7 @@ final class TaskGeneratorService {
 	}
 
 	func generationTriggerTime(for slot: TimeSlot, date: Date, report: WeatherReport?) -> Date? {
-		guard let interval = slotIntervals(for: date)[slot] else { return nil }
+		guard let interval = scheduleIntervals(for: date)[slot] else { return nil }
 		let windows = overlappingWindows(interval: interval, report: report)
 		let schedule = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
 		return schedule.date
