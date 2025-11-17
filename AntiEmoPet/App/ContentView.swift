@@ -46,47 +46,50 @@ struct MainTabView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 
 	var body: some View {
-			NavigationStack { PetView() }
+		NavigationStack { PetView() }
 			.fullScreenCover(isPresented: Binding(
-			get: { appModel.showOnboarding },
-			set: { appModel.showOnboarding = $0 }
-		)) {
-			OnboardingView(locationService: appModel.locationService)
-				.environmentObject(appModel)
-		}
-		.interactiveDismissDisabled(true)
-		.fullScreenCover(isPresented: Binding(
-			get: { appModel.showMoodCapture && !appModel.showOnboarding && !appModel.showSleepReminder },
-			set: { newValue in
-				if !newValue {
-					appModel.showMoodCapture = false
-				}
+				get: { appModel.showOnboarding },
+				set: { appModel.showOnboarding = $0 }
+			)) {
+				OnboardingView(locationService: appModel.locationService)
+					.environmentObject(appModel)
 			}
-		)) {
-			MoodCaptureOverlayView(
-				title: "How do you feel now?",
-				initial: 50
-			) { value in
-				appModel.recordMoodOnLaunch(value: value)
-			}
-		}
-		.interactiveDismissDisabled(true)
-		.alert(
-			"Time for bed...",
-			isPresented: Binding(
-				get: { appModel.showSleepReminder && !appModel.showOnboarding && !appModel.showMoodCapture },
-				set: { newValue in
-					if !newValue {
-						appModel.dismissSleepReminder()
+			.interactiveDismissDisabled(true)
+			// 每日首次打开时强制情绪记录弹窗
+			.fullScreenCover(isPresented: Binding(
+				get: { appModel.shouldForceMoodCapture && !appModel.showOnboarding },
+				set: { _ in }
+			)) {
+				ZStack {
+					Color.black.opacity(0.3)
+						.ignoresSafeArea()
+					
+					MoodCaptureOverlayView(
+						title: "How do you feel now？",
+						source: .appOpen,
+						initial: 50
+					) { value, source in
+						appModel.addMoodEntry(value: value, source: source)
 					}
 				}
-			)
-		) {
-			Button("Okay", role: .cancel) {
-				appModel.dismissSleepReminder()
 			}
-		} message: {
-			Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
-		}
-		}
+			.interactiveDismissDisabled(appModel.shouldForceMoodCapture && !appModel.showOnboarding)
+			.alert(
+				"Time for bed...",
+				isPresented: Binding(
+					get: { appModel.showSleepReminder && !appModel.showOnboarding },
+					set: { newValue in
+						if !newValue {
+							appModel.dismissSleepReminder()
+						}
+					}
+				)
+			) {
+				Button("Okay", role: .cancel) {
+					appModel.dismissSleepReminder()
+				}
+			} message: {
+				Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
+			}
+	}
 }

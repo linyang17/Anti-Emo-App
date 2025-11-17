@@ -115,7 +115,7 @@
 **优先级**: Core  
 **状态**: 已完成
 
-**问题**: 目前 `ContentView` 只有 onboarding 的全屏遮罩，没有“每日首次打开强制记录”逻辑，且 `MoodCaptureOverlayView` 的 Slider 仍允许 0，用户可以绕过记录。
+**问题**: 目前 `ContentView` 只有 onboarding 的全屏遮罩，没有"每日首次打开强制记录"逻辑，且 `MoodCaptureOverlayView` 的 Slider 仍允许 0，用户可以绕过记录。
 
 **具体实施步骤**:
 - [x] 在 `AppViewModel` 中添加 `hasLoggedMoodToday`（基于 `moodEntries` 与日历分组）以及 `recordMoodOnLaunch()`。
@@ -126,15 +126,15 @@
 - [x] 成功记录后设置 `source = .appOpen` 并立即刷新 `moodEntries` 列表，确保当天不再弹窗；跨日需重置。
 
 **相关文件路径**:
-- `AntiEmoPet/App/ContentView.swift`
-- `AntiEmoPet/Services/MoodCaptureOverlayView.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
+- `AntiEmoPet/App/ContentView.swift` ✅
+- `AntiEmoPet/Services/MoodCaptureOverlayView.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
 **注意事项**:
 - 需要和 Onboarding/SleepReminder 的全屏弹层互斥，注意同时上屏时的优先级，以及保证 VoiceOver 用户仍可完成记录。
 
 **注意**: 需要修改`MoodCaptureOverlayView`：
-- Slider的step改为10
-- 最小值设为10（不允许0）
+- Slider的step改为10 ✅
+- 最小值设为10（不允许0）✅
 
 ---
 

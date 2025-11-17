@@ -338,6 +338,19 @@ final class AppViewModel: ObservableObject {
 		)
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
+		
+		// 刷新今日情绪记录状态
+		refreshMoodLoggingState()
+		
+		// 如果是应用打开时的记录,关闭强制弹窗
+		if source == .appOpen {
+			shouldForceMoodCapture = false
+		}
+		
+		analytics.log(event: "mood_entry_added", metadata: [
+			"source": source.rawValue,
+			"value": "\(value)"
+		])
 	}
 
 	func incrementInventory(for item: Item) {
