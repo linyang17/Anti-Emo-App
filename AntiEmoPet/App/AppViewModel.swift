@@ -39,6 +39,7 @@ final class AppViewModel: ObservableObject {
 	@Published var pendingMoodFeedbackTask: UserTask?
 	@Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
+	@Published var penaltyBanner: String?
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -159,6 +160,7 @@ final class AppViewModel: ObservableObject {
 
 	func refreshCurrentSlotTasks(retaining retained: UserTask? = nil) async {
 		guard canRefreshCurrentSlot else { return }
+		await evaluateBondingPenalty(for: TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar))
 		await refreshTasks(retaining: retained)
 		markCurrentSlotRefreshed()
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -363,6 +365,9 @@ final class AppViewModel: ObservableObject {
 	func consumeRewardBanner() {
 		rewardBanner = nil
 	}
+	func consumePenaltyBanner() {
+		penaltyBanner = nil
+	}
 
 	func addMoodEntry(
 		value: Int,
@@ -488,6 +493,10 @@ final class AppViewModel: ObservableObject {
 	private func updateTaskRefreshEligibility(reference date: Date = Date()) {
 		let calendar = TimeZoneManager.shared.calendar
 		let slot = TimeSlot.from(date: date, using: calendar)
+		let elapsedSlots = elapsedTaskSlots(before: slot, on: date)
+		for pastSlot in elapsedSlots {
+			Task { await evaluateBondingPenalty(for: pastSlot, reference: date) }
+		}
 		let alreadyRefreshed = hasRefreshedTasks(for: slot, on: date)
 		hasUsedRefreshThisSlot = alreadyRefreshed
 		let allCompleted = !todayTasks.isEmpty && todayTasks.allSatisfy { $0.status == .completed }
@@ -635,6 +644,14 @@ final class AppViewModel: ObservableObject {
 			filtered[day] = current
 		}
 		return filtered
+	}
+
+	private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {
+		let slotIntervals = taskGenerator.scheduleIntervals(for: date)
+		let now = Date()
+		return slotIntervals
+			.filter { $0.value.end <= now && $0.key != slot }
+			.map { $0.key }
 	}
 
 	func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
