@@ -15,7 +15,7 @@ final class TaskGeneratorService {
 		let templates = storage.fetchAllTaskTemplates()
 		guard !templates.isEmpty else { return [] }
 
-		let intervals = slotIntervals(for: date)
+		let intervals = scheduleIntervals(for: date)
 		var usedTitles = reservedTitles
 		var tasks: [UserTask] = []
 
@@ -48,7 +48,7 @@ final class TaskGeneratorService {
 	func generateTasks(for slot: TimeSlot, date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
 		let templates = storage.fetchAllTaskTemplates()
 		guard !templates.isEmpty else { return [] }
-		let intervals = slotIntervals(for: date)
+		let intervals = scheduleIntervals(for: date)
 		guard let interval = intervals[slot] else { return [] }
 
 		let windows = overlappingWindows(interval: interval, report: report)
@@ -103,7 +103,7 @@ final class TaskGeneratorService {
         }
     }
 
-	private func slotIntervals(for date: Date) -> [TimeSlot: DateInterval] {
+	func scheduleIntervals(for date: Date) -> [TimeSlot: DateInterval] {
 		let startOfDay = calendar.startOfDay(for: date)
 		let slotStartHours: [(TimeSlot, Int)] = [(.morning, 6), (.afternoon, 12), (.evening, 17)]
 		var intervals: [TimeSlot: DateInterval] = [:]
