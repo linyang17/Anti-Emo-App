@@ -3,7 +3,28 @@ import Foundation
 enum PetActionType {
     case pat
     case feed(item: Item)
-	case penalty
+        case penalty
+}
+
+struct XPProgression {
+        static func requirement(for level: Int) -> Int {
+                switch level {
+                case ..<1:
+                        return 10
+                case 1:
+                        return 10
+                case 2:
+                        return 25
+                case 3:
+                        return 50
+                case 4:
+                        return 75
+                case 5:
+                        return 100
+                default:
+                        return 100
+                }
+        }
 }
 
 @MainActor
@@ -17,10 +38,11 @@ final class PetEngine {
         switch action {
         case .pat:
             updateBonding(for: pet, delta: 5)
-        case .feed(let item):
-            updateBonding(for: pet, delta: max(2, item.BondingBoost / 2))
-		case .penalty:
-			updateBonding(for: pet, delta: -5)
+        case .feed:
+                        updateBonding(for: pet, delta: 2)
+                        awardXP(2, to: pet)
+                case .penalty:
+                        updateBonding(for: pet, delta: -5)
         }
     }
 
@@ -38,7 +60,7 @@ final class PetEngine {
 		updateBonding(for: pet, delta: -(days * 2))
 	}
 
-    func applyPurchaseReward(pet: Pet, xpGain: Int = 1, bondingBoost: Int = 20) {
+    func applyPurchaseReward(pet: Pet, xpGain: Int = 20, bondingBoost: Int = 10) {
         updateBonding(for: pet, delta: bondingBoost)
         awardXP(xpGain, to: pet)
     }
@@ -55,10 +77,20 @@ final class PetEngine {
 
     private func awardXP(_ amount: Int, to pet: Pet) {
         guard amount > 0 else { return }
-        pet.xp += amount
-        if pet.xp >= 10 {
-            pet.level += 1
-            pet.xp = 0
-        }
+                var totalXP = pet.xp + amount
+                var level = pet.level
+
+                while true {
+                        let requirement = max(1, XPProgression.requirement(for: level))
+                        if totalXP >= requirement {
+                                totalXP -= requirement
+                                level += 1
+                        } else {
+                                break
+                        }
+                }
+
+                pet.level = level
+                pet.xp = totalXP
     }
 }

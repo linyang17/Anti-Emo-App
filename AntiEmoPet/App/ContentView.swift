@@ -54,26 +54,30 @@ struct MainTabView: View {
 				OnboardingView(locationService: appModel.locationService)
 					.environmentObject(appModel)
 			}
-			.interactiveDismissDisabled(true)
-			// 每日首次打开时强制情绪记录弹窗
-			.fullScreenCover(isPresented: Binding(
-				get: { appModel.shouldForceMoodCapture && !appModel.showOnboarding },
-				set: { _ in }
-			)) {
-				ZStack {
-					Color.black.opacity(0.3)
-						.ignoresSafeArea()
-					
-					MoodCaptureOverlayView(
-						title: "How do you feel now？",
-						source: .appOpen,
-						initial: 50
-					) { value, source in
-						appModel.addMoodEntry(value: value, source: source)
-					}
-				}
-			}
-			.interactiveDismissDisabled(appModel.shouldForceMoodCapture && !appModel.showOnboarding)
+                        .interactiveDismissDisabled(true)
+                        // 每日首次打开时强制情绪记录弹窗
+                        .fullScreenCover(isPresented: Binding(
+                                get: { appModel.showMoodCapture && !appModel.showOnboarding },
+                                set: { newValue in
+                                        if !appModel.shouldForceMoodCapture {
+                                                appModel.showMoodCapture = newValue
+                                        }
+                                }
+                        )) {
+                                ZStack {
+                                        Color.black.opacity(0.3)
+                                                .ignoresSafeArea()
+
+                                        MoodCaptureOverlayView(
+                                                title: "How do you feel now？",
+                                                source: .appOpen,
+                                                initial: 50
+                                        ) { value, source in
+                                                appModel.recordMoodOnLaunch(value: value)
+                                        }
+                                }
+                        }
+                        .interactiveDismissDisabled(appModel.shouldForceMoodCapture && !appModel.showOnboarding)
 			.alert(
 				"Time for bed...",
 				isPresented: Binding(
