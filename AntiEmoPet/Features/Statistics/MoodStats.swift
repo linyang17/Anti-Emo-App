@@ -6,7 +6,7 @@ struct MoodStatsSection: View {
     var body: some View {
         DashboardCard(title: "Mood Summary", icon: "face.smiling") {
             VStack(alignment: .leading, spacing: 8) {
-                // 最新情绪 + 趋势
+				
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("Latest：")
                         .font(.title2.weight(.semibold))
@@ -19,7 +19,7 @@ struct MoodStatsSection: View {
                     }
                 }
 
-                // 平均值显示
+				
 				Divider().padding(.vertical, 6)
 				HStack(spacing: 20){
 					VStack(alignment: .leading, spacing: 12) {
@@ -39,7 +39,7 @@ struct MoodStatsSection: View {
 						}
 					}
 					Spacer()
-						// 累计记录
+					
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Avg Past Week")
@@ -59,7 +59,7 @@ struct MoodStatsSection: View {
 				}
 					.frame(maxWidth: 280)
 					.padding(.bottom, 12)
-                // 心情评论
+				
                 Text(mood.comment.isEmpty ? "Come more often for summary" : mood.comment)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

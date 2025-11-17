@@ -6,12 +6,12 @@ struct StatsInsightsSection: View {
 	let energy: EnergyStatisticsViewModel.EnergySummary
 
 	var body: some View {
-		DashboardCard(title: "小狐狸的观察", icon: "sparkles") {
+		DashboardCard(title: "Lumio‘s Observation", icon: "sparkles") {
 			VStack(alignment: .leading, spacing: 10) {
 
 				// 情感反馈（来自各自 Summary 的轻量文案）
 				Group {
-					Text(mood.comment.isEmpty ? "总结：暂无数据" : "总结：\(mood.comment)")
+					Text(mood.comment.isEmpty ? "Not enough data." : "Summary: \(mood.comment)")
 							.font(.subheadline)
 				}
 
@@ -21,7 +21,7 @@ struct StatsInsightsSection: View {
 				/// TODO - 加入statistical analysis和图表
 				
 				VStack(alignment: .leading, spacing: 6) {
-					Text("分析")
+					Text("Analysis")
 						.font(.subheadline)
 						.foregroundStyle(.secondary)
 
@@ -47,7 +47,7 @@ struct StatsInsightsSection: View {
 				// 组合建议：根据当前情绪 x 能量给出一条小提示
 				if let combined = mood.combinedAdvice(with: energy) {
 					Divider()
-					Text("小提示：\(combined)")
+					Text("Tip: \(combined)")
 						.font(.subheadline.weight(.medium))
 				}
 			}
@@ -63,25 +63,25 @@ private extension StatsInsightsSection {
 		// 使用简单启发式：趋势一致 & 数值区间接近 → 高相关；否则给出中性提示
 		switch (mood.trend, energy.trend) {
 		case (.up, .up), (.down, .down), (.flat, .flat):
-			return "情绪与能量今天走得很同步，小狐狸看到你整体状态相对一致。"
+			return "Your mood and energy are moving in sync today — the fox notices your overall balance."
 		default:
 			// 若方向不一致，用轻量说明提示用户关注身心落差
-			return "情绪和能量的变化略有不一致，可以留意一下是不是“心累”或“身体累”其一在拖后腿。"
+			return "Your mood and energy seem slightly out of sync — maybe your mind or body is a bit tired."
 		}
 	}
 
 	/// 根据今日补充 / 消耗 / 净变化，给出能量使用模式的解释
 	func energyUsagePatternText(energy: EnergyStatisticsViewModel.EnergySummary) -> String {
 		if energy.todayAdd == 0 && energy.todayDeduct == 0 {
-			return "今天还没有记录能量使用，小狐狸建议尝试标记一次补充或消耗，看看模式。"
+			return "No energy activity recorded today. Try logging a recharge or spend to see your pattern."
 		}
 
 		if energy.todayDelta > 0 {
-			return "今天是偏补充的一天，你有在为自己充值，这是很好的节奏。"
+			return "Today seems more recharging — you’re giving yourself some energy back, which is great."
 		} else if energy.todayDelta < 0 {
-			return "今天能量略有透支，试试安排一点简单放松或早睡，帮自己补回来。"
+			return "You’re slightly running on empty today. Try some rest or an early night to recover."
 		} else {
-			return "今天能量收支大致平衡，保持这样的节奏也很不错。"
+			return "Your energy is roughly balanced today — that’s a healthy rhythm to keep."
 		}
 	}
 
@@ -89,7 +89,7 @@ private extension StatsInsightsSection {
 	func taskEffectPlaceholderText() -> String {
 		let metrics = appModel.dailyMetricsCache
 		guard !metrics.isEmpty else {
-			return "当你完成更多外出 / 自我照顾任务时，小狐狸会在这里告诉你这些任务对情绪提升的实际效果。"
+			return "Once you complete more outdoor or self-care tasks, the fox will show how they affect your mood."
 		}
 		// Build day -> completed count map
 		let cal = TimeZoneManager.shared.calendar
@@ -109,7 +109,7 @@ private extension StatsInsightsSection {
 			return (t, avg)
 		}
 		guard dayAverages.count >= 3 else {
-			return "已开始观察任务完成与情绪的关系，收集更多天的数据后会给出更可靠的结论。"
+			return "Tracking task completion and mood — more data will bring clearer insights soon."
 		}
 		let withTasks = dayAverages.filter { $0.tasks > 0 }.map { $0.mood }
 		let withoutTasks = dayAverages.filter { $0.tasks == 0 }.map { $0.mood }
@@ -117,19 +117,19 @@ private extension StatsInsightsSection {
 		let avgWithout = withoutTasks.isEmpty ? nil : (withoutTasks.reduce(0,+) / Double(withoutTasks.count))
 		if let a = avgWith, let b = avgWithout {
 			if a > b + 2 {
-				return "统计显示：完成任务的日子，情绪平均更高（≈\(String(format: "%.1f", a - b)) 分）。继续保持！"
+				return "Stats show that on task days, your mood is higher by about \(String(format: "%.1f", a - b)) points. Keep it up!"
 			} else if b > a + 2 {
-				return "观察发现：未完成任务的日子情绪更高一些，试试把任务拆小、降低压力。"
+				return "Interestingly, mood seems higher on days without tasks — maybe try smaller, lighter goals."
 			} else {
-				return "目前任务完成与情绪的差异不明显，建议继续记录一段时间以观察趋势。"
+				return "No strong mood difference between task and non-task days yet. Keep tracking for trends."
 			}
 		}
-		return "正在积累数据以评估任务完成与情绪的关系。"
+		return "Collecting more data to analyze how tasks relate to mood."
 	}
 
 	/// 外部因素（睡眠 / 活动 / 天气等）的占位说明：后续可对接数据源，不改本视图结构
 	func externalFactorsPlaceholderText() -> String {
-		return "未来支持连接睡眠、步数、天气等数据后，小狐狸会标记出哪些外部因素最影响你的情绪与能量。"
+		return "Once connected with sleep, steps, and weather data, the fox will show which factors affect your mood and energy most."
 	}
 }
 
@@ -137,11 +137,11 @@ private extension StatsInsightsSection {
 
 struct StatsEmptyStateSection: View {
 	var body: some View {
-		DashboardCard(title: "暂无统计数据", icon: "calendar.badge.exclamationmark") {
+		DashboardCard(title: "No Statistics Yet", icon: "calendar.badge.exclamationmark") {
 			VStack(spacing: 8) {
-				Text("还没有足够的记录。")
+				Text("Not enough records yet.")
 					.font(.headline)
-				Text("多和小狐狸互动、记录情绪和能量，我会帮你看出规律和进步哦。")
+				Text("Interact more with the fox and log your mood and energy — I’ll help reveal your progress and patterns.")
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)
@@ -163,27 +163,25 @@ private extension MoodStatisticsViewModel.MoodSummary {
 
 		// 情绪和能量都低 → 给温和、可执行的小目标
 		if moodLevel <= 30 && energyLevel <= 30 {
-			return "今天是不是有点累呢？别着急，不如先放松一下，完成一个小任务，或者试试一些轻松的运动活动。"
+			return "Feeling a bit tired today? Take it easy — do a small task or a light activity to unwind."
 		}
 
 		// 情绪低但能量高 → 引导把能量用在商店里
 		if moodLevel <= 40 && energyLevel >= 100 {
-			return "你是不是有点不开心呢？要不去商店里给Lumio买个新装扮，或者和它聊一聊，也许能让你心情稍微好一点呢。"
+			return "Feeling a little down? Maybe get Lumio a new outfit or have a chat — it might lift your mood."
 		}
 
 		// 情绪一般但能量低 → 建议温和补充
 		if moodLevel >= 50 && energyLevel <= 30 {
-			return "最近你的心情好像一般，试试早点休息，做一件平时让你放松的小事，多关注自己，给自己一些鼓励吧。"
+			return "Your mood feels okay but your energy’s low — try resting early or doing something relaxing for yourself."
 		}
 
 		// 情绪不错
 		if moodLevel >= 70 {
-			return "看来最近你有在好好生活呢！继续保持哦！"
+			return "Looks like you’ve been doing great lately! Keep it up!"
 		}
 
 		// 其他情况不给多余噪音
 		return nil
 	}
 }
-
-

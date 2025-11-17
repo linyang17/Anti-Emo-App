@@ -83,7 +83,7 @@ final class WeatherService: ObservableObject {
 
 		// Ensure authorization
 		guard isAuthorized else {
-			log.warning("⚠️ Weather fetch attempted before authorization.")
+			log.warning("Weather fetch attempted before authorization.")
 			let fb = fallbackReport(locality: locality)
 			currentWeatherReport = fb
 			return fb

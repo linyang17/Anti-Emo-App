@@ -34,7 +34,7 @@ final class ChatViewModel: ObservableObject {
         guard !isConfigured else { return }
         isConfigured = true
         if messages.isEmpty {
-            messages = [Message(role: .pet, content: "Hi，我是 Lumio！你现在感觉怎么样？要不要和我聊一聊？")]
+            messages = [Message(role: .pet, content: "Hi, it's Lumio here！How do you feel right now? Feel free if you want to talk about anything, I'm always here to listen!")]
         }
     }
 
@@ -46,7 +46,7 @@ final class ChatViewModel: ObservableObject {
         let reply = chatService.reply(
             to: trimmed,
             weather: appModel.weather,
-            bonding: appModel.pet?.bonding ?? .calm
+            bonding: appModel.pet?.bonding ?? .curious
         )
         messages.append(Message(role: .pet, content: reply))
         analytics.log(event: "chat_message")

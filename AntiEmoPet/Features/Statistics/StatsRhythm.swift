@@ -22,7 +22,7 @@ struct StatsRhythmSection: View {
 			}
 
 			DashboardCard(title: "天气关联度", icon: "cloud.sun") {
-				rhythmWeatherChart(data: analysis.weatherAverages)
+				//rhythmWeatherChart(data: analysis.weatherAverages)
 			}
 
 			DashboardCard(title: "日照关联度", icon: "sun.max") {
@@ -51,8 +51,8 @@ struct StatsRhythmSection: View {
 
 			Chart(slotAnimator.displayData) { item in
 				BarMark(
-					x: .value("时段", item.slot.rawValue),
-					y: .value("平均情绪", item.value)
+					x: .value("Timeslot", item.slot.rawValue),
+					y: .value("Mood", item.value)
 				)
 				.foregroundStyle(theme.gradient(for: .sunny))
 				.cornerRadius(6)
@@ -72,37 +72,6 @@ struct StatsRhythmSection: View {
 		}
 	}
 
-	// MARK: - 天气图
-	@ViewBuilder
-	private func rhythmWeatherChart(data: [WeatherType: Double]) -> some View {
-		if data.isEmpty {
-			rhythmPlaceholder(systemImage: "cloud.sun")
-		} else {
-			let theme = ChartTheme.shared
-
-			Chart(weatherAnimator.displayData) { item in
-				BarMark(
-					x: .value("天气", item.type.title),
-					y: .value("平均情绪", item.value)
-				)
-				.foregroundStyle(theme.gradient(for: item.type))
-				.cornerRadius(6)
-				.annotation(position: .top) {
-					Text(String(format: "%.0f", item.value))
-						.font(.caption2.weight(.semibold))
-						.foregroundColor(.white.opacity(0.85))
-				}
-			}
-			.chartXAxis { AxisMarks(values: cachedWeatherData.map { $0.type.title }) }
-			.chartYAxis { AxisMarks(position: .leading) }
-			.chartYScale(domain: 0...(cachedWeatherData.map { $0.value }.max() ?? 100) * 1.1)
-			.frame(height: 200)
-			.drawingGroup()
-			.task(id: data) {
-				await updateWeatherData(data)
-			}
-		}
-	}
 
 	// MARK: TO-DO: - 日照图
 	/// 日间夜间的时间应该用日出到日落区分
@@ -125,7 +94,7 @@ struct StatsRhythmSection: View {
 				Chart(daylightAnimator.displayData) { item in
 					BarMark(
 						x: .value("Mood", item.value),
-						y: .value("Slot", item.period.dayPeriodTitle)
+						y: .value("Day/Night", item.period.dayPeriodTitle)
 					)
 					.foregroundStyle(theme.gradient(for: .sunny))
 					.cornerRadius(6)
@@ -188,10 +157,10 @@ struct StatsRhythmSection: View {
 			Image(systemName: systemImage)
 				.font(.system(size: 28))
 				.foregroundStyle(.secondary)
-			Text("暂无数据")
+			Text("No Data")
 				.font(.footnote)
 				.foregroundStyle(.secondary)
-			Text("记录更多情绪后可查看该图表")
+			Text("Unlock when you have more mood records.")
 				.font(.caption2)
 				.foregroundStyle(.secondary)
 		}

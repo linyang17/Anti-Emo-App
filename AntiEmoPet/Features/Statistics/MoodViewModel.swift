@@ -77,9 +77,9 @@ final class MoodStatisticsViewModel: ObservableObject {
         let trend: TrendDirection = avgToday > avgWeek ? .up : (avgToday < avgWeek ? .down : .flat)
         let comment: String = {
             switch trend {
-            case .up: return "太好了，最近有在好好生活！"
-            case .down: return "最近情绪略有下降，试着放松一下吧！"
-            case .flat: return "最近情绪稳定，继续保持～"
+            case .up: return "Great! You've been taking care of yourself well!"
+            case .down: return "Your mood has been coming down a bit. Try to take some breaks and relax!"
+            case .flat: return "Normal days, normal moods. Try to boost it up!"
             }
         }()
 

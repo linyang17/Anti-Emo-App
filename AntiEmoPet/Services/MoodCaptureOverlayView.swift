@@ -5,7 +5,7 @@ struct MoodCaptureOverlayView: View {
     @State private var value: Int
     let onSave: (Int) -> Void
 
-    init(title: String = "记录一下现在的心情", initial: Int = 5, onSave: @escaping (Int) -> Void) {
+    init(title: String = "How do you feel now?", initial: Int = 5, onSave: @escaping (Int) -> Void) {
         self.title = title
         self._value = State(initialValue: initial)
         self.onSave = onSave
@@ -17,12 +17,12 @@ struct MoodCaptureOverlayView: View {
                 .font(.headline)
             HStack {
                 Text("0").foregroundStyle(.secondary)
-                Slider(value: Binding(get: { Double(value) }, set: { value = Int($0) }), in: 0...100, step: 5)
+                Slider(value: Binding(get: { Double(value) }, set: { value = Int($0) }), in: 0...100, step: 10)
                 Text("100").foregroundStyle(.secondary)
             }
             HStack {
                 Spacer()
-                Button("保存") { onSave(value) }
+                Button("Save") { onSave(value) }
                     .buttonStyle(.borderedProminent)
             }
         }

@@ -28,7 +28,7 @@ final class PetEngine {
     }
 
     private func nextBonding(from bonding: PetBonding, boost: Int) -> PetBonding {
-        let ordered: [PetBonding] = [.sleepy, .calm, .happy, .ecstatic]
+        let ordered: [PetBonding] = [.sleepy, .curious, .happy, .ecstatic]
         guard let index = ordered.firstIndex(of: bonding) else { return bonding }
         let newIndex = min(ordered.count - 1, index + boost)
         return ordered[newIndex]

@@ -44,9 +44,9 @@ final class TaskGeneratorService {
 
     func makeOnboardingTasks(for date: Date) -> [UserTask] {
         let titles = [
-            "和 Lumio 打个招呼",
-            "浏览 Lumio 的商店",
-            "做 20 个波比跳"
+            "Say hello to Lumio",
+            "Check out shop panel",
+            "Do 20 burpee"
         ]
         let baseDate = calendar.startOfDay(for: date)
         return titles.enumerated().map { index, title in
@@ -145,15 +145,15 @@ final class TaskGeneratorService {
     private func categoryWeights(for weather: WeatherType) -> [TaskCategory: Int] {
         switch weather {
         case .sunny:
-            return [.outdoor: 6, .indoorDigital: 3, .indoorPhysical: 4, .social: 4, .petCare: 3]
+            return [.outdoor: 6, .indoorDigital: 3, .indoorActivity: 4, .socials: 4, .petCare: 3]
         case .cloudy:
-            return [.outdoor: 2, .indoorDigital: 4, .indoorPhysical: 4, .social: 3, .petCare: 3]
+            return [.outdoor: 2, .indoorDigital: 4, .indoorActivity: 4, .socials: 3, .petCare: 3]
         case .rainy:
-            return [.outdoor: 1, .indoorDigital: 5, .indoorPhysical: 4, .social: 3, .petCare: 4]
+            return [.indoorDigital: 5, .indoorActivity: 4, .socials: 3, .petCare: 4]
         case .snowy:
-            return [.outdoor: 1, .indoorDigital: 4, .indoorPhysical: 5, .social: 3, .petCare: 3]
+            return [.outdoor: 1, .indoorDigital: 4, .indoorActivity: 5, .socials: 3, .petCare: 3]
         case .windy:
-            return [.outdoor: 2, .indoorDigital: 4, .indoorPhysical: 4, .social: 3, .petCare: 3]
+            return [.outdoor: 2, .indoorDigital: 4, .indoorActivity: 4, .socials: 3, .petCare: 3]
         }
     }
 

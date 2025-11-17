@@ -32,10 +32,10 @@ struct ShopView: View {
 			}
 		}
 		.alert(
-			"提示",
+			"Oh no!",
 			isPresented: Binding(get: { alertMessage != nil }, set: { _ in alertMessage = nil })
 		) {
-			Button("好的", role: .cancel) { }
+			Button("Okay", role: .cancel) { }
 		} message: {
 			Text(alertMessage ?? "")
 		}
@@ -186,7 +186,7 @@ struct ShopView: View {
 			.fill(Color.clear)
 			.frame(height: 150)
 			.overlay(
-				Text("补货中")
+				Text("Coming")
 					.font(.caption2.weight(.semibold))
 					.foregroundStyle(.white.opacity(0.6))
 			)
@@ -273,12 +273,12 @@ struct ShopView: View {
 			showToast(for: item)
 			pendingItem = nil
 		} else {
-			alertMessage = "能量不足，完成任务可获得能量哦"
+			alertMessage = "You don't have enough energy, try to complete more tasks!"
 		}
 	}
 
 	private func showToast(for item: Item) {
-		let toast = ShopToast(message: "能量 -\(item.costEnergy) · XP +1 · Bonding +20")
+		let toast = ShopToast(message: "Energy -\(item.costEnergy) · XP +1 · Bonding +20")
 		withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
 			purchaseToast = toast
 		}

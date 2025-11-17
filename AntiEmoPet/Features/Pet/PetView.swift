@@ -34,8 +34,8 @@ struct PetView: View {
 		}
 		.overlay(alignment: .bottomLeading) {
 			shopButton
-				.padding(.leading, 45)
-				.padding(.bottom, 100)
+				.padding(.leading, 40)
+				.padding(.bottom, 130)
 		}
 		.sheet(item: $activeSheet, content: presentSheet(for:))
 		.toolbar(.hidden, for: .navigationBar)
@@ -170,7 +170,7 @@ struct PetView: View {
 			Image("giftbox")
 				.resizable()
 				.scaledToFit()
-				.frame(width: 110)
+				.frame(width: 100)
 				.accessibilityLabel("打开商店")
 				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 2, y: 2)
 		}

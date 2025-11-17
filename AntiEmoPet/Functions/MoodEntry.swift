@@ -5,7 +5,7 @@ import SwiftData
 final class MoodEntry: Identifiable {
     @Attribute(.unique) var id: UUID
     var date: Date
-    var value: Int // 0-100
+    var value: Int
 
     init(id: UUID = UUID(), date: Date = .now, value: Int) {
         self.id = id

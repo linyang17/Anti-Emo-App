@@ -138,16 +138,16 @@ final class EnergyStatisticsViewModel: ObservableObject {
 			if let metrics {
 				let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
 				let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
-				parts.append("近\(days)天你完成了 \(totalTasks) 个任务，和Lumio互动了 \(totalInteractions) 次")
+				parts.append("You've completed \(totalTasks) in \(days) days，and interacted with Lumio \(totalInteractions) times. Keep it up!")
 			}
 
 			switch trend {
 			case .up:
-				parts.append("最近能量在上升，做得很棒！")
+				parts.append("You've done great job recently！")
 			case .down:
-				parts.append("最近能量略有下降，注意休息恢复哦。")
+				parts.append("You came less these days, the energy pod is drying. Try to complete more tasks and interact with Lumio more often!")
 			case .flat:
-				parts.append("能量水平保持稳定。")
+				parts.append("Your routine is being established. Keep going!")
 			}
 
 			return parts.joined(separator: "\n")

@@ -8,7 +8,7 @@ enum ItemType: String, Codable, CaseIterable {
 	case snack
 	case toy
 
-	static var allCases: [ItemType] { [.decor, .clothing, .shoes] }
+	static var allCases: [ItemType] { [.snack, .decor, .clothing, .shoes] }
 
 	var icon: String {
 		switch self {
@@ -25,7 +25,7 @@ enum ItemType: String, Codable, CaseIterable {
 		case .decor: return "Decor"
 		case .clothing: return "Clothing"
 		case .shoes: return "Shoes"
-		case .snack: return "Snack"
+		case .snack: return "Snacks"
 		case .toy: return "Toy"
 		}
 	}
@@ -75,7 +75,7 @@ enum StaticItemLoader {
 			let decoded = try JSONDecoder().decode([ItemDefinition].self, from: data)
 			return decoded.map { $0.makeItem() }
 		} catch {
-			print("❌ Failed to decode items.json: \(error)")
+			print("Failed to decode items.json: \(error)")
 			return []
 		}
 	}

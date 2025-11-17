@@ -143,70 +143,70 @@
     "title": "冥想 5 分钟",
     "difficulty": "easy",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 8
   },
   {
     "title": "做 20 个波比跳",
     "difficulty": "hard",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 24
   },
   {
     "title": "做 20 个深蹲",
     "difficulty": "medium",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 16
   },
   {
     "title": "整理房间桌面",
     "difficulty": "medium",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 14
   },
   {
     "title": "打扫卫生15分钟",
     "difficulty": "medium",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 15
   },
   {
     "title": "伸展肩颈5分钟",
     "difficulty": "easy",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 8
   },
   {
     "title": "泡一杯花草茶放松",
     "difficulty": "easy",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 7
   },
   {
     "title": "做 1 组平板支撑",
     "difficulty": "medium",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 16
   },
   {
     "title": "整理衣柜10分钟",
     "difficulty": "medium",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 15
   },
   {
     "title": "给房间通风5分钟",
     "difficulty": "easy",
     "isOutdoor": false,
-    "category": "indoorPhysical",
+    "category": "indoorActivity",
     "energyReward": 7
   },
   {

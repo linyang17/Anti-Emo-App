@@ -16,8 +16,7 @@ struct TasksView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+			
             ZStack(alignment: .top) {
                 List {
                     Section {
@@ -46,9 +45,8 @@ struct TasksView: View {
                     }
                     if appModel.todayTasks.isEmpty {
                         Section {
-                            Text("暂无任务，稍后再试或检查网络")
-                                .appFont(FontTheme.caption)
-                                .foregroundStyle(.secondary)
+                            Text("No tasks right now,please check your permissions.")
+                                .appFont(FontTheme.body)
                         }
                     }
                 }
@@ -93,7 +91,7 @@ struct TasksView: View {
             if viewModel.isRefreshing {
                 ProgressView()
             } else {
-                Button("刷新") {
+                Button("Refresh") {
                     Task(priority: .userInitiated) { await viewModel.forceRefresh(appModel: appModel) }
                 }
                 .appFont(FontTheme.caption)
@@ -113,8 +111,8 @@ private struct RewardToastView: View {
             Image(systemName: "sparkles")
                 .foregroundStyle(.yellow)
             VStack(alignment: .leading, spacing: 2) {
-                Text("能量 +\(event.energy)")
-                Text("经验值 +\(event.xp)")
+                Text("Energy +\(event.energy)")
+                Text("Xp +\(event.xp)")
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)

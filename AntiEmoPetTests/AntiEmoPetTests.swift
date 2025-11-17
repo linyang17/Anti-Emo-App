@@ -47,7 +47,7 @@ struct AntiEmoPetTests {
     }
 
     @Test("RewardEngine grants energy + streak") func rewardEngineGrantsEnergy() throws {
-        let stats = UserStats(totalEnergy: 10, coins: 5, streakDays: 0, completedTasksCount: 0)
+        let stats = UserStats(totalEnergy: 10, streakDays: 0, completedTasksCount: 0)
         let task = UserTask(
 						title: "Test",
 						weatherType: WeatherType.sunny,
@@ -67,11 +67,10 @@ struct AntiEmoPetTests {
     }
 
     @Test("PetEngine reacts to feeding and levelling") func petEngineFeedAndLevel() throws {
-        let pet = Pet(name: "Lumio", bonding: .calm, level: 1, xp: 95)
+        let pet = Pet(name: "Lumio", bonding: .curious, level: 1, xp: 95)
         let accessory = Item(
             sku: "decor.energy.bar",
             type: .decor,
-            name: "Bar",
             assetName: "giftbox",
             costEnergy: 10,
             BondingBoost: 4
@@ -128,7 +127,7 @@ struct AntiEmoPetTests {
 
         storage.save(tasks: [
             UserTask(title: "Evening", weatherType: .cloudy, difficulty: .medium,
-						category: .social,
+						category: .socials,
 						energyReward: 10,
 						date: evening,
 						status: .completed),

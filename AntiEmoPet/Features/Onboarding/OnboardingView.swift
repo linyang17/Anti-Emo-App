@@ -93,7 +93,7 @@ extension OnboardingView {
 		case .gender: return viewModel.selectedGender != nil
 		case .birthday: return viewModel.birthday <= Date()
 		case .access: return !isProcessingFinalStep
-		case .celebration: return false
+		case .celebration: return true
 		}
 	}
 
@@ -101,7 +101,6 @@ extension OnboardingView {
 		guard canAdvance else { return }
 		switch step {
 		case .access: handleAccessFlow()
-			
 		case .celebration:
 			finishOnboarding(shareLocation: true)
 			
@@ -121,6 +120,7 @@ extension OnboardingView {
 			viewModel.enableLocationAndWeather = true
 			locationService.requestLocationOnce()
 			requestWeatherAndNotifications()
+			
 		case .denied, .restricted:
 			viewModel.enableLocationAndWeather = false
 			showLocationDeniedAlert = true

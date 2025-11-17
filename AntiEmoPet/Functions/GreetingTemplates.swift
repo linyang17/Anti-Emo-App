@@ -25,7 +25,7 @@ final class GreetingTemplateStore {
 				weather: [:],
 				mood: [:]
 			)
-			assertionFailure("⚠️ Failed to load GreetingTemplates.json")
+			assertionFailure("Failed to load GreetingTemplates.json")
 			return
 		}
 

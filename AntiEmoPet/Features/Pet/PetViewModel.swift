@@ -85,24 +85,10 @@ final class PetViewModel: ObservableObject {
 
     func updatePetState(pet: Pet?) {
         var state = screenState
-        state.petAsset = petAsset(for: pet?.bonding ?? .calm)
+        state.petAsset = petAsset(for: pet?.bonding ?? .curious)
         screenState = state
     }
 
-    func moodDescription(for pet: Pet) -> String {
-        switch pet.bonding {
-        case .ecstatic:
-            return "Lumio兴奋地围着你打转"
-        case .happy:
-            return "Lumio看见你就开始摇尾巴"
-        case .calm:
-            return "Lumio等着和你互动"
-        case .sleepy:
-            return "Lumio有点困，摸摸它会更安心"
-        case .anxious:
-            return "Lumio想你了，去哄哄它吧"
-        }
-    }
 
     private func petAsset(for bonding: PetBonding) -> String {
         switch bonding {
@@ -110,7 +96,7 @@ final class PetViewModel: ObservableObject {
             return "foxlying"
         case .happy:
             return "foxnormal"
-        case .calm:
+        case .curious:
             return "foxcurious"
         case .sleepy:
             return "foxsleep-2"
@@ -139,15 +125,15 @@ final class PetViewModel: ObservableObject {
     private func weatherDescription(for weather: WeatherType) -> String {
         switch weather {
         case .sunny:
-            return "外面阳光很好，安排个户外行程吧"
+            return "Sunny outide, let's go outdoors!"
         case .cloudy:
-            return "多云也适合散步，别忘了补充水分"
+            return "Fancy a walk or some exercise?"
         case .rainy:
-            return "下雨天适合在室内放松，点蜡烛和Lumio聊天"
+            return "Rainy days are perfect for a movie or a cozy read."
         case .snowy:
-            return "飘雪的日子要注意保暖"
+            return "It's snowing! Do you want to build a snowman? Let's build a snowman!"
         case .windy:
-            return "风有点大，先热身再出门"
+            return "WOOOOOOSH! The wind is blowing, remember to wear some warm clothing!"
         }
     }
 
@@ -157,7 +143,7 @@ final class PetViewModel: ObservableObject {
             return 85
         case .happy:
             return 70
-        case .calm:
+        case .curious:
             return 50
         case .sleepy:
             return 30

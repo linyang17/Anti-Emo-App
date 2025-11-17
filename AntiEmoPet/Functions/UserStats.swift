@@ -25,7 +25,6 @@ enum GenderIdentity: String {
 final class UserStats: Identifiable {
     @Attribute(.unique) var id: UUID
     var totalEnergy: Int
-    var coins: Int
     var TotalDays: Int
     var lastActiveDate: Date
     var completedTasksCount: Int
@@ -40,8 +39,7 @@ final class UserStats: Identifiable {
 
     init(
         id: UUID = UUID(),
-        totalEnergy: Int = 100,
-        coins: Int = 10,
+        totalEnergy: Int = 0,
         streakDays: Int = 0,
         lastActiveDate: Date = .now,
         completedTasksCount: Int = 0,
@@ -56,7 +54,6 @@ final class UserStats: Identifiable {
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
-        self.coins = coins
         self.TotalDays = streakDays
         self.lastActiveDate = lastActiveDate
         self.completedTasksCount = completedTasksCount

@@ -9,7 +9,7 @@ public enum TimeSlot: String, Codable, CaseIterable, Sendable {
     public static func from(date: Date, using calendar: Calendar) -> TimeSlot {
         let hour = calendar.component(.hour, from: date)
         switch hour {
-        case 5..<12: return .morning
+        case 6..<12: return .morning
         case 12..<17: return .afternoon
         case 17..<22: return .evening
         default: return .night

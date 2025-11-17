@@ -36,9 +36,9 @@ struct ChatView: View {
 
                         // 底部输入栏
                         HStack {
-                                TextField("输入想说的话…", text: $viewModel.currentInput)
+                                TextField("Text here…", text: $viewModel.currentInput)
                                         .textFieldStyle(.roundedBorder)
-                                Button("发送") {
+                                Button("Send") {
                                         viewModel.sendCurrentMessage()
                                 }
                                 .disabled(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

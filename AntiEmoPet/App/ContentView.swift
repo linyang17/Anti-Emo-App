@@ -56,7 +56,7 @@ struct MainTabView: View {
 		}
 		.interactiveDismissDisabled(true)
 		.alert(
-			"Time for bed",
+			"Time for bed...",
 			isPresented: Binding(
 				get: { appModel.showSleepReminder && !appModel.showOnboarding },
 				set: { newValue in
@@ -70,7 +70,7 @@ struct MainTabView: View {
 				appModel.dismissSleepReminder()
 			}
 		} message: {
-			Text("It seems quite late for you, take some rest and we shall catch up tomorrow!")
+			Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
 		}
 		}
 }

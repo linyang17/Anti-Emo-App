@@ -2,13 +2,13 @@ import Foundation
 import SwiftData
 
 enum PetBonding: String, Codable, CaseIterable {
-    case ecstatic, happy, calm, sleepy, anxious
+    case ecstatic, happy, curious, sleepy, anxious
 
     var displayName: String {
         switch self {
         case .ecstatic: return "活力满满"
         case .happy: return "开始摇尾巴"
-        case .calm: return "有点无聊"
+        case .curious: return "有点无聊"
         case .sleepy: return "困困"
         case .anxious: return "好想好想你"
         }
@@ -27,7 +27,7 @@ final class Pet: Identifiable {
     init(
         id: UUID = UUID(),
         name: String,
-        bonding: PetBonding = .calm,
+        bonding: PetBonding = .curious,
         level: Int = 1,
         xp: Int = 0,
         decorations: [String] = []

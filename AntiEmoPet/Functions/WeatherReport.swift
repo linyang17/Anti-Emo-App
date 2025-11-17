@@ -56,23 +56,4 @@ enum WeatherType: String, Codable, CaseIterable, Identifiable {
 
 	var id: String { rawValue }
 
-	var icon: String {
-		switch self {
-		case .sunny: return "sun.max"
-		case .cloudy: return "cloud"
-		case .rainy: return "cloud.rain"
-		case .snowy: return "snow"
-		case .windy: return "wind"
-		}
-	}
-
-	var title: String {
-		switch self {
-		case .sunny: return "晴"
-		case .cloudy: return "多云"
-		case .rainy: return "雨"
-		case .snowy: return "雪"
-		case .windy: return "风"
-		}
-	}
 }

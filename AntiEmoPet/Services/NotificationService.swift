@@ -35,8 +35,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
         times.forEach { hour, minute in
             let content = UNMutableNotificationContent()
-            content.title = "Lumio来信"
-            content.body = "来看看Lumio吧！"
+            content.title = "Lumio's letter"
+            content.body = "Lumio finds some new activities for you! Check out what they are."
             content.sound = .default
 
             var components = DateComponents()
@@ -82,7 +82,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             if hour >= 22 || hour < 6 { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = "LumioPet 新任务"
+            content.title = "Lumio finds some new activities for you"
             content.body = task.title
             content.sound = .default
 

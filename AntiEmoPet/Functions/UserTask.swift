@@ -8,20 +8,22 @@ enum TaskDifficulty: String, Codable, CaseIterable {
 enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     case outdoor
     case indoorDigital
-    case indoorPhysical
-    case social
+    case indoorActivity
+	case physical
+    case socials
     case petCare
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .outdoor: return "户外"
-        case .indoorDigital: return "刷手机"
-        case .indoorPhysical: return "室内活动"
-        case .social: return "社交互动"
-        case .petCare: return "宠物互动"
-        }
+        case .outdoor: return "Outdoor Activities"
+        case .indoorDigital: return "Digital"
+        case .indoorActivity: return "Indoor Activities"
+        case .socials: return "Social Interactions"
+        case .petCare: return "Pet Care"
+		case .physical: return "Physical exercises"
+		}
     }
 }
 

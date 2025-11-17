@@ -12,10 +12,9 @@ struct InsightsView: View {
 	var body: some View {
 		ScrollView {
 			VStack(spacing: 20) {
-				// 节律分析
+				
 				StatsRhythmSection().environmentObject(appModel)
 
-				// 洞察与建议
 				StatsInsightsSection(mood: moodSummary, energy: energySummary)
 					.environmentObject(appModel)
 			}
