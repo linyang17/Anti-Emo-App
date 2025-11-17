@@ -30,6 +30,9 @@ final class AppViewModel: ObservableObject {
 	@Published var rewardBanner: RewardEvent?
 	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
         @Published var shouldShowNotificationSettingsPrompt = false
+	@Published private(set) var hasLoggedMoodToday = false
+	@Published var shouldForceMoodCapture = false
+	@Published var pendingMoodFeedbackTask: UserTask?
 
 	let locationService = LocationService()
 	private let storage: StorageService
@@ -100,6 +103,7 @@ final class AppViewModel: ObservableObject {
 		shopItems = StaticItemLoader.loadAllItems()
 
 		moodEntries = storage.fetchMoodEntries()
+		refreshMoodLoggingState()
 		sunEvents = storage.fetchSunEvents()
 		inventory = storage.fetchInventory()
 
@@ -126,6 +130,7 @@ final class AppViewModel: ObservableObject {
 		isLoading = false
 
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+		recordMoodOnLaunch()
 	}
 	
 	func refreshIfNeeded() async {
@@ -150,6 +155,35 @@ final class AppViewModel: ObservableObject {
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
 		todayTasks = storage.fetchTasks(for: .now)
+		
+		// 触发强制情绪反馈弹窗
+		pendingMoodFeedbackTask = task
+	}
+	
+	/// 提交任务完成后的情绪反馈
+	/// - Parameters:
+	///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
+	///   - task: 完成的任务
+	func submitMoodFeedback(delta: Int, for task: UserTask) {
+		let entry = MoodEntry(
+			date: Date(),
+			value: max(10, min(100, 50 + delta)), // 基准值50,加上delta并限制在10-100范围
+			source: .afterTask,
+			delta: delta,
+			relatedTaskCategory: task.category,
+			relatedWeather: weather
+		)
+		storage.saveMoodEntry(entry)
+		moodEntries = storage.fetchMoodEntries()
+		
+		analytics.log(event: "mood_feedback_after_task", metadata: [
+			"delta": "\(delta)",
+			"category": task.category.rawValue,
+			"weather": weather.rawValue
+		])
+		
+		// 清除待处理的反馈任务
+		pendingMoodFeedbackTask = nil
 	}
 
 	func petting() {

@@ -15,10 +15,11 @@ struct TasksView: View {
     @State private var bannerTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 0) {
-			
-            ZStack(alignment: .top) {
-                List {
+        ZStack {
+            VStack(spacing: 0) {
+                
+                ZStack(alignment: .top) {
+                    List {
                     Section {
                         ForEach(appModel.todayTasks) { task in
                             HStack {
@@ -79,6 +80,16 @@ struct TasksView: View {
         }
         .onDisappear {
             bannerTask?.cancel()
+        }
+            
+            // 任务完成后的情绪反馈弹窗
+            if let task = appModel.pendingMoodFeedbackTask {
+                MoodFeedbackOverlayView(taskCategory: task.category) { delta in
+                    appModel.submitMoodFeedback(delta: delta, for: task)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .zIndex(999)
+            }
         }
     }
 
