@@ -248,8 +248,26 @@ final class AppViewModel: ObservableObject {
 		rewardBanner = nil
 	}
 
+	/// 添加情绪记录（向后兼容方法）
 	func addMoodEntry(value: Int) {
-		let entry = MoodEntry(value: value)
+		addMoodEntry(value: value, source: .appOpen, delta: nil, relatedTaskCategory: nil, relatedWeather: nil)
+	}
+	
+	/// 添加情绪记录（完整方法）
+	func addMoodEntry(
+		value: Int,
+		source: MoodSource = .appOpen,
+		delta: Int? = nil,
+		relatedTaskCategory: TaskCategory? = nil,
+		relatedWeather: WeatherType? = nil
+	) {
+		let entry = MoodEntry(
+			value: value,
+			source: source,
+			delta: delta,
+			relatedTaskCategory: relatedTaskCategory,
+			relatedWeather: relatedWeather
+		)
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 	}
@@ -437,6 +455,12 @@ final class AppViewModel: ObservableObject {
 		let report = await weatherService.fetchWeather(for: location, locality: locality)
 		weatherReport = report
 		weather = report.currentWeather
+		
+		// 保存 SunTimes 到 StorageService 供统计分析模块复用
+		if !report.sunEvents.isEmpty {
+			storage.saveSunTimes(report.sunEvents)
+		}
+		
 		if let city = report.locality, !(city.isEmpty) {
 			userStats?.region = city
 			storage.persist()

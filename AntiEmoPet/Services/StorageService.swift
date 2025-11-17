@@ -213,6 +213,35 @@ final class StorageService {
             logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
+    
+    // MARK: - SunTimes Persistence
+    /// 保存日照时间数据（用于统计分析）
+    func saveSunTimes(_ sunTimes: [Date: SunTimes]) {
+        guard let data = try? JSONEncoder().encode(SunTimesSnapshot(sunTimes: sunTimes)) else {
+            logger.error("Failed to encode sun times")
+            return
+        }
+        UserDefaults.standard.set(data, forKey: "cached_sun_times")
+        logger.info("Saved \(sunTimes.count) sun time entries")
+    }
+    
+    /// 获取缓存的日照时间数据
+    func fetchSunTimes() -> [Date: SunTimes] {
+        guard let data = UserDefaults.standard.data(forKey: "cached_sun_times"),
+              let snapshot = try? JSONDecoder().decode(SunTimesSnapshot.self, from: data) else {
+            return [:]
+        }
+        return snapshot.toDictionary()
+    }
+    
+    /// 更新指定日期的日照时间
+    func updateSunTime(for date: Date, sunTimes: SunTimes) {
+        var current = fetchSunTimes()
+        let calendar = TimeZoneManager.shared.calendar
+        let day = calendar.startOfDay(for: date)
+        current[day] = sunTimes
+        saveSunTimes(current)
+    }
 
     func decrementInventory(forSKU sku: String) {
         do {
@@ -269,6 +298,27 @@ final class StorageService {
         } catch {
             logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
+    }
+}
+
+// MARK: - SunTimes Persistence Helper
+private struct SunTimesSnapshot: Codable {
+    let entries: [SunTimesEntry]
+    
+    init(sunTimes: [Date: SunTimes]) {
+        entries = sunTimes.map { SunTimesEntry(date: $0.key, sunrise: $0.value.sunrise, sunset: $0.value.sunset) }
+    }
+    
+    func toDictionary() -> [Date: SunTimes] {
+        Dictionary(uniqueKeysWithValues: entries.map { entry in
+            (entry.date, SunTimes(sunrise: entry.sunrise, sunset: entry.sunset))
+        })
+    }
+    
+    private struct SunTimesEntry: Codable {
+        let date: Date
+        let sunrise: Date
+        let sunset: Date
     }
 }
 
