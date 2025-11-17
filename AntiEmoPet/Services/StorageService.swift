@@ -239,6 +239,51 @@ final class StorageService {
 		}
 	}
 
+	func deleteTasks(in slot: TimeSlot, on date: Date) {
+		guard let interval = slotInterval(for: slot, on: date) else { return }
+		do {
+			let predicate = #Predicate<UserTask> {
+				$0.date >= interval.start && $0.date < interval.end
+			}
+			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+			let targets = try context.fetch(descriptor)
+			guard !targets.isEmpty else { return }
+			targets.forEach { context.delete($0) }
+			saveContext(reason: "delete tasks in slot \(slot.rawValue)")
+		} catch {
+			logger.error("Failed to delete tasks in slot \(slot.rawValue): \(error.localizedDescription, privacy: .public)")
+		}
+	}
+
+	private func slotInterval(for slot: TimeSlot, on date: Date) -> DateInterval? {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let startHour: Int
+		let endHour: Int
+		switch slot {
+		case .morning:
+			startHour = 6
+			endHour = 12
+		case .afternoon:
+			startHour = 12
+			endHour = 17
+		case .evening:
+			startHour = 17
+			endHour = 22
+		case .night:
+			startHour = 22
+			endHour = 24
+		}
+		guard let start = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay) else { return nil }
+		let end: Date
+		if endHour == 24 {
+			end = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? start.addingTimeInterval(8 * 3_600)
+		} else {
+			end = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay) ?? start.addingTimeInterval(5 * 3_600)
+		}
+		return DateInterval(start: start, end: end)
+	}
+
     func fetchInventory() -> [InventoryEntry] {
         do {
             let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])

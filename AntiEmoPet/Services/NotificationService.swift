@@ -91,6 +91,31 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             let identifier = "LumioPet.task.\(task.id.uuidString)"
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             center.add(request)
-        }
-    }
+		}
+	}
+
+	func notifyTasksUnlocked(for slot: TimeSlot) {
+		let content = UNMutableNotificationContent()
+		content.title = "新任务已准备好"
+		content.body = slotNotificationMessage(for: slot)
+		content.sound = .default
+
+		let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+		let identifier = "LumioPet.task-unlock.\(UUID().uuidString)"
+		let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+		center.add(request)
+	}
+
+	private func slotNotificationMessage(for slot: TimeSlot) -> String {
+		switch slot {
+		case .morning:
+			return "早间活动开启，来陪 Lumio 出门透气吧！"
+		case .afternoon:
+			return "下午的活力任务上新了，看看有什么新挑战。"
+		case .evening:
+			return "傍晚的温馨任务已就绪，和 Lumio 一起放松。"
+		case .night:
+			return "夜晚是休息时间，记得按时睡觉。"
+		}
+	}
 }
