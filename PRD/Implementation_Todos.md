@@ -329,24 +329,20 @@
 
 ### 3.2 宠物抚摸手势交互（点击+上下滑动）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: PRD要求点击狐狸并上下滑动可以完成抚摸动作。当前只有`petting()`方法，但没有UI手势交互。
 
 **具体实施步骤**:
-- 在`PetView.swift`的`petStage(for:)`中添加手势识别：
-  - 使用`DragGesture`或组合`onTapGesture`和`onLongPressGesture`
-  - 检测上下滑动手势（大致上下即可）
-  - 手势成功后调用`appModel.petting()`
-- 添加视觉反馈：
-  - 抚摸时显示动画效果（爱心）
-- 限制：同一天内限三次（见3.3）
+- [x] 在`PetView.swift`的`petStage(for:)`中添加 Tap/Drag 手势，垂直滑动或点击均触发 `appModel.petting()`。
+- [x] 添加视觉反馈动画（多层心形上浮），确保 VoiceOver 也可触发。
+- [x] 手势与任务、商店按钮同时存在但互不冲突。
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Pet/PetView.swift`
-- `AntiEmoPet/App/AppViewModel.swift` (petting方法已存在)
+- `AntiEmoPet/Features/Pet/PetView.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` (petting 方法沿用) ✅
 **注意事项**:
-- 需确保 DragGesture 不与任务/商店按钮手势冲突，可通过限定手势区域或使用 `simultaneousGesture`；要兼容动画帧率与命中测试。
+- Gesture 采用 `simultaneousGesture`，并在 `VoiceOver` 可访问性动作中提供“Pet Lumio”指令。
 
 ---
 

@@ -7,6 +7,8 @@ struct PetView: View {
 	@State private var taskOffset: CGSize = .zero
 	@State private var taskBreathUp: Bool = false
 	@State private var taskFloatTask: Task<Void, Never>?
+	@State private var showPettingHearts = false
+	@State private var pettingEffectTask: Task<Void, Never>?
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -108,10 +110,36 @@ struct PetView: View {
 				.padding(.top, 120)
 				.padding(.bottom, 120)
 				.shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
+				.simultaneousGesture(
+					TapGesture()
+						.onEnded { triggerPettingInteraction() }
+				)
+				.simultaneousGesture(
+					DragGesture(minimumDistance: 20)
+						.onEnded { value in
+							let vertical = abs(value.translation.height)
+							let horizontal = abs(value.translation.width)
+							if vertical > horizontal, vertical > 30 {
+								triggerPettingInteraction()
+							}
+						}
+				)
+				.accessibilityAction(named: Text("Pet Lumio")) {
+					triggerPettingInteraction()
+				}
+
+			if showPettingHearts {
+				PettingHeartBurst()
+					.transition(.opacity)
+			}
 
 			decorationStack(for: pet.decorations)
 		}
 		.frame(maxWidth: .infinity)
+		.onDisappear {
+			pettingEffectTask?.cancel()
+			showPettingHearts = false
+		}
 	}
 
 	private var statusBackground: some View {
@@ -235,6 +263,34 @@ struct PetView: View {
 	private func stopTaskFloating() {
 		taskFloatTask?.cancel()
 		taskFloatTask = nil
+	}
+
+	private func triggerPettingInteraction() {
+		appModel.petting()
+		pettingEffectTask?.cancel()
+		withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
+			showPettingHearts = true
+		}
+		pettingEffectTask = Task { @MainActor in
+			try? await Task.sleep(nanoseconds: 1_200_000_000)
+			withAnimation(.easeOut(duration: 0.3)) {
+				showPettingHearts = false
+			}
+		}
+	}
+
+	private struct PettingHeartBurst: View {
+		var body: some View {
+			ZStack {
+				ForEach(0..<3) { index in
+					Image(systemName: "heart.fill")
+						.font(.system(size: 32))
+						.foregroundStyle(Color.pink.opacity(0.85 - Double(index) * 0.2))
+						.offset(x: CGFloat(index * 14 - 14), y: CGFloat(-50 - index * 20))
+						.scaleEffect(1 + CGFloat(index) * 0.2)
+				}
+			}
+		}
 	}
 	
 	@ViewBuilder
