@@ -1,5 +1,11 @@
 # 统计分析PRD
 
+Status: Not started
+Priority: Core
+Created: 9 November 2025 15:25
+Last edited: 17 November 2025 11:01
+Tasks: 优化数据和权限部分的structure和性能 (https://www.notion.so/structure-2a99ab714701801c8d83fd267c1cb9e7?pvs=21)
+
 能量值（Energy System）包括完整的**时间序列数据结构**：
 
 - 每次记录有时间戳（DateTime）
@@ -122,3 +128,81 @@
 | **天气+任务类型关联*** | 多云情况下户外任务整体完成度 vs 发布总数 | 反馈不同天气情况下任务参与度和用户偏好 |
 
 ---
+
+## **保存在本地的数据（给单个用户用）**
+
+> 用来画 PRD 里的「个人情绪趋势、能量趋势、pet 状态、任务历史」，只在本机保存。不需要把这些原始数据上传给服务器。
+> 
+
+**1. 本地情绪时间序列**
+
+- timestamp（精确到分钟）
+- mood_score
+- source（app_open / after_task）
+- delta：完成任务后的情绪变化
+- related_task_category：情绪变化相关的任务分类
+
+**2. 本地任务 & 能量变化**
+
+- task_local_id
+- task_type：outdoor / indoorDigital / …
+- timeslot_weather：任务生成时的天气分类
+- status：completed / expired
+- complete_time（精确到分钟）
+- energy_reward：5 / 10 / 15 …
+
+**4. 日照时长**
+
+- date
+- day_length：当天日出到日落的时长
+
+**3. 本地宠物状态（只给渲染 UI 用）**
+
+- bonding_value：当前关系值
+- exp：当前经验值
+- level：等级
+- inventory：本地物品（食物、装扮）
+
+## **上传到后端的数据（全量行为分析用）**
+
+> 维度（用户 + 哪天 + 哪个时段 + 天气 + 情绪 + 任务 + 能量增长）
+> 
+
+### **1. 用户信息**
+
+- account email （user_id）
+- country_region（不用太精确，颗粒度到省（eg. Greater London）就可以，用于季节和日照差异分析）
+
+### **2. 按日期和时间段聚合的行为 & 情绪数据**
+
+**一条记录 = 某个用户在某一天各个时段的压缩统计**。示例结构：
+
+- user_id
+- date（按用户本地时区）
+- day_length（日出到日落时长）
+
+**当天各个时间段聚合：**
+
+- time_slot
+- timeslot_weather（任务生成时的天气）
+- count_mood：该时段内的情绪记录个数
+- avg_mood：该时段内情绪平均值
+- total_energy_gain：时间段内总共增加的能量
+- task_type：outdoor / indoorDigital / …
+- tasks_completed_total_by_type：可以和task_type合并压缩字段，比如：{ "outdoor": [2,3], "physical": [1,1], ... }
+    - [2,3] 表示发布3个完成2个
+- mood_delta_after_tasks：该时段内完成每类任务后的平均情绪变化值
+
+### 数据流示意
+
+**本地：**
+
+- 持有完整事件日志（情绪记录、任务完成记录、天气）
+- 每天（或每几个小时）执行一次聚合逻辑：
+    - 按 `date + time_slot` 分组
+    - 算出上面那些指标
+- 生成 `user_timeslot_summary` 一个批次的记录
+
+**上传：**
+
+- 只上传这些 summary（每天 4 条时段记录）
