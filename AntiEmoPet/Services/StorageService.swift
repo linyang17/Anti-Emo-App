@@ -187,6 +187,57 @@ final class StorageService {
         saveContext(reason: "save mood entry")
     }
 
+	func fetchSunEvents(limit: Int = 60) -> [Date: SunTimes] {
+		do {
+			let descriptor = FetchDescriptor<SunTimesRecord>(
+				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)],
+				fetchLimit: limit
+			)
+			let records = try context.fetch(descriptor)
+			let calendar = TimeZoneManager.shared.calendar
+			var result: [Date: SunTimes] = [:]
+			for record in records {
+				let day = calendar.startOfDay(for: record.day)
+				result[day] = SunTimes(sunrise: record.sunrise, sunset: record.sunset)
+			}
+			return result
+		} catch {
+			logger.error("Failed to fetch sun events: \(error.localizedDescription, privacy: .public)")
+			return [:]
+		}
+	}
+
+	func saveSunEvents(_ events: [Date: SunTimes], keepLatest limit: Int = 90) {
+		guard !events.isEmpty else { return }
+		let calendar = TimeZoneManager.shared.calendar
+		var didMutate = false
+		do {
+			for (rawDay, sun) in events {
+				let day = calendar.startOfDay(for: rawDay)
+				let predicate = #Predicate<SunTimesRecord> { $0.day == day }
+				let descriptor = FetchDescriptor<SunTimesRecord>(predicate: predicate, fetchLimit: 1)
+				if let existing = try context.fetch(descriptor).first {
+					if existing.sunrise != sun.sunrise || existing.sunset != sun.sunset {
+						existing.sunrise = sun.sunrise
+						existing.sunset = sun.sunset
+						existing.updatedAt = Date()
+						didMutate = true
+					}
+				} else {
+					let record = SunTimesRecord(day: day, sunrise: sun.sunrise, sunset: sun.sunset)
+					context.insert(record)
+					didMutate = true
+				}
+			}
+			if didMutate {
+				trimSunEvents(keeping: limit)
+				saveContext(reason: "save sun events")
+			}
+		} catch {
+			logger.error("Failed to save sun events: \(error.localizedDescription, privacy: .public)")
+		}
+	}
+
     func fetchInventory() -> [InventoryEntry] {
         do {
             let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])
@@ -270,6 +321,22 @@ final class StorageService {
             logger.error("Failed to save context during \(reason, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
+
+	private func trimSunEvents(keeping limit: Int) {
+		guard limit > 0 else { return }
+		do {
+			let descriptor = FetchDescriptor<SunTimesRecord>(
+				sortBy: [SortDescriptor(\SunTimesRecord.day, order: .reverse)]
+			)
+			let records = try context.fetch(descriptor)
+			guard records.count > limit else { return }
+			for record in records.dropFirst(limit) {
+				context.delete(record)
+			}
+		} catch {
+			logger.error("Failed to trim sun events: \(error.localizedDescription, privacy: .public)")
+		}
+	}
 }
 
 enum DefaultSeeds {

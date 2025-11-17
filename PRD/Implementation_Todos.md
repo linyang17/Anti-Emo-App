@@ -2,11 +2,11 @@
 
 ---
 
-## 1. 数据模型完整性检查
+## 0. 数据模型完整性检查
 
-### 1.1 本地数据存储结构修改
+### 0.1 本地数据存储结构修改
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 
 - `MoodEntry` 仍只有 `id/date/value` 字段，缺少 PRD 要求的 `source/delta/related_task_category/related_weather`，导致无法追踪任务后的情绪来源与天气背景。
@@ -14,13 +14,13 @@
 - WeatherKit 返回的 `SunTimes` 仅存在于 `WeatherReport` 内存对象中，没有持久化存储，后续无法做日照统计。
 
 **具体实施步骤**:
-- [ ] 按下表补齐缺失字段并更新 SwiftData schema：
+- [x] 按下表补齐缺失字段并更新 SwiftData schema：
   1. **MoodEntry**：保留 `date/value`，新增 `source: MoodSource`（枚举字符串）、`delta: Int?`、`relatedTaskCategory: TaskCategory?`、`relatedWeather: WeatherType?`；提供带默认值的 init 以及迁移方案。
   2. **EnergyHistoryEntry**：保持现状，可作为时间序列参考。
   3. **UserTask**：在模型中新增 `startedAt: Date?`、`canCompleteAfter: Date?`，并把 `TaskStatus` 扩展为 `pending/started/ready/completed`。
   4. **SunTimes**：在 `StorageService` 中持久化最近的 `SunTimes`（可存入 UserDefaults 或 SwiftData 新实体），供统计模块复用。
-- [ ] 更新 `StorageService.saveMoodEntry()` 与任务读写方法，确保新增字段持久化。
-- [ ] 评估现有数据的迁移策略：执行一次性迁移脚本或在模型 init 中填充默认值，避免 SwiftData 崩溃。
+- [x] 更新 `StorageService.saveMoodEntry()` 与任务读写方法，确保新增字段持久化。
+- [x] 评估现有数据的迁移策略：执行一次性迁移脚本或在模型 init 中填充默认值，避免 SwiftData 崩溃。
 
 **相关文件路径**:
 - `AntiEmoPet/Functions/MoodEntry.swift`
@@ -31,9 +31,9 @@
 - SwiftData 结构体变更需要 bump schema version，并确保已有数据不会因强制 unwrap 而崩溃；迁移前需备份本地存档。
 
 ---
-### 1.2 上传后端的数据
-**优先级**: Core  
-**状态**: 未开始
+### 0.2 上传后端的数据
+**优先级**: Optional
+**状态**: 未开始（占位符）
 
 **问题**: 目前只有本地 SwiftData 数据，没有实现 PRD 要求的 `user_timeslot_summary` 聚合与上传逻辑，后端无法获取跨用户统计。
 
@@ -60,7 +60,7 @@
 
 ---
 
-### 1.3 数据上传功能（开发者端分析）
+### 0.3 数据上传功能（开发者端分析）
 **优先级**: Optional
 **状态**: 未开始（占位符）
 
@@ -82,7 +82,7 @@
 - 新建：`AntiEmoPet/Services/DataAggregationService.swift`
 ---
 **注意事项**:
-- 当前只是占位，等 1.2 聚合/上传设计确定后再细化；暂不在代码中引用未使用的服务声明。
+- 当前只是占位，等 0.2 完成再细化；暂不在代码中引用未使用的服务声明。
 
 ## 1. 情绪记录系统 (Mood Entry System)
 

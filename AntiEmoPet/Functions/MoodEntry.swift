@@ -2,15 +2,37 @@ import Foundation
 import SwiftData
 
 @Model
-final class MoodEntry: Identifiable {
+final class MoodEntry: Identifiable, Codable, Sendable {
+	enum Source: String, Codable, CaseIterable, Sendable {
+		case appOpen
+		case afterTask
+		case manual
+	}
+
     @Attribute(.unique) var id: UUID
     var date: Date
     var value: Int
+	var source: Source
+	var delta: Int?
+	var relatedTaskCategory: TaskCategory?
+	var relatedWeather: WeatherType?
 
-    init(id: UUID = UUID(), date: Date = .now, value: Int) {
+	init(
+		id: UUID = UUID(),
+		date: Date = .now,
+		value: Int,
+		source: Source = .appOpen,
+		delta: Int? = nil,
+		relatedTaskCategory: TaskCategory? = nil,
+		relatedWeather: WeatherType? = nil
+	) {
         self.id = id
         self.date = date
         self.value = value
+		self.source = source
+		self.delta = delta
+		self.relatedTaskCategory = relatedTaskCategory
+		self.relatedWeather = relatedWeather
     }
 }
 

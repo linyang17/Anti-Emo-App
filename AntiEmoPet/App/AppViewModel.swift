@@ -19,6 +19,7 @@ final class AppViewModel: ObservableObject {
 	@Published var shopItems: [Item] = []
 	@Published var weather: WeatherType = .sunny
 	@Published var weatherReport: WeatherReport?
+	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = false
 	@Published var moodEntries: [MoodEntry] = []
@@ -99,6 +100,7 @@ final class AppViewModel: ObservableObject {
 		shopItems = StaticItemLoader.loadAllItems()
 
 		moodEntries = storage.fetchMoodEntries()
+		sunEvents = storage.fetchSunEvents()
 		inventory = storage.fetchInventory()
 
 		todayTasks = storage.fetchTasks(for: .now)
@@ -131,7 +133,8 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func completeTask(_ task: UserTask) {
-		guard let stats = userStats, let pet, task.status == .pending else { return }
+		guard let stats = userStats, let pet, task.status != .completed else { return }
+		guard task.status.isCompletable else { return }
 		task.status = .completed
 		task.completedAt = Date()
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
@@ -248,8 +251,20 @@ final class AppViewModel: ObservableObject {
 		rewardBanner = nil
 	}
 
-	func addMoodEntry(value: Int) {
-		let entry = MoodEntry(value: value)
+	func addMoodEntry(
+		value: Int,
+		source: MoodEntry.Source = .appOpen,
+		delta: Int? = nil,
+		relatedTaskCategory: TaskCategory? = nil,
+		relatedWeather: WeatherType? = nil
+	) {
+		let entry = MoodEntry(
+			value: value,
+			source: source,
+			delta: delta,
+			relatedTaskCategory: relatedTaskCategory,
+			relatedWeather: relatedWeather ?? weatherReport?.currentWeather
+		)
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 	}
@@ -437,6 +452,11 @@ final class AppViewModel: ObservableObject {
 		let report = await weatherService.fetchWeather(for: location, locality: locality)
 		weatherReport = report
 		weather = report.currentWeather
+		if !report.sunEvents.isEmpty {
+			storage.saveSunEvents(report.sunEvents)
+			let merged = storage.fetchSunEvents()
+			sunEvents = merged
+		}
 		if let city = report.locality, !(city.isEmpty) {
 			userStats?.region = city
 			storage.persist()

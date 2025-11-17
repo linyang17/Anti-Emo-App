@@ -27,42 +27,54 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum TaskStatus: String, Codable, CaseIterable {
-    case pending
-    case completed
+enum TaskStatus: String, Codable, CaseIterable, Sendable {
+	case pending
+	case started
+	case ready
+	case completed
+
+	var isCompletable: Bool {
+		self == .ready || self == .pending
+	}
 }
 
 @Model
-final class UserTask: Identifiable {
-    @Attribute(.unique) var id: UUID
-    var title: String
-    var weatherType: WeatherType
-    var difficulty: TaskDifficulty
-    var category: TaskCategory
-    var energyReward: Int = 0
-    var date: Date
-    var status: TaskStatus
-    var completedAt: Date?
+final class UserTask: Identifiable, Sendable {
+	@Attribute(.unique) var id: UUID
+	var title: String
+	var weatherType: WeatherType
+	var difficulty: TaskDifficulty
+	var category: TaskCategory
+	var energyReward: Int = 0
+	var date: Date
+	var status: TaskStatus
+	var startedAt: Date?
+	var canCompleteAfter: Date?
+	var completedAt: Date?
 
-    init(
-        id: UUID = UUID(),
-        title: String,
-        weatherType: WeatherType,
-        difficulty: TaskDifficulty,
-        category: TaskCategory,
-        energyReward: Int,
-        date: Date,
-        status: TaskStatus = .pending,
-        completedAt: Date? = nil
-    ) {
-        self.id = id
-        self.title = title
-        self.weatherType = weatherType
-        self.difficulty = difficulty
-        self.category = category
-        self.energyReward = energyReward
-        self.date = date
-        self.status = status
-        self.completedAt = completedAt
-    }
+	init(
+		id: UUID = UUID(),
+		title: String,
+		weatherType: WeatherType,
+		difficulty: TaskDifficulty,
+		category: TaskCategory,
+		energyReward: Int,
+		date: Date,
+		status: TaskStatus = .pending,
+		startedAt: Date? = nil,
+		canCompleteAfter: Date? = nil,
+		completedAt: Date? = nil
+	) {
+		self.id = id
+		self.title = title
+		self.weatherType = weatherType
+		self.difficulty = difficulty
+		self.category = category
+		self.energyReward = energyReward
+		self.date = date
+		self.status = status
+		self.startedAt = startedAt
+		self.canCompleteAfter = canCompleteAfter
+		self.completedAt = completedAt
+	}
 }

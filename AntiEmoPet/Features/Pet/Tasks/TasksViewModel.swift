@@ -18,7 +18,7 @@ final class TasksViewModel: ObservableObject {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        let pending = appModel.todayTasks.filter { $0.status == .pending }
+        let pending = appModel.todayTasks.filter { $0.status != .completed }
         let retained = pending.randomElement()
         await appModel.refreshTasks(retaining: retained)
     }
