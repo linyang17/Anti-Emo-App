@@ -55,10 +55,26 @@ struct MainTabView: View {
 				.environmentObject(appModel)
 		}
 		.interactiveDismissDisabled(true)
+		.fullScreenCover(isPresented: Binding(
+			get: { appModel.showMoodCapture && !appModel.showOnboarding && !appModel.showSleepReminder },
+			set: { newValue in
+				if !newValue {
+					appModel.showMoodCapture = false
+				}
+			}
+		)) {
+			MoodCaptureOverlayView(
+				title: "How do you feel now?",
+				initial: 50
+			) { value in
+				appModel.recordMoodOnLaunch(value: value)
+			}
+		}
+		.interactiveDismissDisabled(true)
 		.alert(
 			"Time for bed...",
 			isPresented: Binding(
-				get: { appModel.showSleepReminder && !appModel.showOnboarding },
+				get: { appModel.showSleepReminder && !appModel.showOnboarding && !appModel.showMoodCapture },
 				set: { newValue in
 					if !newValue {
 						appModel.dismissSleepReminder()

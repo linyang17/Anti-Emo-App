@@ -6,7 +6,7 @@
 
 ### 0.1 本地数据存储结构修改
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 
 - `MoodEntry` 仍只有 `id/date/value` 字段，缺少 PRD 要求的 `source/delta/related_task_category/related_weather`，导致无法追踪任务后的情绪来源与天气背景。
@@ -14,13 +14,13 @@
 - WeatherKit 返回的 `SunTimes` 仅存在于 `WeatherReport` 内存对象中，没有持久化存储，后续无法做日照统计。
 
 **具体实施步骤**:
-- [ ] 按下表补齐缺失字段并更新 SwiftData schema：
+- [x] 按下表补齐缺失字段并更新 SwiftData schema：
   1. **MoodEntry**：保留 `date/value`，新增 `source: MoodSource`（枚举字符串）、`delta: Int?`、`relatedTaskCategory: TaskCategory?`、`relatedWeather: WeatherType?`；提供带默认值的 init 以及迁移方案。
   2. **EnergyHistoryEntry**：保持现状，可作为时间序列参考。
   3. **UserTask**：在模型中新增 `startedAt: Date?`、`canCompleteAfter: Date?`，并把 `TaskStatus` 扩展为 `pending/started/ready/completed`。
   4. **SunTimes**：在 `StorageService` 中持久化最近的 `SunTimes`（可存入 UserDefaults 或 SwiftData 新实体），供统计模块复用。
-- [ ] 更新 `StorageService.saveMoodEntry()` 与任务读写方法，确保新增字段持久化。
-- [ ] 评估现有数据的迁移策略：执行一次性迁移脚本或在模型 init 中填充默认值，避免 SwiftData 崩溃。
+- [x] 更新 `StorageService.saveMoodEntry()` 与任务读写方法，确保新增字段持久化。
+- [x] 评估现有数据的迁移策略：执行一次性迁移脚本或在模型 init 中填充默认值，避免 SwiftData 崩溃。
 
 **相关文件路径**:
 - `AntiEmoPet/Functions/MoodEntry.swift`
@@ -113,17 +113,17 @@
 
 ### 1.2 应用打开时强制情绪记录弹窗
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 目前 `ContentView` 只有 onboarding 的全屏遮罩，没有“每日首次打开强制记录”逻辑，且 `MoodCaptureOverlayView` 的 Slider 仍允许 0，用户可以绕过记录。
 
 **具体实施步骤**:
-- [ ] 在 `AppViewModel` 中添加 `hasLoggedMoodToday`（基于 `moodEntries` 与日历分组）以及 `recordMoodOnLaunch()`。
-- [ ] `MainTabView` or `ContentView` 监听该状态，使用 `.fullScreenCover` 或 `.overlay` 展示 `MoodCaptureOverlayView`，并调用 `.interactiveDismissDisabled(true)`。
-- [ ] 改造 `MoodCaptureOverlayView`：
+- [x] 在 `AppViewModel` 中添加 `hasLoggedMoodToday`（基于 `moodEntries` 与日历分组）以及 `recordMoodOnLaunch()`。
+- [x] `MainTabView` or `ContentView` 监听该状态，使用 `.fullScreenCover` 或 `.overlay` 展示 `MoodCaptureOverlayView`，并调用 `.interactiveDismissDisabled(true)`。
+- [x] 改造 `MoodCaptureOverlayView`：
   - Slider 改为 `10...100`，`step = 10`，默认值 50。
   - 支持将 `source` 作为参数传给 `onSave` 回调。
-- [ ] 成功记录后设置 `source = .appOpen` 并立即刷新 `moodEntries` 列表，确保当天不再弹窗；跨日需重置。
+- [x] 成功记录后设置 `source = .appOpen` 并立即刷新 `moodEntries` 列表，确保当天不再弹窗；跨日需重置。
 
 **相关文件路径**:
 - `AntiEmoPet/App/ContentView.swift`
