@@ -22,26 +22,7 @@ struct TasksView: View {
                     List {
                     Section {
                         ForEach(appModel.todayTasks) { task in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(task.title)
-                                        .appFont(FontTheme.headline)
-                                    Text(viewModel.badge(for: task))
-                                        .appFont(FontTheme.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    appModel.completeTask(task)
-                                } label: {
-                                    Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(task.status == .completed ? .black.opacity(0.5) : .secondary)
-                                        .imageScale(.large)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(task.status == .completed)
-                            }
-                            .padding(.vertical, 6)
+                            TaskRow(task: task, appModel: appModel, viewModel: viewModel)
                         }
                     }
                     if appModel.todayTasks.isEmpty {
@@ -112,6 +93,122 @@ struct TasksView: View {
         .padding(.top, 16)
         .padding(.bottom, 8)
     }
+}
+
+/// 任务行组件 - 显示不同状态的按钮和倒计时
+private struct TaskRow: View {
+	let task: UserTask
+	let appModel: AppViewModel
+	let viewModel: TasksViewModel
+	@State private var remainingTime: TimeInterval = 0
+	@State private var timer: Timer?
+	
+	var body: some View {
+		HStack {
+			VStack(alignment: .leading, spacing: 6) {
+				Text(task.title)
+					.appFont(FontTheme.headline)
+				Text(viewModel.badge(for: task))
+					.appFont(FontTheme.caption)
+					.foregroundStyle(.secondary)
+				
+				// 显示倒计时
+				if task.status == .started, let canComplete = task.canCompleteAfter {
+					Text(formatRemainingTime(until: canComplete))
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.orange)
+				}
+			}
+			Spacer()
+			
+			// 根据状态显示不同按钮
+			taskActionButton
+		}
+		.padding(.vertical, 6)
+		.onAppear {
+			startTimerIfNeeded()
+		}
+		.onDisappear {
+			stopTimer()
+		}
+	}
+	
+	@ViewBuilder
+	private var taskActionButton: some View {
+		switch task.status {
+		case .pending:
+			// 未开始 - 显示"开始"按钮
+			Button {
+				appModel.startTask(task)
+			} label: {
+				Text("开始")
+					.font(.subheadline.weight(.medium))
+					.foregroundStyle(.white)
+					.padding(.horizontal, 16)
+					.padding(.vertical, 8)
+					.background(.blue, in: Capsule())
+			}
+			.buttonStyle(.plain)
+			
+		case .started:
+			// 已开始但未到时间 - 显示等待图标
+			HStack(spacing: 4) {
+				ProgressView()
+					.scaleEffect(0.8)
+				Text("等待中")
+					.font(.caption)
+					.foregroundStyle(.secondary)
+			}
+			
+		case .ready:
+			// 可以完成 - 显示"完成"按钮
+			Button {
+				appModel.completeTask(task)
+			} label: {
+				Text("完成")
+					.font(.subheadline.weight(.medium))
+					.foregroundStyle(.white)
+					.padding(.horizontal, 16)
+					.padding(.vertical, 8)
+					.background(.green, in: Capsule())
+			}
+			.buttonStyle(.plain)
+			
+		case .completed:
+			// 已完成 - 显示完成图标
+			Image(systemName: "checkmark.circle.fill")
+				.foregroundStyle(.black.opacity(0.5))
+				.imageScale(.large)
+		}
+	}
+	
+	private func formatRemainingTime(until date: Date) -> String {
+		let remaining = max(0, date.timeIntervalSinceNow)
+		let minutes = Int(remaining) / 60
+		let seconds = Int(remaining) % 60
+		
+		if minutes > 0 {
+			return String(format: "还需 %d:%02d", minutes, seconds)
+		} else {
+			return String(format: "还需 %d秒", seconds)
+		}
+	}
+	
+	private func startTimerIfNeeded() {
+		guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
+		
+		timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+			remainingTime = max(0, canComplete.timeIntervalSinceNow)
+			if remainingTime <= 0 {
+				stopTimer()
+			}
+		}
+	}
+	
+	private func stopTimer() {
+		timer?.invalidate()
+		timer = nil
+	}
 }
 
 private struct RewardToastView: View {

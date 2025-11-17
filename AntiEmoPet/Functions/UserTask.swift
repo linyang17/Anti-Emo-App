@@ -25,6 +25,30 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
 		case .physical: return "Physical exercises"
 		}
     }
+	
+	/// Buffer时间(秒) - 开始任务后必须等待的时间
+	var bufferDuration: TimeInterval {
+		switch self {
+		case .outdoor: return 5 * 60       // 5分钟
+		case .indoorDigital: return 3 * 60 // 3分钟
+		case .indoorActivity: return 3 * 60 // 3分钟
+		case .physical: return 2 * 60      // 2分钟
+		case .socials: return 3 * 60       // 3分钟
+		case .petCare: return 15           // 15秒
+		}
+	}
+	
+	/// 完成任务获得的能量奖励
+	var energyReward: Int {
+		switch self {
+		case .outdoor: return 15
+		case .indoorDigital: return 5
+		case .indoorActivity: return 10
+		case .physical: return 15
+		case .socials: return 10
+		case .petCare: return 5
+		}
+	}
 }
 
 enum TaskStatus: String, Codable, CaseIterable, Sendable {

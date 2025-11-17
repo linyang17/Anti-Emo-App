@@ -167,46 +167,46 @@
 
 ### 2.1 任务开始/完成Buffer时间机制和能量奖励
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: `TasksView` 当前只有「完成」按钮，没有 Start/Buffer 状态；`UserTask`/`TaskStatus` 也没有 `started/ready`，导致无法 enforcing PRD 的等待机制与统一 reward。
 
 **任务类型及要求的buffer时间**:
-- outdoor: 5分钟
-- indoorDigital: 3分钟
-- indoorActivity: 3分钟
-- physical: 2分钟
-- socials: 3分钟
-- petCare: 15秒
+- outdoor: 5分钟 ✅
+- indoorDigital: 3分钟 ✅
+- indoorActivity: 3分钟 ✅
+- physical: 2分钟 ✅
+- socials: 3分钟 ✅
+- petCare: 15秒 ✅
 
 **任务类型及获得的能量奖励**:
-- outdoor: 15
-- indoorDigital: 5
-- indoorActivity: 10
-- physical: 15
-- socials: 10
-- petCare: 5
+- outdoor: 15 ✅
+- indoorDigital: 5 ✅
+- indoorActivity: 10 ✅
+- physical: 15 ✅
+- socials: 10 ✅
+- petCare: 5 ✅
 
 **具体实施步骤**:
-- 添加任务状态枚举：
+- [x] 添加任务状态枚举：
   - `pending` - 未开始
   - `started` - 已开始但未到完成时间
   - `ready` - 可以完成
   - `completed` - 已完成
-- 在`TasksView.swift`中：
+- [x] 在`TasksView.swift`中：
   - 未开始的任务：显示"开始"按钮
   - 已开始但未到时间：显示倒计时和"等待中"状态
   - 可以完成：显示"完成"按钮
-- 实现开始任务逻辑：点击"开始"后设置`startedAt`和`canCompleteAfter`
-- 实现倒计时显示：显示剩余等待时间
-- 更新`AppViewModel.completeTask()`以检查是否可以完成（检查`canCompleteAfter`）
-- 修改任务能量奖励逻辑和数值
+- [x] 实现开始任务逻辑：点击"开始"后设置`startedAt`和`canCompleteAfter`
+- [x] 实现倒计时显示：显示剩余等待时间
+- [x] 更新`AppViewModel.completeTask()`以检查是否可以完成（检查`canCompleteAfter`）
+- [x] 修改任务能量奖励逻辑和数值
 
 **相关文件路径**:
-- `AntiEmoPet/Functions/UserTask.swift`
-- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift`
+- `AntiEmoPet/Functions/UserTask.swift` ✅
+- `AntiEmoPet/Features/Pet/Tasks/TasksView.swift` ✅
 - `AntiEmoPet/Features/Pet/Tasks/TasksViewModel.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
+- `AntiEmoPet/App/AppViewModel.swift` ✅
 **注意事项**:
 - 需要迁移历史任务记录并为新状态赋默认值；另外 `TaskGeneratorService` 的模板能量奖励需与 PRD 表格同步，以免 UI 与后端不一致。
 
