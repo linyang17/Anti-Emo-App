@@ -175,7 +175,7 @@ struct PetView: View {
 				.resizable()
 				.scaledToFit()
 				.frame(width: 90)
-				.accessibilityLabel("查看任务")
+				.accessibilityLabel("tasks")
 				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 1, y: 1)
 		}
 		// 随机漂移 + 垂直呼吸 的综合 offset

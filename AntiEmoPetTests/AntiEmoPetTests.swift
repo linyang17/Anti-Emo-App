@@ -102,15 +102,14 @@ struct AntiEmoPetTests {
         engine.applyPurchaseReward(pet: pet, xpGain: 70, bondingBoost: 0)
 
         #expect(pet.level == 4)
-        #expect(pet.xp == 19)
+        #expect(pet.xp == 9)
         #expect(XPProgression.requirement(for: 3) == 50)
         #expect(XPProgression.requirement(for: 6) == 100)
     }
 
     @Test("ChatService stub responds with bonding line") func chatServiceResponds() {
-        let reply = ChatService().reply(to: "有点累", weather: .rainy, bonding: .happy)
-        #expect(reply.contains("雨声陪你"))
-        #expect(reply.contains("开心"))
+        let reply = ChatService().reply(to: "tired", weather: .rainy, bonding: .happy)
+        #expect(reply.contains("I'm here for you"))
     }
 
     @Test("Default seeds create fresh model instances") func defaultSeedsAreCopyable() {

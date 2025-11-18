@@ -1,79 +1,80 @@
 import SwiftUI
 
 struct MoodCaptureOverlayView: View {
+	// MARK: - Constants
 	private enum Constants {
 		static let minValue = 10.0
 		static let maxValue = 100.0
 		static let step = 10.0
 	}
 
-    init(title: String = "How do you feel now?", initial: Int = 50, onSave: @escaping (Int) -> Void) {
-        self.title = title
-        // 确保初始值在有效范围内（10-100，step 10）
-        let clamped = max(10, min(100, initial))
-        let rounded = ((clamped / 10) * 10)  // 四舍五入到最近的10的倍数
-        self._value = State(initialValue: rounded)
-        self.onSave = onSave
-    }
+	// MARK: - Properties
+	@State private var value: Int? = nil
+	let onSave: (Int) -> Void
 
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.3)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("10")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                        Spacer()
-                        Text("\(value)")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text("100")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    }
-                    
-                    Slider(
-                        value: Binding(
-                            get: { Double(value) },
-                            set: { newValue in
-                                // 确保值在 10-100 范围内，且是 10 的倍数
-                                let clamped = max(10.0, min(100.0, newValue))
-                                let rounded = round(clamped / 10.0) * 10.0
-                                value = Int(rounded)
-                            }
-                        ),
-                        in: 10...100,
-                        step: 10
-                    )
-                }
-                
-                Button(action: {
-                    onSave(value)
-                }) {
-                    Text("Save")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            value >= 10 ? Color.blue : Color.gray,
-                            in: RoundedRectangle(cornerRadius: 12)
-                        )
-                }
-                .disabled(value < 10)
-            }
-            .padding(24)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-            .padding(32)
-        }
-    }
+	// MARK: - Body
+	var body: some View {
+		ZStack {
+			Color.black.opacity(0.3)
+				.ignoresSafeArea()
+
+			VStack(spacing: 24) {
+				// Fixed title
+				Text("How do you feel now?")
+					.font(.headline)
+					.foregroundStyle(.primary)
+
+				// Slider section
+				VStack(spacing: 12) {
+					HStack {
+						Text("10")
+							.foregroundStyle(.secondary)
+							.font(.caption)
+						Spacer()
+						Text(value != nil ? "\(value!)" : "--")
+							.font(.title2)
+							.fontWeight(.semibold)
+						Spacer()
+						Text("100")
+							.foregroundStyle(.secondary)
+							.font(.caption)
+					}
+
+					Slider(
+						value: Binding(
+							get: { Double(value ?? 50) }, // midpoint visual start
+							set: { newValue in
+								let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
+								let rounded = round(clamped / Constants.step) * Constants.step
+								value = Int(rounded)
+							}
+						),
+						in: Constants.minValue...Constants.maxValue,
+						step: Constants.step
+					)
+				}
+
+				// Save button
+				Button(action: {
+					if let value = value {
+						onSave(value)
+					}
+				}) {
+					Text("Save")
+						.font(.headline)
+						.foregroundStyle(.white)
+						.frame(maxWidth: .infinity)
+						.padding(.vertical, 12)
+						.background(
+							value != nil ? Color.blue : Color.gray,
+							in: RoundedRectangle(cornerRadius: 12)
+						)
+				}
+				.disabled(value == nil)
+			}
+			.padding(24)
+			.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+			.padding(32)
+		}
+	}
 }

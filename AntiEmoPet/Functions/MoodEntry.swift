@@ -1,15 +1,11 @@
 import Foundation
 import SwiftData
 
-/// 情绪记录来源
-public enum MoodSource: String, Codable, CaseIterable, Sendable {
-    case appOpen = "app_open"
-    case afterTask = "after_task"
-}
 
 @Model
 final class MoodEntry: Identifiable, Codable {
-	enum Source: String, Codable, CaseIterable, Sendable {
+	
+	enum MoodSource: String, Codable, CaseIterable, Sendable {
 		case appOpen
 		case afterTask
 		case manual
@@ -18,7 +14,7 @@ final class MoodEntry: Identifiable, Codable {
     @Attribute(.unique) var id: UUID
     var date: Date
     var value: Int
-    var source: String = MoodSource.appOpen.rawValue  // MoodSource.rawValue，使用 String 以兼容 SwiftData，默认值用于数据迁移
+	var source: String = MoodSource.manual.rawValue   // default to manual
     var delta: Int?  // 完成任务后的情绪变化
     var relatedTaskCategory: String?  // TaskCategory.rawValue
     var relatedWeather: String?  // WeatherType.rawValue
@@ -27,7 +23,7 @@ final class MoodEntry: Identifiable, Codable {
         id: UUID = UUID(),
         date: Date = .now,
         value: Int,
-        source: MoodSource = .appOpen,
+		source: MoodSource = .manual,
         delta: Int? = nil,
         relatedTaskCategory: TaskCategory? = nil,
         relatedWeather: WeatherType? = nil
@@ -43,7 +39,7 @@ final class MoodEntry: Identifiable, Codable {
     
     // MARK: - Computed Properties for Type Safety
     var moodSource: MoodSource {
-        get { MoodSource(rawValue: source) ?? .appOpen }
+        get { MoodSource(rawValue: source) ?? .manual }
         set { source = newValue.rawValue }
     }
     
@@ -78,7 +74,7 @@ final class MoodEntry: Identifiable, Codable {
 		let id = try container.decode(UUID.self, forKey: .id)
 		let date = try container.decode(Date.self, forKey: .date)
 		let value = try container.decode(Int.self, forKey: .value)
-		let source = try container.decodeIfPresent(Source.self, forKey: .source) ?? MoodEntry.Source.appOpen
+		let source = try container.decode(MoodSource.self, forKey: .source)
 		let delta = try container.decodeIfPresent(Int.self, forKey: .delta)
 		let relatedTaskCategory = try container.decodeIfPresent(TaskCategory.self, forKey: .relatedTaskCategory)
 		let relatedWeather = try container.decodeIfPresent(WeatherType.self, forKey: .relatedWeather)

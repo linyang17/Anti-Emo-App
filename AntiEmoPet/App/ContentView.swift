@@ -68,11 +68,7 @@ struct MainTabView: View {
                                         Color.black.opacity(0.3)
                                                 .ignoresSafeArea()
 
-                                        MoodCaptureOverlayView(
-                                                title: "How do you feel now？",
-                                                source: .appOpen,
-                                                initial: 50
-                                        ) { value, source in
+                                        MoodCaptureOverlayView() { value in
                                                 appModel.recordMoodOnLaunch(value: value)
                                         }
                                 }

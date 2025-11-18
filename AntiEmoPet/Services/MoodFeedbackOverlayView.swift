@@ -15,10 +15,10 @@ struct MoodFeedbackOverlayView: View {
 		
 		var label: String {
 			switch self {
-			case .worse: return "更差"
-			case .unchanged: return "无变化"
-			case .better: return "更好"
-			case .muchBetter: return "好很多"
+			case .worse: return "Worse"
+			case .unchanged: return "No Change"
+			case .better: return "Better"
+			case .muchBetter: return "Much Better"
 			}
 		}
 		
@@ -59,10 +59,10 @@ struct MoodFeedbackOverlayView: View {
 						.font(.system(size: 48))
 						.foregroundStyle(.green)
 					
-					Text("任务完成！")
+					Text("Task completed!")
 						.font(.title2.weight(.bold))
 					
-					Text("你现在的心情如何？")
+					Text("How do you feel now?")
 						.font(.body)
 						.foregroundStyle(.secondary)
 				}

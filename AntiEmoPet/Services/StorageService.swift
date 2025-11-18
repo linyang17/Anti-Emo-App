@@ -415,7 +415,7 @@ final class StorageService {
 }
 
 // MARK: - SunTimes Persistence Helper
-private struct SunTimesSnapshot: Codable {
+struct SunTimesSnapshot: Codable {
     let entries: [SunTimesEntry]
     
     init(sunTimes: [Date: SunTimes]) {
@@ -428,7 +428,7 @@ private struct SunTimesSnapshot: Codable {
         })
     }
     
-    private struct SunTimesEntry: Codable {
+    struct SunTimesEntry: Codable {
         let date: Date
         let sunrise: Date
         let sunset: Date

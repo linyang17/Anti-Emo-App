@@ -48,7 +48,7 @@ final class Pet: Identifiable {
     init(
         id: UUID = UUID(),
         name: String,
-		bondingScore: Int = 70,
+		bondingScore: Int = 30,
         level: Int = 1,
         xp: Int = 0,
         decorations: [String] = []

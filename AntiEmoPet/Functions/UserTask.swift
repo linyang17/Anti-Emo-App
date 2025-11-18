@@ -22,7 +22,7 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
         case .indoorActivity: return "Indoor Activities"
         case .socials: return "Social Interactions"
         case .petCare: return "Pet Care"
-		case .physical: return "Physical exercises"
+		case .physical: return "Physical Exercises"
 		}
     }
 	

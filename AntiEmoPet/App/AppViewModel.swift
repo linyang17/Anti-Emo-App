@@ -42,16 +42,16 @@ final class AppViewModel: ObservableObject {
         @Published private(set) var hasUsedRefreshThisSlot = false
         @Published var pettingNotice: String?
 
-	let locationService = LocationService()
-	private let storage: StorageService
-	private let taskGenerator: TaskGeneratorService
-	private let rewardEngine = RewardEngine()
-	private let petEngine = PetEngine()
-	private let notificationService = NotificationService()
-	private let weatherService = WeatherService()
-	private let analytics = AnalyticsService()
-	private var cancellables: Set<AnyCancellable> = []
-	private let sleepReminderService = SleepReminderService()
+		let locationService = LocationService()
+		private let storage: StorageService
+		private let taskGenerator: TaskGeneratorService
+		private let rewardEngine = RewardEngine()
+		private let petEngine = PetEngine()
+		private let notificationService = NotificationService()
+		private let weatherService = WeatherService()
+		private let analytics = AnalyticsService()
+		private var cancellables: Set<AnyCancellable> = []
+		private let sleepReminderService = SleepReminderService()
         private let refreshRecordsKey = "taskRefreshRecords"
         private let slotScheduleKey = "taskSlotSchedule"
         private let slotGenerationKey = "taskSlotGenerationRecords"
@@ -61,14 +61,11 @@ final class AppViewModel: ObservableObject {
         private typealias SlotScheduleMap = [String: [String: Double]]
         private typealias SlotGenerationMap = [String: [String: Bool]]
         private typealias SlotPenaltyMap = [String: [String: Bool]]
-	private var slotMonitorTask: Task<Void, Never>?
-	private var pettingNoticeTask: Task<Void, Never>?
-	private let isoDayFormatter: ISO8601DateFormatter = {
+		private var slotMonitorTask: Task<Void, Never>?
+		private var pettingNoticeTask: Task<Void, Never>?
+		private let isoDayFormatter: ISO8601DateFormatter = {
 		let formatter = ISO8601DateFormatter()
 		formatter.formatOptions = [.withFullDate]
-		// Persisted day keys were historically written in UTC.
-		// Keep the formatter pinned to GMT to avoid reinterpreting legacy data
-		// using the user's current timezone, which would shift stored metrics.
 		formatter.timeZone = TimeZone(secondsFromGMT: 0)
 		return formatter
 	}()
@@ -166,11 +163,12 @@ final class AppViewModel: ObservableObject {
 
                 dailyMetricsCache = makeDailyActivityMetrics(days: 7)
                 recordMoodOnLaunch()
+				hasLoggedMoodToday = true
         }
 
         /// 检查今天是否已记录情绪，如果没有则显示弹窗
         private func checkAndShowMoodCapture() {
-                guard !hasLoggedMoodToday() else {
+			guard !hasLoggedMoodToday else {
                         showMoodCapture = false
                         shouldForceMoodCapture = false
                         return
@@ -178,17 +176,6 @@ final class AppViewModel: ObservableObject {
                 shouldForceMoodCapture = true
                 showMoodCapture = true
         }
-	
-	/// 检查今天是否已经记录过情绪
-	func hasLoggedMoodToday() -> Bool {
-		let calendar = TimeZoneManager.shared.calendar
-		let today = calendar.startOfDay(for: Date())
-		let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86400)
-		
-		return moodEntries.contains { entry in
-			entry.date >= today && entry.date < tomorrow
-		}
-	}
 	
         /// 记录情绪并关闭弹窗
         func recordMoodOnLaunch(value: Int? = nil) {
@@ -442,14 +429,14 @@ final class AppViewModel: ObservableObject {
 
 	func addMoodEntry(
 		value: Int,
-		source: MoodEntry.Source = .appOpen,
+		source: MoodEntry.MoodSource = .appOpen,
 		delta: Int? = nil,
 		relatedTaskCategory: TaskCategory? = nil,
 		relatedWeather: WeatherType? = nil
 	) {
 		let entry = MoodEntry(
 			value: value,
-			source: source,
+			source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
 			delta: delta,
 			relatedTaskCategory: relatedTaskCategory,
 			relatedWeather: relatedWeather ?? weatherReport?.currentWeather
