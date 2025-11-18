@@ -121,41 +121,42 @@ struct TasksView: View {
 
 /// 任务行组件 - 显示不同状态的按钮和倒计时
 private struct TaskRow: View {
-	let task: UserTask
-	let appModel: AppViewModel
-	let viewModel: TasksViewModel
-	@State private var remainingTime: TimeInterval = 0
-	@State private var timer: Timer?
+        let task: UserTask
+        let appModel: AppViewModel
+        let viewModel: TasksViewModel
+        @State private var remainingTime: TimeInterval = 0
+        @State private var timer: Timer?
 	
 	var body: some View {
 		HStack {
 			VStack(alignment: .leading, spacing: 6) {
 				Text(task.title)
 					.appFont(FontTheme.headline)
-				Text(viewModel.badge(for: task))
-					.appFont(FontTheme.caption)
-					.foregroundStyle(.secondary)
-				
-				// 显示倒计时
-				if task.status == .started, let canComplete = task.canCompleteAfter {
-					Text(formatRemainingTime(until: canComplete))
-						.appFont(FontTheme.caption)
-						.foregroundStyle(.orange)
-				}
-			}
-			Spacer()
+                                Text(viewModel.badge(for: task))
+                                        .appFont(FontTheme.caption)
+                                        .foregroundStyle(.secondary)
+
+                                // 显示倒计时
+                                if task.status == .started, let canComplete = task.canCompleteAfter {
+                                        Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
+                                                .appFont(FontTheme.caption)
+                                                .foregroundStyle(.orange)
+                                }
+                        }
+                        Spacer()
 			
 			// 根据状态显示不同按钮
 			taskActionButton
-		}
-		.padding(.vertical, 6)
-		.onAppear {
-			startTimerIfNeeded()
-		}
-		.onDisappear {
-			stopTimer()
-		}
-	}
+                }
+                .padding(.vertical, 6)
+                .onAppear {
+                        remainingTime = max(0, task.canCompleteAfter?.timeIntervalSinceNow ?? 0)
+                        startTimerIfNeeded()
+                }
+                .onDisappear {
+                        stopTimer()
+                }
+        }
 	
 	@ViewBuilder
 	private var taskActionButton: some View {
@@ -206,10 +207,10 @@ private struct TaskRow: View {
 		}
 	}
 	
-	private func formatRemainingTime(until date: Date) -> String {
-		let remaining = max(0, date.timeIntervalSinceNow)
-		let minutes = Int(remaining) / 60
-		let seconds = Int(remaining) % 60
+        private func formatRemainingTime(_ interval: TimeInterval) -> String {
+                let remaining = max(0, interval)
+                let minutes = Int(remaining) / 60
+                let seconds = Int(remaining) % 60
 		
 		if minutes > 0 {
 			return String(format: "还需 %d:%02d", minutes, seconds)
@@ -218,16 +219,16 @@ private struct TaskRow: View {
 		}
 	}
 	
-	private func startTimerIfNeeded() {
-		guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
-		
-		timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-			remainingTime = max(0, canComplete.timeIntervalSinceNow)
-			if remainingTime <= 0 {
-				stopTimer()
-			}
-		}
-	}
+        private func startTimerIfNeeded() {
+                guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
+
+                timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                        remainingTime = max(0, canComplete.timeIntervalSinceNow)
+                        if remainingTime <= 0 {
+                                stopTimer()
+                        }
+                }
+        }
 	
 	private func stopTimer() {
 		timer?.invalidate()

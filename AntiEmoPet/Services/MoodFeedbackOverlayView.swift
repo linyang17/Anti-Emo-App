@@ -44,103 +44,75 @@ struct MoodFeedbackOverlayView: View {
 	let taskCategory: TaskCategory
 	let onComplete: (Int) -> Void
 	
-	@State private var selectedOption: FeedbackOption?
-	
-	var body: some View {
-		ZStack {
-			// 背景遮罩
-			Color.black.opacity(0.4)
-				.ignoresSafeArea()
-			
-			VStack(spacing: 24) {
-				// 标题
-				VStack(spacing: 8) {
-					Image(systemName: "checkmark.circle.fill")
-						.font(.system(size: 48))
-						.foregroundStyle(.green)
-					
-					Text("Task completed!")
-						.font(.title2.weight(.bold))
-					
-					Text("How do you feel now?")
-						.font(.body)
-						.foregroundStyle(.secondary)
-				}
-				
-				// 选项按钮
-				VStack(spacing: 12) {
-					ForEach(FeedbackOption.allCases) { option in
-						FeedbackButton(
-							option: option,
-							isSelected: selectedOption == option
-						) {
-							withAnimation(.spring(response: 0.3)) {
-								selectedOption = option
-							}
-							// 给用户短暂的视觉反馈后自动完成
-							DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-								onComplete(option.rawValue)
-							}
-						}
-					}
-				}
-				.padding(.horizontal, 4)
-			}
-			.padding(32)
-			.background(
-				RoundedRectangle(cornerRadius: 24, style: .continuous)
-					.fill(.ultraThinMaterial)
-			)
-			.shadow(radius: 24)
-			.padding(24)
-		}
-	}
+        @State private var selectedOption: FeedbackOption?
+
+        var body: some View {
+                ZStack(alignment: .center) {
+                        // 背景遮罩
+                        Color.black.opacity(0.4)
+                                .ignoresSafeArea()
+
+                        VStack(spacing: 20) {
+                                VStack(spacing: 8) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                                .font(.system(size: 48))
+                                                .foregroundStyle(.green)
+
+                                        Text("Task completed!")
+                                                .font(.title2.weight(.bold))
+
+                                        Text("How do you feel now?")
+                                                .font(.body)
+                                                .foregroundStyle(.secondary)
+                                }
+
+                                HStack(spacing: 16) {
+                                        ForEach(FeedbackOption.allCases) { option in
+                                                FeedbackButton(
+                                                        option: option,
+                                                        isSelected: selectedOption == option
+                                                ) {
+                                                        withAnimation(.spring(response: 0.3)) {
+                                                                selectedOption = option
+                                                        }
+                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                                                onComplete(option.rawValue)
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                        .padding(28)
+                        .background(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .fill(.ultraThinMaterial)
+                        )
+                        .shadow(radius: 24)
+                        .padding(.horizontal, 32)
+                }
+        }
 }
 
 /// 反馈按钮组件
 private struct FeedbackButton: View {
-	let option: MoodFeedbackOverlayView.FeedbackOption
+        let option: MoodFeedbackOverlayView.FeedbackOption
 	let isSelected: Bool
-	let action: () -> Void
-	
-	var body: some View {
-		Button(action: action) {
-			HStack(spacing: 16) {
-				Image(systemName: option.icon)
-					.font(.title3)
-					.foregroundStyle(option.color)
-					.frame(width: 32)
-				
-				Text(option.label)
-					.font(.headline)
-					.foregroundStyle(.primary)
-				
-				Spacer()
-				
-				// 选中状态指示
-				if isSelected {
-					Image(systemName: "checkmark")
-						.font(.body.weight(.bold))
-						.foregroundStyle(option.color)
-						.transition(.scale.combined(with: .opacity))
-				}
-			}
-			.padding(.horizontal, 20)
-			.padding(.vertical, 16)
-			.background(
-				RoundedRectangle(cornerRadius: 16, style: .continuous)
-					.fill(isSelected ? option.color.opacity(0.1) : Color(.systemGray6))
-			)
-			.overlay(
-				RoundedRectangle(cornerRadius: 16, style: .continuous)
-					.strokeBorder(
-						isSelected ? option.color : Color.clear,
-						lineWidth: 2
-					)
-			)
-		}
-		.buttonStyle(.plain)
-	}
+        let action: () -> Void
+
+        var body: some View {
+                Button(action: action) {
+                        Image(systemName: option.icon)
+                                .font(.title2.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 56, height: 56)
+                                .background(option.color.opacity(0.9), in: Circle())
+                                .overlay(
+                                        Circle()
+                                                .strokeBorder(isSelected ? Color.white.opacity(0.9) : Color.clear, lineWidth: 3)
+                                )
+                }
+                .buttonStyle(.plain)
+        }
 }
 
 // MARK: - Preview

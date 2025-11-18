@@ -131,17 +131,20 @@ extension OnboardingView {
 		}
 	}
 
-	func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
-		viewModel.updateLocationStatus(new)
-		guard step == .access else { return }
-		switch new {
-		case .authorizedAlways, .authorizedWhenInUse:
-			isProcessingFinalStep = false
-		case .denied, .restricted:
-			viewModel.enableLocationAndWeather = false
-			isProcessingFinalStep = false
-			showLocationDeniedAlert = true
-		default: break
+        func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
+                viewModel.updateLocationStatus(new)
+                guard step == .access else { return }
+                switch new {
+                case .authorizedAlways, .authorizedWhenInUse:
+                        viewModel.enableLocationAndWeather = true
+                        isProcessingFinalStep = false
+                        locationService.requestLocationOnce()
+                        requestWeatherAndNotifications()
+                case .denied, .restricted:
+                        viewModel.enableLocationAndWeather = false
+                        isProcessingFinalStep = false
+                        showLocationDeniedAlert = true
+                default: break
 		}
 	}
 
