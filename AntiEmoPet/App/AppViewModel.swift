@@ -163,7 +163,6 @@ final class AppViewModel: ObservableObject {
 
                 dailyMetricsCache = makeDailyActivityMetrics(days: 7)
                 recordMoodOnLaunch()
-				hasLoggedMoodToday = true
         }
 
         /// 检查今天是否已记录情绪，如果没有则显示弹窗
