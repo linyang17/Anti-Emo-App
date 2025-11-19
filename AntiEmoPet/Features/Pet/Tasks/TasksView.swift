@@ -20,6 +20,7 @@ struct TasksView: View {
     @State private var activeReward: RewardEvent?
     @State private var rewardOpacity: Double = 0
     @State private var bannerTask: Task<Void, Never>?
+    @State private var showMoodFeedback = false
     let lastMood: Int
 
     var body: some View {
@@ -48,6 +49,19 @@ struct TasksView: View {
                         .opacity(rewardOpacity)
                         .padding(.top, 12)
                         .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(2)
+                }
+                
+                if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
+                    ZStack {
+                         Color.black.opacity(0.4).ignoresSafeArea()
+                             .onTapGesture { } // Block taps
+                         MoodFeedbackOverlayView(taskCategory: task.category)
+                             .frame(maxWidth: 360)
+                             .padding()
+                    }
+                    .transition(.opacity)
+                    .zIndex(10)
                 }
             }
         }
@@ -66,6 +80,20 @@ struct TasksView: View {
                 try? await Task.sleep(nanoseconds: 350_000_000)
                 activeReward = nil
                 appModel.consumeRewardBanner()
+                
+                if appModel.pendingMoodFeedbackTask != nil {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    withAnimation {
+                        showMoodFeedback = true
+                    }
+                }
+            }
+        }
+        .onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
+            if newValue == nil {
+                withAnimation {
+                    showMoodFeedback = false
+                }
             }
         }
         .onDisappear {
