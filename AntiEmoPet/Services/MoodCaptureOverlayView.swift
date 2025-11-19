@@ -12,66 +12,69 @@ struct MoodCaptureOverlayView: View {
 	@State private var value: Int? = nil
 	let onSave: (Int) -> Void
 
-	// MARK: - Body
-	var body: some View {
-		ZStack {
-			VStack(spacing: 24) {
-				// Fixed title
-				Text("How do you feel now?")
-					.font(.headline)
-					.foregroundStyle(.primary)
+        // MARK: - Body
+        var body: some View {
+                ZStack {
+                        Color.black.opacity(0.45)
+                                .ignoresSafeArea()
 
-				// Slider section
-				VStack(spacing: 12) {
-					HStack {
-						Text("10")
-							.foregroundStyle(.secondary)
-							.font(.caption)
-						Spacer()
-						Text(value != nil ? "\(value!)" : "--")
-							.font(.title2)
-							.fontWeight(.semibold)
-						Spacer()
-						Text("100")
-							.foregroundStyle(.secondary)
-							.font(.caption)
-					}
+                        VStack(spacing: 24) {
+                                // Fixed title
+                                Text("How do you feel now?")
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
 
-					Slider(
-						value: Binding(
-							get: { Double(value ?? 50) }, // midpoint visual start
-							set: { newValue in
-								let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
-								let rounded = round(clamped / Constants.step) * Constants.step
-								value = Int(rounded)
-							}
-						),
-						in: Constants.minValue...Constants.maxValue,
-						step: Constants.step
-					)
-				}
+                                // Slider section
+                                VStack(spacing: 12) {
+                                        HStack {
+                                                Text("10")
+                                                        .foregroundStyle(.secondary)
+                                                        .font(.caption)
+                                                Spacer()
+                                                Text(value != nil ? "\(value!)" : "--")
+                                                        .font(.title2)
+                                                        .fontWeight(.semibold)
+                                                Spacer()
+                                                Text("100")
+                                                        .foregroundStyle(.secondary)
+                                                        .font(.caption)
+                                        }
 
-				// Save button
-				Button(action: {
-					if let value = value {
-						onSave(value)
-					}
-				}) {
-					Text("Save")
-						.font(.headline)
-						.foregroundStyle(.white)
-						.frame(maxWidth: .infinity)
-						.padding(.vertical, 12)
-						.background(
-							value != nil ? Color.blue : Color.gray,
-							in: RoundedRectangle(cornerRadius: 12)
-						)
-				}
-				.disabled(value == nil)
-			}
-			.padding(24)
-			.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-			.padding(32)
-		}
-	}
+                                        Slider(
+                                                value: Binding(
+                                                        get: { Double(value ?? 50) }, // midpoint visual start
+                                                        set: { newValue in
+                                                                let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
+                                                                let rounded = round(clamped / Constants.step) * Constants.step
+                                                                value = Int(rounded)
+                                                        }
+                                                ),
+                                                in: Constants.minValue...Constants.maxValue,
+                                                step: Constants.step
+                                        )
+                                }
+
+                                // Save button
+                                Button(action: {
+                                        if let value = value {
+                                                onSave(value)
+                                        }
+                                }) {
+                                        Text("Save")
+                                                .font(.headline)
+                                                .foregroundStyle(.white)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 12)
+                                                .background(
+                                                        value != nil ? Color.blue : Color.gray,
+                                                        in: RoundedRectangle(cornerRadius: 12)
+                                                )
+                                }
+                                .disabled(value == nil)
+                        }
+                        .padding(24)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                        .padding(32)
+                }
+        }
 }

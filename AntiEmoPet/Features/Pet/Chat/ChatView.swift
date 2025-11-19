@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatView: View {
         @EnvironmentObject private var appModel: AppViewModel
         @StateObject private var viewModel = ChatViewModel()
+        @FocusState private var isInputFocused: Bool
 
         var body: some View {
                 VStack {
@@ -11,16 +12,16 @@ struct ChatView: View {
                                         LazyVStack(alignment: .leading, spacing: 12) {
                                                 ForEach(viewModel.messages) { message in
                                                         HStack {
-                                                                if message.role == .pet { Spacer() }
+                                                                if message.role == .user { Spacer() }
                                                                 Text(message.content)
                                                                         .padding(12)
                                                                         .background(
-										RoundedRectangle(cornerRadius: 12)
-											.fill(message.role == .user
-												  ? Color.accentColor.opacity(0.2)
-												  : Color.green.opacity(0.2))
-									)
-                                                                if message.role == .user { Spacer() }
+                                                                                RoundedRectangle(cornerRadius: 12)
+                                                                                        .fill(message.role == .user
+                                                                                                  ? Color.accentColor.opacity(0.2)
+                                                                                                  : Color.green.opacity(0.2))
+                                                                        )
+                                                                if message.role == .pet { Spacer() }
                                                         }
                                                 }
                                         }
@@ -38,8 +39,10 @@ struct ChatView: View {
                         HStack {
                                 TextField("Text here…", text: $viewModel.currentInput)
                                         .textFieldStyle(.roundedBorder)
+                                        .focused($isInputFocused)
                                 Button("Send") {
                                         viewModel.sendCurrentMessage()
+                                        isInputFocused = true
                                 }
                                 .disabled(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
@@ -48,6 +51,7 @@ struct ChatView: View {
                 .navigationTitle("Chat")
                 .task {
                         await viewModel.configureIfNeeded(appModel: appModel)
+                        isInputFocused = true
                 }
         }
 }

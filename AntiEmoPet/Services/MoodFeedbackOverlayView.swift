@@ -45,42 +45,45 @@ struct MoodFeedbackOverlayView: View {
 		}
 	}
 
-	var body: some View {
-		ZStack(alignment: .center) {
-			VStack(spacing: 20) {
-				VStack(spacing: 8) {
-					Text("Task completed!\n")
-						.font(.title2.weight(.bold))
-					Text("Do you feel better now?")
-						.font(.title3)
-						.foregroundStyle(.secondary)
-				}
+        var body: some View {
+                ZStack(alignment: .center) {
+                        Color.black.opacity(0.45)
+                                .ignoresSafeArea()
 
-				HStack(spacing: 16) {
-					ForEach(FeedbackOption.allCases) { option in
-						FeedbackButton(option: option, isSelected: selectedOption == option) {
-							withAnimation(.spring(response: 0.3)) {
-								selectedOption = option
-							}
-							DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-								appModel.submitMoodFeedback(
-										delta: option.rawValue,
-										for: taskCategory
-									)
-							}
-						}
-					}
-				}
-			}
-			.padding(28)
-			.background(
-				RoundedRectangle(cornerRadius: 24, style: .continuous)
-					.fill(.ultraThinMaterial)
-			)
-			.shadow(radius: 12)
-			.padding(.horizontal, 32)
-		}
-	}
+                        VStack(spacing: 20) {
+                                VStack(spacing: 8) {
+                                        Text("Task completed!\n")
+                                                .font(.title2.weight(.bold))
+                                        Text("Do you feel better now?")
+                                                .font(.title3)
+                                                .foregroundStyle(.secondary)
+                                }
+
+                                HStack(spacing: 16) {
+                                        ForEach(FeedbackOption.allCases) { option in
+                                                FeedbackButton(option: option, isSelected: selectedOption == option) {
+                                                        withAnimation(.spring(response: 0.3)) {
+                                                                selectedOption = option
+                                                        }
+                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                                                appModel.submitMoodFeedback(
+                                                                                delta: option.rawValue,
+                                                                                for: taskCategory
+                                                                        )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                        .padding(28)
+                        .background(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .fill(.ultraThinMaterial)
+                        )
+                        .shadow(radius: 12)
+                        .padding(.horizontal, 32)
+                }
+        }
 	
 }
 

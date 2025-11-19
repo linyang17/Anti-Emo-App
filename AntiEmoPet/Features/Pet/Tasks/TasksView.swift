@@ -20,7 +20,7 @@ struct TasksView: View {
     @State private var activeReward: RewardEvent?
     @State private var rewardOpacity: Double = 0
     @State private var bannerTask: Task<Void, Never>?
-	let lastMood: Int
+    let lastMood: Int
 
     var body: some View {
         ZStack {
@@ -71,33 +71,8 @@ struct TasksView: View {
         .onDisappear {
             bannerTask?.cancel()
         }
-            
-			// 任务完成后的情绪反馈弹窗
-			if let task = appModel.pendingMoodFeedbackTask {
-				ZStack {
-					// Centered floating popup
-					MoodFeedbackOverlayView(
-						taskCategory: task.category
-					)
-					.frame(maxWidth: 360)
-					.padding()
-					.background(
-						RoundedRectangle(cornerRadius: 24, style: .continuous)
-							.fill(.ultraThinMaterial)
-							.shadow(radius: 16)
-					)
-					.transition(
-						.asymmetric(
-							insertion: .scale(scale: 0.9).combined(with: .opacity),
-							removal: .opacity
-						)
-					)
-					.zIndex(999)
-				}
-				.animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
-			}
-        }
     }
+}
 
     private var header: some View {
         HStack {
@@ -265,8 +240,10 @@ struct RewardToastView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Energy +\(event.energy)")
                 Text("Xp +\(event.xp)")
-				Text("You got some snack in the bag!")
-						.font(.caption2)
+                if let snack = event.snackName {
+                    Text("You got \(snack) in the bag!")
+                        .font(.caption2)
+                }
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)
