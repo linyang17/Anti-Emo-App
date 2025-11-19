@@ -412,16 +412,16 @@
 **问题**: PRD要求1-5级解锁需要数值：10，25，50，75，100。后续每一级为100。当前`PetViewModel.xpRequirement()`的实现可能不完整。
 
 **具体实施步骤**:
-- [x] 检查并更新`PetViewModel.xpRequirement(for:)`方法：
-  - Level 1: 10
-  - Level 2: 25
-  - Level 3: 50
-  - Level 4: 75
-  - Level 5: 100
-  - Level 6+: 100
-- [x] 更新`PetEngine.awardXP()`方法：
+- 检查并更新`PetViewModel.xpRequirement(for:)`方法：
+  - Level 1: 10 (当前: 0/10)
+  - Level 2: 25 (当前: 10/25，升级后应该是0/25)
+  - Level 3: 50 (当前: 25/50)
+  - Level 4: 75 (当前: 50/75)
+  - Level 5: 100 (当前: 75/100)
+  - Level 6+: 100 (当前: 100/100)
+- 更新`PetEngine.awardXP()`方法：
   - 确保升级逻辑正确
-  - 确保经验值超过升级数值后余量继续加到新的等级中
+  - 确保经验值超过升级数值后余量继续加到新的等级中（LV1：0/10 +25之后应该是LV2:15/25）
 
 **相关文件路径**:
 - `AntiEmoPet/Features/Pet/PetViewModel.swift` ✅
