@@ -83,11 +83,6 @@ final class AppViewModel: ObservableObject {
 		userStats?.totalEnergy ?? 0
 	}
 
-	var allTasks: [UserTask] {
-		// MVP 阶段：全部任务等于今日任务列表
-		// 未来如加入历史/模板任务库，只需在此改为从 StorageService / TaskGenerator 获取
-		todayTasks
-	}
 
 	/// Update app language and persist to UserDefaults.
 	func setLanguage(_ code: String) {

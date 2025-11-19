@@ -47,7 +47,7 @@ struct StatsRhythmSection: View {
 
 	private func refreshRhythms() {
 		Task(priority: .userInitiated) {
-			await analysis.rhythmAnalysis(for: appModel.moodEntries, tasks: appModel.allTasks, sunEvents: appModel.sunEvents)
+			await analysis.rhythmAnalysis(for: appModel.moodEntries, sunEvents: appModel.sunEvents)
 		}
 	}
 

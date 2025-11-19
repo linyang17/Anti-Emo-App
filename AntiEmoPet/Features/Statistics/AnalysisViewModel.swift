@@ -34,14 +34,14 @@ final class AnalysisViewModel: ObservableObject {
     @Published var daylightLengthData: [Int: Double] = [:]
 
     // MARK: - Unified Wrapper Function
-    func rhythmAnalysis(for entries: [MoodEntry], tasks: [UserTask], sunEvents: [Date: SunTimes]) -> (
+    func rhythmAnalysis(for entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> (
         timeSlot: [TimeSlot: Double],
         weather: [WeatherType: Double],
         daylight: String,
         dayPeriod: [DayPeriod: Double]
     ) {
         let slot = timeSlotMoodAverages(entries: entries)
-        let weather = weatherMoodAverages(entries: entries, tasks: tasks)
+        let weather = weatherMoodAverages(entries: entries)
         let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: sunEvents)
         let text = daylightCorrelationText(slotAverages: slot)
         let heatmap = timeSlotAndWeekdayMoodAverages(entries: entries)
@@ -78,41 +78,24 @@ final class AnalysisViewModel: ObservableObject {
     }
 
 	// 2) 情绪与天气关联度分析：
-    private func weatherMoodAverages(entries: [MoodEntry], tasks: [UserTask]) -> [WeatherType: Double] {
+    private func weatherMoodAverages(entries: [MoodEntry]) -> [WeatherType: Double] {
         guard !entries.isEmpty else { return [:] }
 
-        let dayGroups = Dictionary(grouping: entries) { cal.startOfDay(for: $0.date) }
-        let dayAverages = dayGroups.mapValues { group -> Double in
-            let total = group.reduce(0) { $0 + $1.value }
-            return Double(total) / Double(group.count)
-        }
-
-        guard !dayAverages.isEmpty else { return [:] }
-
-        let tasksByDay = Dictionary(grouping: tasks) { cal.startOfDay(for: $0.date) }
-
-        var accumulator: [WeatherType: (sum: Double, count: Int)] = [:]
-        for (day, average) in dayAverages {
-            guard let dominantWeather = dominantWeather(for: tasksByDay[day]) else { continue }
-            var bucket = accumulator[dominantWeather] ?? (0, 0)
-            bucket.sum += average
+        var accumulator: [WeatherType: (sum: Int, count: Int)] = [:]
+        
+        for entry in entries {
+            guard let weather = entry.weather else { continue }
+            var bucket = accumulator[weather] ?? (0, 0)
+            bucket.sum += entry.value
             bucket.count += 1
-            accumulator[dominantWeather] = bucket
+            accumulator[weather] = bucket
         }
 
         return accumulator.reduce(into: [:]) { result, element in
             let (weather, bucket) = element
             guard bucket.count > 0 else { return }
-            result[weather] = bucket.sum / Double(bucket.count)
+            result[weather] = Double(bucket.sum) / Double(bucket.count)
         }
-    }
-
-    private func dominantWeather(for tasks: [UserTask]?) -> WeatherType? {
-        guard let tasks, !tasks.isEmpty else { return nil }
-        let counts = tasks.reduce(into: [WeatherType: Int]()) { partial, task in
-            partial[task.weatherType, default: 0] += 1
-        }
-        return counts.max(by: { $0.value < $1.value })?.key
     }
 
 	// 3) TODO: 情绪与日照时长关联度分析：
@@ -184,8 +167,7 @@ final class AnalysisViewModel: ObservableObject {
             var bucket = slotMap[weekday] ?? (0, 0)
             bucket.sum += entry.value
             bucket.count += 1
-            slotMap[weekday] = bucket
-            accumulator[slot] = slotMap
+            accumulator[slot] = bucket
         }
 
         var result: [TimeSlot: [Int: Double]] = [:]

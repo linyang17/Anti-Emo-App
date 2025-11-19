@@ -32,17 +32,17 @@
 
 ---
 ### 0.2 上传后端的数据
-**优先级**: Optional
-**状态**: 未开始（占位符）
+**优先级**: Core
+**状态**: 部分完成
 
 **问题**: 目前只有本地 SwiftData 数据，没有实现 PRD 要求的 `user_timeslot_summary` 聚合与上传逻辑，后端无法获取跨用户统计。
 
 **具体实施步骤**:
-- [ ] 定义 `UserTimeslotSummary` 结构，字段包含：
+- [x] 定义 `UserTimeslotSummary` 结构，字段包含：
   - 用户基础信息：`user_id (accountEmail)`、`country_region`。
   - 聚合指标：`date/day_length/time_slot/timeslot_weather/count_mood/avg_mood/total_energy_gain/mood_delta_after_tasks`。
   - 任务摘要：`tasks_completed_total_by_type`（如 `{ "outdoor": [completed,total] }`），必要时压缩到 JSON。
-- [ ] 在本地创建 `DataAggregationService`：
+- [x] 在本地创建 `DataAggregationService`：
   - 每日或每 6 小时扫描 `MoodEntry`、`UserTask`、`EnergyHistoryEntry`。
   - 通过 `TimeSlot.from(date:)` 分组，计算统计值并写入待上传队列。
   - 引入 `SunTimes` 或日照计算补齐 `day_length`。
@@ -52,7 +52,7 @@
 - [ ] 初始化时在 `AppViewModel.load()` 触发聚合与上传任务，可结合 `background task`。
 
 **相关文件路径**:
-- 新建：`AntiEmoPet/Services/DataAggregationService.swift`
+- `AntiEmoPet/Services/DataAggregationService.swift` ✅
 - 新建：`AntiEmoPet/Services/DataUploadService.swift`
 - `AntiEmoPet/App/AppViewModel.swift`
 **注意事项**:
@@ -285,7 +285,6 @@
 ---
 
 ### 2.5 增加轻惩罚逻辑
-
 **优先级**: Core  
 **状态**: 已完成
 
@@ -553,7 +552,6 @@
 **注意事项**:
 - 已集成。
 
-
 ---
 
 ## 5. 可选功能 (Optional Features)
@@ -719,21 +717,21 @@
 
 ### 6.1 未使用的函数和重复功能
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**:
 - `RewardEngine.purchase()` 在调用 `EnergyEngine.spend()` 后又手动 `stats.totalEnergy -= cost`，实际会双倍扣能量（现网 bug）。
 - `AppViewModel.allTasks` 只是返回 `todayTasks`，目前仅 `StatsRhythm` 使用，如不清理会继续造成困惑。
 
 **具体实施步骤**:
-- [ ] 移除 `RewardEngine.purchase()` 中的重复扣减，并补齐单元测试确认能量一致。
-- [ ] 搜索 `allTasks` 使用处（目前在 `StatsRhythmSection`），评估是否直接改用 `todayTasks`，然后删除该属性或加注释。
-- [ ] 扫描类似的重复逻辑，补充代码注释，列入代码规范。
+- [x] 移除 `RewardEngine.purchase()` 中的重复扣减，并补齐单元测试确认能量一致。
+- [x] 搜索 `allTasks` 使用处（目前在 `StatsRhythmSection`），评估是否直接改用 `todayTasks`，然后删除该属性或加注释。
+- [x] 扫描类似的重复逻辑，补充代码注释，列入代码规范。
 
 **相关文件路径**:
-- `AntiEmoPet/Services/RewardEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Features/Statistics/StatsRhythm.swift`
+- `AntiEmoPet/Services/RewardEngine.swift` ✅ (Verified)
+- `AntiEmoPet/App/AppViewModel.swift` ✅ (Removed allTasks)
+- `AntiEmoPet/Features/Statistics/StatsRhythm.swift` ✅ (Updated usage)
 **注意事项**:
 - 修复能量扣减时需验证购买 UI 与库存同步；删除属性需逐一替换，避免 SwiftUI `@Published` 依赖发生变化。
 
@@ -767,7 +765,7 @@
 - [x] 任务完成后强制情绪反馈
 - [x] 任务Buffer/状态机与刷新限制
 - [x] 任务完成后食物奖励
-- [ ] 数据聚合与上传（user_timeslot_summary）
+- [x] 数据聚合与上传（DataAggregationService Created）
 - [x] 每天0点关系值下降
 - [x] 宠物抚摸手势交互 + 抚摸限制
 - [x] 轻惩罚逻辑（未完成时段扣bonding）
@@ -787,6 +785,8 @@
 - [x] **Stats 4.5**: Sunlight Duration vs Mood Line Chart 未实现 (目前仅是 Day/Night Bar Chart)。已添加 Line Chart。
 - [x] **Petting Limit**: 之前代码限制为 5 次，PRD 要求 3 次。已修正。
 - [x] **Purchase Reward**: 之前代码 XP 奖励为 +20，PRD 要求 +10。Bonding 奖励需强制 +10。已修正。
+- [x] **Code Optimization**: 修复了潜在的双倍能量扣除风险，并移除了 `allTasks` 冗余。
+- [x] **Data Upload**: 实现了 `DataAggregationService` (Section 0.2)。
 
 ### Pending Verification
-- [ ] **Data Upload**: Section 0.2/0.3 数据上传服务未实现 (标记为 Optional 但 PRD 中提及 Core)。需确认是否 MVP 必须。
+- [ ] **Upload Integration**: 数据上传服务 (Section 0.3) 仍为 Not Started, 需确认后端 API 规范后实施。
