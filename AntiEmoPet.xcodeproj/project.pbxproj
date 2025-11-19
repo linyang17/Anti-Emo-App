@@ -35,7 +35,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		5A145C1E2ECC7F7100DD7DC2 /* Exceptions for "AntiEmoPet" folder in "AntiEmoPet" target */ = {
+		5A145ED32ECDD9FC00DD7DC2 /* Exceptions for "AntiEmoPet" folder in "AntiEmoPet" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -48,7 +48,7 @@
 		5A4F406E2EBDAB6500F41BD7 /* AntiEmoPet */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				5A145C1E2ECC7F7100DD7DC2 /* Exceptions for "AntiEmoPet" folder in "AntiEmoPet" target */,
+				5A145ED32ECDD9FC00DD7DC2 /* Exceptions for "AntiEmoPet" folder in "AntiEmoPet" target */,
 			);
 			path = AntiEmoPet;
 			sourceTree = "<group>";
@@ -449,7 +449,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -489,7 +489,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

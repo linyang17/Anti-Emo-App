@@ -77,10 +77,10 @@ final class PetEngine {
 		awardXP(xpGain, to: pet)
 	}
 
-        func applyPettingReward() {
-                guard let pet else { return }
-                updateBonding(for: pet, bondingAddValue: 1)
-        }
+	func applyPettingReward() {
+		guard let pet else { return }
+		updateBonding(for: pet, bondingAddValue: 1)
+	}
 
 	// MARK: - 核心计算逻辑
 	private func updateBonding(for pet: Pet, bondingAddValue: Int) {

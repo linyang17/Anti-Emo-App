@@ -3,6 +3,8 @@ import CoreLocation
 import MapKit
 import Combine
 
+// MARK: - Codable Cache Record
+
 private struct CityCacheRecord: Codable {
 	let latitude: Double
 	let longitude: Double
@@ -10,37 +12,48 @@ private struct CityCacheRecord: Codable {
 	let timestamp: Date
 }
 
+// MARK: - Location Service
+
 @MainActor
 final class LocationService: NSObject, ObservableObject {
+
+	// MARK: Published State
 
 	@Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 	@Published private(set) var lastKnownLocation: CLLocation?
 	@Published private(set) var lastKnownCity: String = ""
-	@Published private(set) var weatherPermissionGranted: Bool = false
+	@Published private(set) var weatherPermissionGranted = false
+
+	// MARK: Private Properties
 
 	private let manager = CLLocationManager()
+	private let geocoder = CLGeocoder()
 
-	// MARK: - Reverse Geocode Cache
-	// 缓存范围扩大：半径 20 公里，减少频繁反查
-	private let cacheRadius: CLLocationDistance = 20000
+	// Cache
+	private let cacheRadius: CLLocationDistance = 20_000      // 20 km
+	private let minReverseInterval: TimeInterval = 60 * 60 * 3 // 3 hours
 	private var cityCache: (coord: CLLocationCoordinate2D, city: String, timestamp: Date)?
 	private var lastReverseAt: Date?
-	private let minReverseInterval: TimeInterval = 60*60*3 // 3小时内不重复反查
-	private let cityCacheDefaultsKey = "LocationService.cityCache"
+	private let cityCacheKey = "LocationService.cityCache"
 
-	// MARK: - Init
-		override init() {
-			super.init()
-			manager.delegate = self
-			// 一次性定位 + 低精度 + 较大距离过滤
-			manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-			manager.distanceFilter = 1000
-			manager.activityType = .other
-			authorizationStatus = manager.authorizationStatus
-			loadCityCacheFromDisk()
-		}
+	// MARK: - Initialization
+
+	override init() {
+		super.init()
+		configureManager()
+		loadCityCacheFromDisk()
+	}
+
+	private func configureManager() {
+		manager.delegate = self
+		manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+		manager.distanceFilter = 1_000
+		manager.activityType = .other
+		authorizationStatus = manager.authorizationStatus
+	}
 
 	// MARK: - Permissions
+
 	func requestLocAuthorization() {
 		manager.requestWhenInUseAuthorization()
 	}
@@ -49,107 +62,113 @@ final class LocationService: NSObject, ObservableObject {
 		weatherPermissionGranted = granted
 	}
 
-	// MARK: - One-shot Location
+	// MARK: - Location Operations
+
 	func requestLocationOnce() {
 		manager.requestLocation()
 	}
-	
-	/// 如有持续跟踪需求，再使用以下两个
-	func startUpdating() { manager.startUpdatingLocation() }
-	func stopUpdating()  { manager.stopUpdatingLocation()  }
+
+	func startUpdating() {
+		manager.startUpdatingLocation()
+	}
+
+	func stopUpdating() {
+		manager.stopUpdatingLocation()
+	}
 
 	// MARK: - Cache Helpers
+
 	private func cachedCityIfValid(for location: CLLocation) -> String? {
-		guard let cache = cityCache else { return nil }
-		let cachedLoc = CLLocation(latitude: cache.coord.latitude, longitude: cache.coord.longitude)
-		if location.distance(from: cachedLoc) <= cacheRadius {
-			return cache.city
-		}
-		return nil
+		guard let cityCache else { return nil }
+		let cachedLoc = CLLocation(latitude: cityCache.coord.latitude, longitude: cityCache.coord.longitude)
+		guard location.distance(from: cachedLoc) <= cacheRadius else { return nil }
+		return cityCache.city
 	}
 
-		private func updateCityCache(city: String, for location: CLLocation) {
-			cityCache = (coord: location.coordinate, city: city, timestamp: Date())
-			saveCityCacheToDisk()
+	private func updateCityCache(city: String, for location: CLLocation) {
+		cityCache = (location.coordinate, city, Date())
+		saveCityCacheToDisk()
+	}
+
+	private func saveCityCacheToDisk() {
+		guard let cityCache else { return }
+		let record = CityCacheRecord(
+			latitude: cityCache.coord.latitude,
+			longitude: cityCache.coord.longitude,
+			city: cityCache.city,
+			timestamp: cityCache.timestamp
+		)
+		if let data = try? JSONEncoder().encode(record) {
+			UserDefaults.standard.set(data, forKey: cityCacheKey)
+		}
+	}
+
+	private func loadCityCacheFromDisk() {
+		guard
+			let data = UserDefaults.standard.data(forKey: cityCacheKey),
+			let record = try? JSONDecoder().decode(CityCacheRecord.self, from: data)
+		else { return }
+
+		cityCache = (
+			coord: CLLocationCoordinate2D(latitude: record.latitude, longitude: record.longitude),
+			city: record.city,
+			timestamp: record.timestamp
+		)
+		lastKnownCity = record.city
+	}
+
+	// MARK: - Reverse Geocoding
+
+	/// Reverse geocodes a location into a city name, using cache when possible.
+	func reverseGeocodeIfNeeded(for location: CLLocation) async -> String {
+		if let cached = cachedCityIfValid(for: location) {
+			return cached
 		}
 
-		private func saveCityCacheToDisk() {
-			guard let cache = cityCache else { return }
-			let record = CityCacheRecord(latitude: cache.coord.latitude,
-										 longitude: cache.coord.longitude,
-										 city: cache.city,
-										 timestamp: cache.timestamp)
-			do {
-				let data = try JSONEncoder().encode(record)
-				UserDefaults.standard.set(data, forKey: cityCacheDefaultsKey)
-			} catch {
-				// ignore
-			}
+		if let lastAt = lastReverseAt,
+		   Date().timeIntervalSince(lastAt) < minReverseInterval {
+			return lastKnownCity
 		}
 
-		private func loadCityCacheFromDisk() {
-			guard let data = UserDefaults.standard.data(forKey: cityCacheDefaultsKey) else { return }
-			do {
-				let record = try JSONDecoder().decode(CityCacheRecord.self, from: data)
-				let coord = CLLocationCoordinate2D(latitude: record.latitude, longitude: record.longitude)
-				cityCache = (coord: coord, city: record.city, timestamp: record.timestamp)
-				self.lastKnownCity = record.city
-			} catch {
-				// ignore
-			}
-		}
+		do {
+			let placemarks = try await geocoder.reverseGeocodeLocation(location)
+			guard let placemark = placemarks.first else { return lastKnownCity }
 
-	// MARK: - Reverse Geocoding (iOS 26+ with fallback)
-	/// 将 CLLocation 解析为城市名/行政区名。
-	/// - iOS 26+: 使用 MKReverseGeocodingRequest（新 API）
-	/// - iOS 18–25: 使用 CLGeocoder.async 版本
-		func reverseGeocodeIfNeeded(for location: CLLocation) async -> String {
-			if let cached = cachedCityIfValid(for: location) {
-				return cached
+			let city = placemark.locality ?? placemark.administrativeArea ?? ""
+			if !city.isEmpty {
+				updateCityCache(city: city, for: location)
+				lastReverseAt = Date()
+				lastKnownCity = city
 			}
-			if let lastAt = lastReverseAt, Date().timeIntervalSince(lastAt) < minReverseInterval {
-				return lastKnownCity
-			}
-			/// if #available(iOS 26, *)  用新的API
-			let geocoder = CLGeocoder()
-			do {
-				let placemarks = try await geocoder.reverseGeocodeLocation(location)
-				if let placemark = placemarks.first {
-					let city = placemark.locality ?? placemark.administrativeArea ?? ""
-					if !city.isEmpty {
-						updateCityCache(city: city, for: location)
-						self.lastReverseAt = Date()
-						self.lastKnownCity = city
-					}
-					return city
-				}
-			} catch { }
-			return ""
+			return city
+		} catch {
+			return lastKnownCity
 		}
+	}
 }
 
-// MARK: - CLLocationManagerDelegate
+// MARK: - CLLocationManagerDelegate (Main Thread Safe)
+
 extension LocationService: CLLocationManagerDelegate {
 
-	nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-		Task { @MainActor in
-			self.authorizationStatus = manager.authorizationStatus
-		}
+	func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+		// This callback is always invoked on the main thread by CoreLocation.
+		authorizationStatus = manager.authorizationStatus
 	}
 
-	nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-		// 失败时用上次缓存
+	func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+		// Optionally handle or log errors.
 		// print("Location error:", error.localizedDescription)
 	}
 
-	nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+	func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
 		guard let latest = locations.last else { return }
 
-		Task { @MainActor in
-			self.lastKnownLocation = latest
-		}
+		lastKnownLocation = latest
 
-		Task {
+		// Perform reverse geocoding asynchronously off the main actor.
+		Task.detached(priority: .utility) { [weak self] in
+			guard let self else { return }
 			let city = await self.reverseGeocodeIfNeeded(for: latest)
 			await MainActor.run {
 				self.lastKnownCity = city

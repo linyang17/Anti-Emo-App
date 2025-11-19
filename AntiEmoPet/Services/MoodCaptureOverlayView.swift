@@ -15,8 +15,6 @@ struct MoodCaptureOverlayView: View {
         // MARK: - Body
         var body: some View {
                 ZStack {
-                        Color.black.opacity(0.45)
-                                .ignoresSafeArea()
 
                         VStack(spacing: 24) {
                                 // Fixed title
@@ -29,20 +27,16 @@ struct MoodCaptureOverlayView: View {
                                         HStack {
                                                 Text("10")
                                                         .foregroundStyle(.secondary)
-                                                        .font(.caption)
-                                                Spacer()
-                                                Text(value != nil ? "\(value!)" : "--")
-                                                        .font(.title2)
-                                                        .fontWeight(.semibold)
+                                                        .font(.body)
                                                 Spacer()
                                                 Text("100")
                                                         .foregroundStyle(.secondary)
-                                                        .font(.caption)
+														.font(.body)
                                         }
 
                                         Slider(
                                                 value: Binding(
-                                                        get: { Double(value ?? 50) }, // midpoint visual start
+                                                        get: { Double(value ?? 55) }, // midpoint visual start
                                                         set: { newValue in
                                                                 let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
                                                                 let rounded = round(clamped / Constants.step) * Constants.step

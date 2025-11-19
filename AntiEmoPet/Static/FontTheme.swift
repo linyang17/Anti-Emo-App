@@ -1,54 +1,77 @@
 import SwiftUI
+import UIKit
+
 
 struct FontTheme {
-	static let lineSpacing: CGFloat = 10
-	static let letterSpacing: CGFloat = 0.5
-
-	static func ABeeZee(_ size: CGFloat) -> Font {
-		Font.custom("ABeeZee-Regular", size: size)
+	struct ThemedFont {
+		let font: Font
+		let size: CGFloat
 	}
 
-	// 常用尺寸封装（可随时扩展）
-	static var title: Font { ABeeZee(28) }
-	static var title2: Font { ABeeZee(24) }
-	static var title3: Font { ABeeZee(21) }
-	static var headline: Font { ABeeZee(18) }
-	static var body: Font { ABeeZee(16) }
-	static var subheadline: Font { ABeeZee(14) }
-	static var caption: Font { ABeeZee(12) }
+	static let letterSpacing: CGFloat = 0.25
+
+	// MARK: - 字体加载器
+	static func ABeeZee(_ size: CGFloat) -> ThemedFont {
+		ThemedFont(font: .custom("ABeeZee-Regular", size: size), size: size)
+	}
+
+	// MARK: - 常用字号封装（附带字号信息）
+	static let title       = ABeeZee(28)
+	static let title2      = ABeeZee(24)
+	static let title3      = ABeeZee(21)
+	static let headline    = ABeeZee(18)
+	static let body        = ABeeZee(16)
+	static let subheadline = ABeeZee(14)
+	static let caption     = ABeeZee(12)
+	static let footnote    = ABeeZee(10)
 }
 
+// MARK: - View 扩展（自动计算行距）
 extension View {
-	func appFont(_ type: Font) -> some View {
-		self.font(type)
-			.lineSpacing(FontTheme.lineSpacing)
-			.kerning(FontTheme.letterSpacing)
-	}
-	
-	func appTextDefaults() -> some View {
-		self
-			.font(FontTheme.body)
-			.lineSpacing(FontTheme.lineSpacing)
+	func appFont(_ themed: FontTheme.ThemedFont) -> some View {
+		self.font(themed.font)
+			.lineSpacing(themed.size * 2 / 3)
 			.kerning(FontTheme.letterSpacing)
 	}
 
 	func appFontDefaults() -> some View {
-		self
-			.environment(\.font, FontTheme.body)
+		self.environment(\.font, FontTheme.body.font)
 	}
 }
 
+// MARK: - Text 扩展（更简洁调用）
 extension Text {
-	/// 统一应用：ABeeZee + lineSpacing + letterSpacing
-	func appFont(_ font: Font) -> some View {
-		self.font(font)
-			.lineSpacing(FontTheme.lineSpacing)
+	func appFont(_ themed: FontTheme.ThemedFont) -> some View {
+		self.font(themed.font)
+			.lineSpacing(themed.size * 2 / 3)
 			.kerning(FontTheme.letterSpacing)
 	}
 
-	/// 需要指定 size 的时候用这个
 	func appFontSize(_ size: CGFloat) -> some View {
 		self.appFont(FontTheme.ABeeZee(size))
 	}
 }
 
+
+extension UIAppearance {
+	static func setupGlobalFonts() {
+		guard let abeezee16 = UIFont(name: "ABeeZee-Regular", size: 16) else {
+			print("Failed to load ABeeZee-Regular font.")
+			return
+		}
+
+		UINavigationBar.appearance().titleTextAttributes = [
+			.font: UIFont(name: "ABeeZee-Regular", size: 24)!
+		]
+
+		UIBarButtonItem.appearance().setTitleTextAttributes([
+			.font: UIFont(name: "ABeeZee-Regular", size: 16)!
+		], for: .normal)
+
+		UITextField.appearance().defaultTextAttributes = [
+			.font: abeezee16
+		]
+
+		UILabel.appearance().font = abeezee16
+	}
+}

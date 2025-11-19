@@ -5,11 +5,6 @@ import Combine
 import CoreLocation
 import UIKit
 
-extension Font {
-	static func app(_ size: CGFloat) -> Font {
-		FontTheme.ABeeZee(size)
-	}
-}
 
 @MainActor
 final class AppViewModel: ObservableObject {
@@ -106,10 +101,11 @@ final class AppViewModel: ObservableObject {
                 userStats = storage.fetchStats()
 
                 // 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
-                if let cachedCity = locationService.lastKnownCity, !cachedCity.isEmpty, userStats?.region.isEmpty == true {
-                        userStats?.region = cachedCity
-                }
-
+			let cachedCity = locationService.lastKnownCity
+			if !cachedCity.isEmpty, userStats?.region.isEmpty == true {
+				userStats?.region = cachedCity
+			}
+			
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
 			stats.totalEnergy = 100
@@ -127,7 +123,7 @@ final class AppViewModel: ObservableObject {
 			if pet.xp < 0 { pet.xp = 0 }
 		}
 
-		shopItems = StaticItemLoader.loadAllItems()
+		shopItems = storage.fetchShopItems()
 
                 moodEntries = storage.fetchMoodEntries()
                 refreshMoodLoggingState()
@@ -624,25 +620,30 @@ final class AppViewModel: ObservableObject {
 		saveSlotGenerationRecords(generation)
 	}
 
-        private func startSlotMonitor() {
-                slotMonitorTask?.cancel()
-                slotMonitorTask = Task.detached { [weak self] in
-                                while !Task.isCancelled {
-                                        try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
-                                        await MainActor.run {
-                                                guard let self else { return }
-                                                let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-                                                if currentSlot != self.lastObservedSlot {
-                                                        self.lastObservedSlot = currentSlot
-                                                        Task { await self.refreshWeather(using: self.locationService.lastKnownLocation) }
-                                                }
-                                                self.prepareSlotGenerationSchedule(for: Date())
-                                                self.checkSlotGenerationTrigger()
-                                                self.updateTaskRefreshEligibility()
-                                        }
-                                }
-                        }
-        }
+	private func startSlotMonitor() {
+		slotMonitorTask?.cancel()
+		slotMonitorTask = Task { [weak self] in
+			guard let self else { return }
+			while !Task.isCancelled {
+				try? await Task.sleep(for: .seconds(60))
+				await self.handleSlotMonitorTick()
+			}
+		}
+	}
+
+	@MainActor
+	private func handleSlotMonitorTick() async {
+		let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+
+		if currentSlot != lastObservedSlot {
+			lastObservedSlot = currentSlot
+			await refreshWeather(using: locationService.lastKnownLocation)
+		}
+
+		prepareSlotGenerationSchedule(for: Date())
+		checkSlotGenerationTrigger()
+		updateTaskRefreshEligibility()
+	}
 
 	private func checkSlotGenerationTrigger(reference date: Date = Date()) {
 		let schedule = loadSlotSchedule()

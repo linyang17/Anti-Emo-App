@@ -4,6 +4,10 @@
 <dict>
 	<key>GIDClientID</key>
 	<string>952314080520-nqq9qun51pss9flvv4btsmc9jtdmo6fm.apps.googleusercontent.com</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>ABeeZee-Regular.ttf</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

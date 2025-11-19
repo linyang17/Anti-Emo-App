@@ -40,7 +40,7 @@ struct LumioPetApp: App {
 		WindowGroup {
 			ContentView()
 				.environmentObject(appModel)
-                                .environment(\.font, FontTheme.body)
+				.environment(\.font, FontTheme.body.font)
 				.task {
 					await appModel.load()
 				}

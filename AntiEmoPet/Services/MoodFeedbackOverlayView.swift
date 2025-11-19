@@ -47,17 +47,12 @@ struct MoodFeedbackOverlayView: View {
 
         var body: some View {
                 ZStack(alignment: .center) {
-                        Color.black.opacity(0.45)
-                                .ignoresSafeArea()
-
-                        VStack(spacing: 20) {
-                                VStack(spacing: 8) {
-                                        Text("Task completed!\n")
-                                                .font(.title2.weight(.bold))
-                                        Text("Do you feel better now?")
-                                                .font(.title3)
-                                                .foregroundStyle(.secondary)
-                                }
+                        VStack(spacing: 8) {
+                                
+								Text("Feeling better?")
+										.font(.title2)
+										.foregroundStyle(.secondary)
+										.padding(.bottom, 16)
 
                                 HStack(spacing: 16) {
                                         ForEach(FeedbackOption.allCases) { option in
@@ -80,7 +75,7 @@ struct MoodFeedbackOverlayView: View {
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                                         .fill(.ultraThinMaterial)
                         )
-                        .shadow(radius: 12)
+                        .shadow(radius: 8)
                         .padding(.horizontal, 32)
                 }
         }
@@ -99,11 +94,6 @@ private struct FeedbackButton: View {
 				.font(.title2.weight(.semibold))
 				.foregroundStyle(.white)
 				.frame(width: 56, height: 56)
-				.background(option.color.opacity(0.9), in: Circle())
-				.overlay(
-					Circle()
-						.strokeBorder(isSelected ? Color.white.opacity(0.9) : Color.clear, lineWidth: 3)
-				)
 		}
 		.buttonStyle(.plain)
 	}

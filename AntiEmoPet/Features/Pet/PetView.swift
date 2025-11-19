@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct PetView: View {
         @EnvironmentObject private var appModel: AppViewModel
@@ -14,6 +15,7 @@ struct PetView: View {
         @State private var activeReward: RewardEvent?
         @State private var rewardOpacity: Double = 0
         @State private var bannerTask: Task<Void, Never>?
+		@State private var showMoodFeedback = false
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -84,9 +86,18 @@ struct PetView: View {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                         rewardOpacity = 0
                                 }
-                                try? await Task.sleep(nanoseconds: 350_000_000)
+                                try? await Task.sleep(nanoseconds: 500_000_000)
                                 activeReward = nil
                                 appModel.consumeRewardBanner()
+							
+							if appModel.pendingMoodFeedbackTask != nil {
+								try? await Task.sleep(nanoseconds: 1_000_000_000)
+								await MainActor.run {
+									withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+										showMoodFeedback = true
+									}
+								}
+							}
                         }
                 }
                 .onDisappear {
@@ -111,7 +122,6 @@ struct PetView: View {
 		} else {
 			VStack(spacing: 16) {
 				Image(systemName: "pawprint.circle")
-					.font(.app(64))
 					.foregroundStyle(.white.opacity(0.85))
 				Text("You'll meet Lumio after onboarding!")
 					.appFont(FontTheme.subheadline)
@@ -242,7 +252,6 @@ struct PetView: View {
 				.resizable()
 				.scaledToFit()
 				.frame(width: 100)
-				.accessibilityLabel("打开商店")
 				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 2, y: 2)
 		}
 		.buttonStyle(.borderless)
@@ -251,7 +260,7 @@ struct PetView: View {
 	private var MoreButton: some View {
 		NavigationLink(destination: MoreView().environmentObject(appModel)) {
 			Image(systemName: "ellipsis")
-				.font(.app(20))
+				.font(.system(size: 20))
 				.fontWeight(.bold)
 				.padding(8)
 				.foregroundStyle(.white)
@@ -342,10 +351,10 @@ struct PetView: View {
 			Text(notice)
 				.appFont(FontTheme.subheadline)
 				.padding(.horizontal, 18)
-				.padding(.vertical, 50)
+				.padding(.vertical, 10)
 				.background(.ultraThinMaterial, in: Capsule())
 				.shadow(radius: 6)
-				.padding(.top, 12)
+				.padding(.top, 15)
 				.transition(.move(edge: .top).combined(with: .opacity))
 		}
 	}
@@ -367,6 +376,16 @@ struct PetView: View {
                                 .presentationDragIndicator(.hidden)
                 }
         }
+	
+	private func triggerMoodFeedbackOverlay(after delay: TimeInterval = 1.0) {
+		Task {
+			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+			guard appModel.pendingMoodFeedbackTask != nil else { return }
+			withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+				showMoodFeedback = true
+			}
+		}
+	}
 
         @ViewBuilder
         private var overlayStack: some View {
@@ -377,29 +396,31 @@ struct PetView: View {
                                 }
                                 .frame(maxWidth: 360)
                                 .transition(.scale(scale: 0.92).combined(with: .opacity))
-                        }
-
-                        if let task = appModel.pendingMoodFeedbackTask {
-                                MoodFeedbackOverlayView(
-                                        taskCategory: task.category
-                                )
-                                .frame(maxWidth: 360)
-                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+								.zIndex(999)
                         }
 
                         if let reward = activeReward {
-                                VStack {
-                                        RewardToastView(event: reward)
-                                                .opacity(rewardOpacity)
-                                                .padding(.top, 16)
-                                                .padding(.horizontal)
-                                                .transition(.move(edge: .top).combined(with: .opacity))
-                                        Spacer(minLength: 0)
-                                }
+								RewardToastView(event: reward)
+										.opacity(rewardOpacity)
+										.padding(.top, 16)
+										.padding(.horizontal)
+										.transition(.move(edge: .top).combined(with: .opacity))
                                 .allowsHitTesting(false)
+								.zIndex(999)
                         }
+					
+						if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
+								MoodFeedbackOverlayView(
+										taskCategory: task.category
+								)
+								.frame(maxWidth: 360)
+								.transition(.scale(scale: 0.92).combined(with: .opacity))
+								.zIndex(999)
+						}
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.showMoodCapture)
         }
+	
+	
 }

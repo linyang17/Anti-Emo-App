@@ -86,6 +86,7 @@ struct TasksView: View {
                     }
                 } label: {
                     Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+						.padding(12)
                 }
                 .appFont(FontTheme.caption)
             } else if allTasksCompleted {
@@ -96,6 +97,7 @@ struct TasksView: View {
                 Text("Refresh")
                     .appFont(FontTheme.caption)
                     .foregroundStyle(.secondary)
+					.padding(12)
             }
         }
         .padding(.horizontal, 20)

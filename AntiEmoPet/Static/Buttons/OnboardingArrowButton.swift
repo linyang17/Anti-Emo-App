@@ -3,21 +3,20 @@ import SwiftUI
 struct LumioSay: View {
         let text: String
         private static let maxBubbleWidth: CGFloat = {
-                let characters = String(repeating: "W", count: 20)
-                let preferredSize = UIFontMetrics.default.scaledValue(for: 16)
-                let font = UIFont.monospacedSystemFont(ofSize: preferredSize, weight: .regular)
+                let characters = String(repeating: "W", count: 27)
+				let font = UIFont(name: "ABeeZee", size: 18) ?? UIFont.preferredFont(forTextStyle: .headline)
                 let size = (characters as NSString).size(withAttributes: [.font: font])
                 return size.width
         }()
 
         var body: some View {
                 Text(text)
-                        .font(.system(size: 21, design: .monospaced))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.white)
-                        .shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
-                        .shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
-                        .frame(maxWidth: LumioSay.maxBubbleWidth)
+					.appFont(FontTheme.headline)
+					.multilineTextAlignment(.center)
+					.foregroundStyle(.white)
+					.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
+					.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
+					.frame(maxWidth: LumioSay.maxBubbleWidth)
 	}
 }
 
@@ -46,7 +45,6 @@ struct OnboardingArrowButton: View {
         .disabled(!isEnabled || isLoading)
 		.frame(width: 44, height: 44)
         .animation(.easeInOut(duration: 0.2), value: isEnabled)
-        .accessibilityLabel("下一步")
     }
 
 	private var circleFill: some View {

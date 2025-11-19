@@ -83,7 +83,7 @@ struct RegistrationStepView: View, Equatable {
 			VStack(spacing: 8) {
 				Label("Connected via \(provider.title)\n\(viewModel.accountEmail)",
 					  systemImage: "checkmark.seal.fill")
-					.font(.footnote.weight(.semibold))
+					.appFont(FontTheme.caption)
 					.foregroundStyle(.white.opacity(0.85))
 			}
 		}

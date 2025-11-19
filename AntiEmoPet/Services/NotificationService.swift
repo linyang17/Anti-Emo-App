@@ -1,121 +1,181 @@
 import Foundation
 import UserNotifications
 
+/// A centralized manager for all user notification requests related to LumioPet.
+/// Handles authorization, scheduling daily and task reminders, and dynamic slot-based unlock alerts.
+@MainActor
 final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
-    enum AuthorizationResult {
-        case granted
-        case denied
-        case requiresSettings
-    }
 
-    private let center = UNUserNotificationCenter.current()
+	// MARK: - Types
 
-    func requestNotiAuth(completion: @escaping (AuthorizationResult) -> Void) {
-        center.getNotificationSettings { [weak self] settings in
-            guard let self else { return }
-            switch settings.authorizationStatus {
-            case .denied:
-                DispatchQueue.main.async { completion(.requiresSettings) }
-            case .authorized, .provisional, .ephemeral:
-                DispatchQueue.main.async { completion(.granted) }
-            case .notDetermined:
-                self.center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-                    DispatchQueue.main.async { completion(granted ? .granted : .denied) }
-                }
-                self.center.delegate = self
-            @unknown default:
-                DispatchQueue.main.async { completion(.denied) }
-            }
-        }
-    }
+	enum AuthorizationResult {
+		case granted
+		case denied
+		case requiresSettings
+	}
 
-    func scheduleDailyReminders() {
-        let times = [(8, 0), (20, 30)]
-        let identifiers = times.map { "LumioPet.reminder.\($0.0).\($0.1)" }
-        center.removePendingNotificationRequests(withIdentifiers: identifiers)
-        times.forEach { hour, minute in
-            let content = UNMutableNotificationContent()
-            content.title = "Lumio's letter"
-            content.body = "Lumio finds some new activities for you! Check out what they are."
-            content.sound = .default
+	// MARK: - Properties
 
-            var components = DateComponents()
-            components.hour = hour
-            components.minute = minute
+	private let center = UNUserNotificationCenter.current()
 
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-            let identifier = "LumioPet.reminder.\(hour).\(minute)"
-            let request = UNNotificationRequest(
-                identifier: identifier,
-                content: content,
-                trigger: trigger
-            )
-            center.add(request)
-        }
-    }
+	// MARK: - Initialization
 
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([.banner, .sound])
-    }
+	override init() {
+		super.init()
+		center.delegate = self
+	}
 
-    func scheduleTaskReminders(for tasks: [UserTask]) {
-        guard !tasks.isEmpty else { return }
-        center.getPendingNotificationRequests { [weak self] requests in
-            let taskIdentifiers = requests
-                .filter { $0.identifier.hasPrefix("LumioPet.task.") }
-                .map { $0.identifier }
-            if !taskIdentifiers.isEmpty {
-                self?.center.removePendingNotificationRequests(withIdentifiers: taskIdentifiers)
-            }
-            self?.enqueueTaskNotifications(for: tasks)
-        }
-    }
+	// MARK: - Authorization
 
-    private func enqueueTaskNotifications(for tasks: [UserTask]) {
-        for task in tasks {
-            let calendar = Calendar.current
-            let hour = calendar.component(.hour, from: task.date)
-            if hour >= 22 || hour < 6 { continue }
-
-            let content = UNMutableNotificationContent()
-            content.title = "Lumio finds some new activities for you"
-            content.body = task.title
-            content.sound = .default
-
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: task.date)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let identifier = "LumioPet.task.\(task.id.uuidString)"
-            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-            center.add(request)
+	/// Requests authorization for notifications and returns the result via completion handler.
+	func requestNotiAuth(completion: @escaping (AuthorizationResult) -> Void) {
+		Task {
+			let settings = await center.notificationSettings()
+			switch settings.authorizationStatus {
+			case .denied:
+				completion(.requiresSettings)
+			case .authorized, .provisional, .ephemeral:
+				completion(.granted)
+			case .notDetermined:
+				do {
+					let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+					completion(granted ? .granted : .denied)
+				} catch {
+					completion(.denied)
+				}
+			@unknown default:
+				completion(.denied)
+			}
 		}
 	}
 
+	// MARK: - Daily Reminder Scheduling
+
+	/// Schedules daily reminders at fixed times (default: 8:00 AM and 8:30 PM).
+	func scheduleDailyReminders() {
+		let times: [(hour: Int, minute: Int)] = [(8, 0), (20, 30)]
+		let identifiers = times.map { "LumioPet.reminder.\($0.hour).\($0.minute)" }
+
+		center.removePendingNotificationRequests(withIdentifiers: identifiers)
+
+		for (hour, minute) in times {
+			let content = UNMutableNotificationContent().apply {
+				$0.title = "Lumio’s Letter"
+				$0.body = "Lumio found new activities for you! Check them out now."
+				$0.sound = .default
+			}
+
+			var components = DateComponents()
+			components.hour = hour
+			components.minute = minute
+
+			let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+			let request = UNNotificationRequest(
+				identifier: "LumioPet.reminder.\(hour).\(minute)",
+				content: content,
+				trigger: trigger
+			)
+
+			center.add(request)
+		}
+	}
+
+	// MARK: - Task Reminder Scheduling
+
+	/// Schedules notifications for a given list of tasks.
+	func scheduleTaskReminders(for tasks: [UserTask]) {
+		guard !tasks.isEmpty else { return }
+
+		center.getPendingNotificationRequests { [weak self] requests in
+			guard let self else { return }
+
+			let taskIdentifiers = requests
+				.filter { $0.identifier.hasPrefix("LumioPet.task.") }
+				.map(\.identifier)
+
+			if !taskIdentifiers.isEmpty {
+				self.center.removePendingNotificationRequests(withIdentifiers: taskIdentifiers)
+			}
+
+			self.enqueueTaskNotifications(for: tasks)
+		}
+	}
+
+	/// Creates and enqueues individual task notifications.
+	private func enqueueTaskNotifications(for tasks: [UserTask]) {
+		let calendar = Calendar.current
+
+		for task in tasks {
+			let hour = calendar.component(.hour, from: task.date)
+			guard (6..<22).contains(hour) else { continue }
+
+			let content = UNMutableNotificationContent().apply {
+				$0.title = "Lumio found some new activities for you"
+				$0.body = task.title
+				$0.sound = .default
+			}
+
+			let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: task.date)
+			let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+
+			let request = UNNotificationRequest(
+				identifier: "LumioPet.task.\(task.id.uuidString)",
+				content: content,
+				trigger: trigger
+			)
+
+			center.add(request)
+		}
+	}
+
+	// MARK: - Slot Notifications
+
+	/// Sends an instant notification when a time slot unlocks new tasks.
 	func notifyTasksUnlocked(for slot: TimeSlot) {
-		let content = UNMutableNotificationContent()
-		content.title = "新任务已准备好"
-		content.body = slotNotificationMessage(for: slot)
-		content.sound = .default
+		let content = UNMutableNotificationContent().apply {
+			$0.title = "New tasks are ready!"
+			$0.body = slotNotificationMessage(for: slot)
+			$0.sound = .default
+		}
 
 		let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
 		let identifier = "LumioPet.task-unlock.\(UUID().uuidString)"
+
 		let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 		center.add(request)
 	}
 
+	/// Returns the appropriate notification message for a given time slot.
 	private func slotNotificationMessage(for slot: TimeSlot) -> String {
 		switch slot {
 		case .morning:
-			return "早间活动开启，来陪 Lumio 出门透气吧！"
+			"Morning, get the day started with Lumio!"
 		case .afternoon:
-			return "下午的活力任务上新了，看看有什么新挑战。"
+			"Check out some fun activities for today!"
 		case .evening:
-			return "傍晚的温馨任务已就绪，和 Lumio 一起放松。"
+			"It's been a long day, but you've got this. Keep going!"
 		case .night:
-			return "夜晚是休息时间，记得按时睡觉。"
+			"Time to wind down and recharge."
 		}
+	}
+
+	// MARK: - UNUserNotificationCenterDelegate
+
+	func userNotificationCenter(
+		_ center: UNUserNotificationCenter,
+		willPresent notification: UNNotification,
+		withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+	) {
+		completionHandler([.banner, .sound])
+	}
+}
+
+// MARK: - Helper Extension
+
+private extension UNMutableNotificationContent {
+	/// Allows inline mutation in a functional style.
+	func apply(_ updates: (UNMutableNotificationContent) -> Void) -> UNMutableNotificationContent {
+		updates(self)
+		return self
 	}
 }
