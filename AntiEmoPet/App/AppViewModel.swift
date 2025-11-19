@@ -105,6 +105,11 @@ final class AppViewModel: ObservableObject {
                 pet = storage.fetchPet()
                 userStats = storage.fetchStats()
 
+                // 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
+                if let cachedCity = locationService.lastKnownCity, !cachedCity.isEmpty, userStats?.region.isEmpty == true {
+                        userStats?.region = cachedCity
+                }
+
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
 			stats.totalEnergy = 100
