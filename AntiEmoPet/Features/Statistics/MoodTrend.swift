@@ -109,26 +109,28 @@ struct MoodTrendSection: View {
 	private func moodAverages(windowDays: Int) -> [MoodTrendPoint] {
 		guard !appModel.moodEntries.isEmpty else { return [] }
 
-		let calendar = TimeZoneManager.shared.calendar
-		let now = calendar.startOfDay(for: Date())
+                let calendar = TimeZoneManager.shared.calendar
+                let now = Date()
+                let startOfDay = calendar.startOfDay(for: now)
 
 		if windowDays == 1 {
 			// 「日」模式：按小时聚合
-			let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
-			guard !todayEntries.isEmpty else { return [] }
-			
-			let groupedByHour = Dictionary(grouping: todayEntries) { entry in
-					calendar.dateInterval(of: .hour, for: entry.date)!.start
-				}
+                        let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
+                        guard !todayEntries.isEmpty else { return [] }
 
-			let averaged = groupedByHour.map { (hour, group) -> MoodTrendPoint in
-				let total = group.reduce(0.0) { $0 + Double($1.value) }
-				let avg = total / Double(group.count)
-				return MoodTrendPoint(date: hour, average: avg)
-			}
+                        let groupedByHour = Dictionary(grouping: todayEntries) { entry in
+                                calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
+                        }
 
-			return averaged.sorted { $0.date < $1.date }
-		}
+                        var averaged: [MoodTrendPoint] = []
+                        for (hour, group) in groupedByHour {
+                                let total = group.reduce(0.0) { $0 + Double($1.value) }
+                                let avg = total / Double(max(1, group.count))
+                                averaged.append(MoodTrendPoint(date: hour, average: avg))
+                        }
+
+                        return averaged.sorted { $0.date < $1.date }
+                }
 
 		// 其他窗口（周、月、季）
 		let start = calendar.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now

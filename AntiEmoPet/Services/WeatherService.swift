@@ -42,18 +42,20 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 	private let weatherService = WeatherKit.WeatherService.shared
 
 	// MARK: - Cache Policy
-	private let cacheKey = "WeatherService.cachedReport"
-	private let cacheTTL: TimeInterval = 60 * 30 // 30 min
-	private let distanceThreshold: CLLocationDistance = 20_000 // 20km
-	private let snapshotValidity: TimeInterval = 60 * 60 * 6 // 6 hours
+        private let cacheKey = "WeatherService.cachedReport"
+        private let cacheTTL: TimeInterval = 60 * 30 // 30 min
+        private let distanceThreshold: CLLocationDistance = 20_000 // 20km
+        private let snapshotValidity: TimeInterval = 60 * 60 * 6 // 6 hours
+        private let failureCooldown: TimeInterval = 60 * 10
 
-	private var lastFetchAt: Date?
-	private var lastFetchedCoordinate: CLLocationCoordinate2D?
+        private var lastFetchAt: Date?
+        private var lastFetchedCoordinate: CLLocationCoordinate2D?
+        private var lastFailureAt: Date?
 
-	// MARK: - Initialization
-	override init() {
-		super.init()
-		locationManager.delegate = self
+        // MARK: - Initialization
+        override init() {
+                super.init()
+                locationManager.delegate = self
 		restoreFromDisk()
 	}
 
@@ -87,17 +89,29 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 			return fb
 		}
 
-		guard isAuthorized else {
-			log.warning("⚠️ Weather fetch attempted before authorization.")
-			let fb = fallbackReport(locality: locality)
-			currentWeatherReport = fb
-			return fb
-		}
+                guard isAuthorized else {
+                        log.warning("⚠️ Weather fetch attempted before authorization.")
+                        let fb = fallbackReport(locality: locality)
+                        currentWeatherReport = fb
+                        return fb
+                }
 
-		// Cache policy
-		if let last = lastFetchedCoordinate,
-		   let lastAt = lastFetchAt {
-			let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude)
+                if let failure = lastFailureAt, Date().timeIntervalSince(failure) < failureCooldown {
+                        log.warning("⚠️ WeatherKit fetch skipped after recent failure; using cache or fallback.")
+                        if let snapshot = restoreFromDisk(),
+                           Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
+                                currentWeatherReport = snapshot
+                                return snapshot
+                        }
+                        let fb = fallbackReport(locality: locality)
+                        currentWeatherReport = fb
+                        return fb
+                }
+
+                // Cache policy
+                if let last = lastFetchedCoordinate,
+                   let lastAt = lastFetchAt {
+                        let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude)
 			let withinDistance = location.distance(from: lastLoc) <= distanceThreshold
 			let withinTTL = Date().timeIntervalSince(lastAt) < cacheTTL
 
@@ -122,21 +136,23 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 				sunEvents: sunEvents
 			)
 
-			currentWeatherReport = report
-			lastFetchAt = Date()
-			lastFetchedCoordinate = location.coordinate
-			persistToDisk(report)
+                        currentWeatherReport = report
+                        lastFetchAt = Date()
+                        lastFetchedCoordinate = location.coordinate
+                        lastFailureAt = nil
+                        persistToDisk(report)
 
-			log.info("✅ WeatherKit fetch succeeded: \(current.rawValue)")
-			return report
+                        log.info("✅ WeatherKit fetch succeeded: \(current.rawValue)")
+                        return report
 
-		} catch {
-			log.error("❌ WeatherKit fetch failed: \(error.localizedDescription, privacy: .public)")
+                } catch {
+                        log.error("❌ WeatherKit fetch failed: \(error.localizedDescription, privacy: .public)")
+                        lastFailureAt = Date()
 
-			if let snapshot = restoreFromDisk(), Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
-				currentWeatherReport = snapshot
-				return snapshot
-			}
+                        if let snapshot = restoreFromDisk(), Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
+                                currentWeatherReport = snapshot
+                                return snapshot
+                        }
 
 			let fb = fallbackReport(locality: locality)
 			currentWeatherReport = fb

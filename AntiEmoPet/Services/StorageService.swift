@@ -95,11 +95,11 @@ final class StorageService {
 		}
 	}
 
-	func fetchTasks(for date: Date) -> [UserTask] {
-		do {
-			let calendar = TimeZoneManager.shared.calendar
-			let start = calendar.startOfDay(for: date)
-			guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+    func fetchTasks(for date: Date) -> [UserTask] {
+        do {
+            let calendar = TimeZoneManager.shared.calendar
+            let start = calendar.startOfDay(for: date)
+            guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
 
 			let predicate = #Predicate<UserTask> { task in
 				task.date >= start && task.date < end
@@ -109,12 +109,36 @@ final class StorageService {
 				predicate: predicate,
 				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
 			)
-			return try context.fetch(descriptor)
-		} catch {
-			logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
-			return []
-		}
-	}
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    /// Fetch tasks from the recent N days (inclusive of today).
+    func fetchTasks(since days: Int, excludingCompleted: Bool = false) -> [UserTask] {
+        let calendar = TimeZoneManager.shared.calendar
+        let now = Date()
+        let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
+
+        do {
+            let predicate = #Predicate<UserTask> { task in
+                if task.date < start { return false }
+                if excludingCompleted && task.status == .completed { return false }
+                return true
+            }
+
+            let descriptor = FetchDescriptor<UserTask>(
+                predicate: predicate,
+                sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+            )
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch recent tasks: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
 
     func save(tasks: [UserTask]) {
         guard !tasks.isEmpty else { return }
@@ -122,7 +146,7 @@ final class StorageService {
         saveContext(reason: "save tasks")
     }
 
-    func deleteTasks(for date: Date, excluding ids: Set<UUID> = []) {
+    func deleteTasks(for date: Date, excluding ids: Set<UUID> = [], includeCompleted: Bool = true) {
         do {
             let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
@@ -132,7 +156,9 @@ final class StorageService {
             }
             let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
             let targets = try context.fetch(descriptor)
-            targets.forEach { context.delete($0) }
+            let filtered = includeCompleted ? targets : targets.filter { $0.status != .completed }
+            filtered.forEach { context.delete($0) }
+            guard !filtered.isEmpty else { return }
             saveContext(reason: "delete tasks")
         } catch {
             logger.error("Failed to delete tasks: \(error.localizedDescription, privacy: .public)")
@@ -369,7 +395,8 @@ final class StorageService {
     private func ensureItems() throws -> Bool {
         let existing = try context.fetch(FetchDescriptor<Item>())
         let existingSKUs = Set(existing.map(\.sku))
-        let missing = DefaultSeeds.makeItems(logger: logger).filter { !existingSKUs.contains($0.sku) }
+        let seeds = DefaultSeeds.makeItems(logger: existing.isEmpty ? logger : nil)
+        let missing = seeds.filter { !existingSKUs.contains($0.sku) }
         missing.forEach { context.insert($0) }
         return !missing.isEmpty
     }
@@ -378,7 +405,7 @@ final class StorageService {
     private func ensureTaskTemplates() throws -> Bool {
         let descriptor = FetchDescriptor<TaskTemplate>()
         let existing = try context.fetch(descriptor)
-        let seeds = DefaultSeeds.makeTaskTemplates(logger: logger)
+        let seeds = DefaultSeeds.makeTaskTemplates(logger: existing.isEmpty ? logger : nil)
         let needsReset = existing.count != seeds.count || existing.contains { $0.energyReward <= 0 }
         if needsReset {
             existing.forEach { context.delete($0) }
@@ -462,88 +489,91 @@ enum DefaultSeeds {
 	}
 
 
-	static func makeItems(logger: Logger? = nil) -> [Item] {
-		do {
-			// Locate JSON file
-			guard let url = Bundle.main.url(forResource: "items", withExtension: "json") else {
-				logger?.error("❌ items.json not found in app bundle.")
-				return []
-			}
+        private static var cachedItems: [Item]?
 
-			// Read file data
-			let data = try Data(contentsOf: url)
-			let decoder = JSONDecoder()
-			decoder.keyDecodingStrategy = .convertFromSnakeCase
+        static func makeItems(logger: Logger? = nil) -> [Item] {
+                if let cachedItems { return cachedItems }
 
-			// Decode versioned structure
-			let container = try decoder.decode(ItemSeedContainer.self, from: data)
+                do {
+                        guard let url = Bundle.main.url(forResource: "items", withExtension: "json") else {
+                                logger?.error("❌ items.json not found in app bundle.")
+                                return []
+                        }
 
-			let items = container.items.map { seed in
-				Item(
-					sku: seed.sku,
-					type: seed.type,
-					assetName: seed.assetName,
-					costEnergy: seed.costEnergy,
-					bondingBoost: seed.bondingBoost
-				)
-			}
+                        let data = try Data(contentsOf: url)
+                        let decoder = JSONDecoder()
+                        decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-			logger?.info("✅ Loaded \(items.count) items from items.json (version \(container.version))")
-			return items
-		} catch {
-			logger?.error("❌ Failed to load or decode items.json: \(error.localizedDescription, privacy: .public)")
-			return []
-		}
-	}
+                        let container = try decoder.decode(ItemSeedContainer.self, from: data)
+
+                        let items = container.items.map { seed in
+                                Item(
+                                        sku: seed.sku,
+                                        type: seed.type,
+                                        assetName: seed.assetName,
+                                        costEnergy: seed.costEnergy,
+                                        bondingBoost: seed.bondingBoost
+                                )
+                        }
+
+                        cachedItems = items
+                        logger?.info("✅ Loaded \(items.count) items from items.json (version \(container.version))")
+                        return items
+                } catch {
+                        logger?.error("❌ Failed to load or decode items.json: \(error.localizedDescription, privacy: .public)")
+                        return []
+                }
+        }
 
 	
-	static func makeTaskTemplates(logger: Logger? = nil) -> [TaskTemplate] {
-		do {
-			// Locate JSON file
-			guard let url = Bundle.main.url(forResource: "task_templates", withExtension: "json") else {
-				logger?.error("❌ task_templates.json not found in app bundle.")
-				return []
-			}
+        private static var cachedTemplates: [TaskTemplate]?
 
-			// Load and decode JSON
-			let data = try Data(contentsOf: url)
-			let decoder = JSONDecoder()
-			decoder.keyDecodingStrategy = .convertFromSnakeCase
+        static func makeTaskTemplates(logger: Logger? = nil) -> [TaskTemplate] {
+                if let cachedTemplates { return cachedTemplates }
 
-			let container = try decoder.decode(TaskTemplateSeedContainer.self, from: data)
+                do {
+                        guard let url = Bundle.main.url(forResource: "task_templates", withExtension: "json") else {
+                                logger?.error("❌ task_templates.json not found in app bundle.")
+                                return []
+                        }
 
-			// Map to SwiftData models safely
-			let templates: [TaskTemplate] = container.templates.compactMap { seed in
-				guard let category = TaskCategory(rawValue: seed.category.rawValue) else {
-					logger?.warning("⚠️ Unknown task category: \(seed.category.rawValue, privacy: .public)")
-					return nil
-				}
-				return TaskTemplate(
-					title: seed.title.trimmingCharacters(in: .whitespacesAndNewlines),
-					isOutdoor: seed.isOutdoor,
-					category: category,
-					energyReward: max(1, seed.energyReward)
-				)
-			}
+                        let data = try Data(contentsOf: url)
+                        let decoder = JSONDecoder()
+                        decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-			// Logging and version tracking
-			logger?.info("✅ Loaded \(templates.count) task templates (version \(container.version))")
-			UserDefaults.standard.set(container.version, forKey: "TaskTemplateDataVersion")
+                        let container = try decoder.decode(TaskTemplateSeedContainer.self, from: data)
 
-			return templates
+                        let templates: [TaskTemplate] = container.templates.compactMap { seed in
+                                guard let category = TaskCategory(rawValue: seed.category.rawValue) else {
+                                        logger?.warning("⚠️ Unknown task category: \(seed.category.rawValue, privacy: .public)")
+                                        return nil
+                                }
+                                return TaskTemplate(
+                                        title: seed.title.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        isOutdoor: seed.isOutdoor,
+                                        category: category,
+                                        energyReward: max(1, seed.energyReward)
+                                )
+                        }
 
-		} catch let DecodingError.dataCorrupted(context) {
-			logger?.error("❌ JSON data corrupted: \(context.debugDescription, privacy: .public)")
-			return []
-		} catch let DecodingError.keyNotFound(key, context) {
-			logger?.error("❌ Missing key '\(key.stringValue, privacy: .public)' in JSON: \(context.debugDescription, privacy: .public)")
-			return []
-		} catch let DecodingError.typeMismatch(type, context) {
-			logger?.error("❌ Type mismatch for \(type, privacy: .public): \(context.debugDescription, privacy: .public)")
-			return []
-		} catch {
-			logger?.error("❌ Failed to load or decode task_templates.json: \(error.localizedDescription, privacy: .public)")
-			return []
-		}
-	}
+                        cachedTemplates = templates
+                        logger?.info("✅ Loaded \(templates.count) task templates (version \(container.version))")
+                        UserDefaults.standard.set(container.version, forKey: "TaskTemplateDataVersion")
+
+                        return templates
+
+                } catch let DecodingError.dataCorrupted(context) {
+                        logger?.error("❌ JSON data corrupted: \(context.debugDescription, privacy: .public)")
+                        return []
+                } catch let DecodingError.keyNotFound(key, context) {
+                        logger?.error("❌ Missing key '\(key.stringValue, privacy: .public)' in JSON: \(context.debugDescription, privacy: .public)")
+                        return []
+                } catch let DecodingError.typeMismatch(type, context) {
+                        logger?.error("❌ Type mismatch for \(type, privacy: .public): \(context.debugDescription, privacy: .public)")
+                        return []
+                } catch {
+                        logger?.error("❌ Failed to load or decode task_templates.json: \(error.localizedDescription, privacy: .public)")
+                        return []
+                }
+        }
 }
