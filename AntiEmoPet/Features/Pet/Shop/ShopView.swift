@@ -46,15 +46,26 @@ struct ShopView: View {
 	private var shopPanel: some View {
 		VStack(spacing: 12) {
 			categoryPicker
-
-			ZStack(alignment: .bottom) {
-				gridSection
-
-				if let pendingItem, !isOwned(pendingItem) {
-					confirmButton(for: pendingItem)
-						.padding(.horizontal, 4)
-						.padding(.bottom, 4)
+			
+			ScrollView {
+				ZStack(alignment: .bottom) {
+					gridSection
+						.padding(.bottom, 80) // Spacing for confirm button
+					
+					if let pendingItem, !isOwned(pendingItem) {
+						// Button is sticky or inside scroll? 
+						// If we want it fixed at bottom, it should be outside ScrollView.
+						// But original design had it in ZStack.
+						// Let's move button OUTSIDE ScrollView for better UX
+					}
 				}
+			}
+			
+			if let pendingItem, !isOwned(pendingItem) {
+				confirmButton(for: pendingItem)
+					.padding(.horizontal, 4)
+					.padding(.bottom, 4)
+					.transition(.move(edge: .bottom).combined(with: .opacity))
 			}
 		}
 		.padding(.horizontal, 24)

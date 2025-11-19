@@ -3,7 +3,7 @@ import Combine
 
 @MainActor
 final class ShopViewModel: ObservableObject {
-    let gridCapacity = 6
+    let gridCapacity = 100 // Show all items (effectively no limit for MVP)
 
     func items(for type: ItemType, in items: [Item], limit: Int) -> [Item] {
         let filtered = items.filter { $0.type == type }

@@ -155,31 +155,41 @@ final class AnalysisViewModel: ObservableObject {
     }
 
     // 4.2 Heatmap Data: TimeSlot + Weekday -> Mood
-    func timeSlotAndWeekdayMoodAverages(entries: [MoodEntry]) -> [TimeSlot: [Int: Double]] {
-        guard !entries.isEmpty else { return [:] }
-        var accumulator: [TimeSlot: [Int: (sum: Int, count: Int)]] = [:]
+	func timeSlotAndWeekdayMoodAverages(entries: [MoodEntry]) -> [TimeSlot: [Int: Double]] {
+		guard !entries.isEmpty else { return [:] }
 
-        for entry in entries {
-            let slot = TimeSlot.from(date: entry.date, using: cal)
-            let weekday = cal.component(.weekday, from: entry.date) // 1=Sun, ... 7=Sat
-            
-            var slotMap = accumulator[slot] ?? [:]
-            var bucket = slotMap[weekday] ?? (0, 0)
-            bucket.sum += entry.value
-            bucket.count += 1
-            accumulator[slot] = bucket
-        }
+		var accumulator: [TimeSlot: [Int: (sum: Int, count: Int)]] = [:]
 
-        var result: [TimeSlot: [Int: Double]] = [:]
-        for (slot, slotMap) in accumulator {
-            var weekdayMap: [Int: Double] = [:]
-            for (weekday, bucket) in slotMap {
-                weekdayMap[weekday] = Double(bucket.sum) / Double(bucket.count)
-            }
-            result[slot] = weekdayMap
-        }
-        return result
-    }
+		for entry in entries {
+			let slot = TimeSlot.from(date: entry.date, using: cal)
+			let weekday = cal.component(.weekday, from: entry.date) // 1 = Sunday ... 7 = Saturday
+
+			// Retrieve slot dictionary (weekday → mood data)
+			var slotMap = accumulator[slot] ?? [:]
+
+			// Retrieve or initialize the bucket
+			var bucket = slotMap[weekday] ?? (0, 0)
+			bucket.sum += entry.value
+			bucket.count += 1
+
+			// Update nested dictionary, then assign back to main dictionary
+			slotMap[weekday] = bucket
+			accumulator[slot] = slotMap
+		}
+
+		// Compute averages
+		var result: [TimeSlot: [Int: Double]] = [:]
+		for (slot, slotMap) in accumulator {
+			var weekdayMap: [Int: Double] = [:]
+			for (weekday, bucket) in slotMap {
+				guard bucket.count > 0 else { continue }
+				weekdayMap[weekday] = Double(bucket.sum) / Double(bucket.count)
+			}
+			result[slot] = weekdayMap
+		}
+
+		return result
+	}
 
     // 4.5 Daylight Duration Line Chart Data
     func daylightLengthMoodAverages(entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> [Int: Double] {

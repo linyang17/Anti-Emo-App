@@ -39,7 +39,6 @@ struct EnergyTrendSection: View {
 								.foregroundStyle(.green)
 								.cornerRadius(4)
 						}
-						.chartScrollableAxes(.horizontal)
 						.chartXScale(domain: xVisibleDomain(for: window, data: data))
 						.chartXAxis {
 							AxisMarks(values: xAxisValues(for: window)) { value in
@@ -49,11 +48,9 @@ struct EnergyTrendSection: View {
 										case 1:
 											Text(date, format: .dateTime.hour())
 										case 7:
-											// Week: show weekday abbreviation, e.g. Mon, Tue
 											Text(date, format: .dateTime.weekday(.abbreviated))
 												.font(.caption2)
 										case 30:
-											// Month: show day of month (dd) every tick
 											Text(date, format: .dateTime.day())
 												.font(.caption2)
 										default:

@@ -108,10 +108,13 @@ final class EnergyStatisticsViewModel: ObservableObject {
         }
 
         let dayCount = sumPerDay.count
+		// Divide by days (window size) for consistency with "Past Week"
+		let averageAddWeek = Int(Double(addPerDay.values.reduce(0, +)) / Double(max(1, days)))
+		let averageUseWeek = Int(Double(usePerDay.values.reduce(0, +)) / Double(max(1, days)))
+		
+		// Average daily total energy (not add)
 		let totalSum = sumPerDay.values.reduce(0) { $0 + ($1.total / max($1.count, 1)) }
-		let averageAddWeek = dayCount > 0 ? addPerDay.values.reduce(0, +) / dayCount : 0
-		let averageUseWeek = dayCount > 0 ? usePerDay.values.reduce(0, +) / dayCount : 0
-		let averageWeek = dayCount > 0 ? totalSum / dayCount : 0
+		let averageWeek = Int(Double(totalSum) / Double(max(1, days)))
 
         var todayTaskCount = 0
         var averageTaskCountWeek: Double = 0

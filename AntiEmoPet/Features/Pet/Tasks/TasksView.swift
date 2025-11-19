@@ -43,6 +43,8 @@ struct TasksView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color(uiColor: .systemGroupedBackground))
 
                 if let reward = activeReward {
                     RewardToastView(event: reward)

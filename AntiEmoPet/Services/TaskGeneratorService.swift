@@ -125,10 +125,20 @@ final class TaskGeneratorService {
 	}
 
     private func overlappingWindows(interval: DateInterval, report: WeatherReport?) -> [WeatherWindow] {
-        guard let report else { return [] }
-        return report.windows.filter { window in
+        guard let report else {
+             // Fallback: create a single window with default sunny weather
+             return [WeatherWindow(startDate: interval.start, endDate: interval.end, weather: .sunny)]
+        }
+        let windows = report.windows.filter { window in
             window.endDate > interval.start && window.startDate < interval.end
         }
+        
+        // If filtering resulted in no windows (e.g. report coverage issue), fallback
+        if windows.isEmpty {
+             return [WeatherWindow(startDate: interval.start, endDate: interval.end, weather: report.currentWeather)]
+        }
+        
+        return windows
     }
 
     private func pickTemplate(from templates: [TaskTemplate], used: inout Set<String>, windows: [WeatherWindow], defaultWeather: WeatherType) -> TaskTemplate? {
