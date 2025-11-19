@@ -776,4 +776,16 @@
 ### 可选功能
 - 所有标记为Optional的功能在文档中占位，当前阶段不需要实现
 
----
+## Bug Section (Found during PRD Review)
+
+### Critical
+- [ ] **Mood Feedback**: 在 `TasksView` (Sheet) 中完成任务后，`PetView` 的 `rewardBanner` 监听被 sheet 遮挡或未触发，导致强制情绪反馈弹窗未显示。需在 `TasksView` 中处理反馈逻辑。
+- [ ] **Stats 4.1**: Weather vs Mood Chart 代码被注释且未实现 (`StatsRhythm.swift`)。
+- [ ] **Stats 4.2**: Mood Heatmap (TimeSlot + Weekday) 未实现。
+- [ ] **Stats 4.3**: Energy Task Pie Chart (Task Type Completion Ratio) 未实现。
+- [ ] **Stats 4.4**: Energy Stats 缺少 "今日完成任务数" 和 "过去一周平均完成数"。
+- [ ] **Stats 4.5**: Sunlight Duration vs Mood Line Chart 未实现 (目前仅是 Day/Night Bar Chart)。
+
+### Data & Engine
+- [ ] **Data Upload**: Section 0.2/0.3 数据上传服务未实现 (标记为 Optional 但 PRD 中提及 Core，需确认)。
+- [ ] **Pet Engine**: 3.4 购买奖励代码使用 `item.BondingBoost`，需确认是否需强制 +10 (目前假设 `items.json` 配置正确)。
