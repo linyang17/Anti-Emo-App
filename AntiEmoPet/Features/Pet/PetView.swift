@@ -269,13 +269,12 @@ struct PetView: View {
 		taskFloatTask = nil
 	}
 
-	private func triggerPettingInteraction() {
-		guard appModel.petting() else { return }
-		pettingEffectTask?.cancel()
-		appModel.petEngine.applyPettingReward()
-		withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
-			showPettingHearts = true
-		}
+        private func triggerPettingInteraction() {
+                guard appModel.petting() else { return }
+                pettingEffectTask?.cancel()
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
+                        showPettingHearts = true
+                }
 		pettingEffectTask = Task { @MainActor in
 			try? await Task.sleep(nanoseconds: 1_200_000_000)
 			withAnimation(.easeOut(duration: 0.3)) {

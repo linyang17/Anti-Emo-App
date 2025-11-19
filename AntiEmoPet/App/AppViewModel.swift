@@ -104,6 +104,11 @@ final class AppViewModel: ObservableObject {
                 pet = storage.fetchPet()
                 userStats = storage.fetchStats()
 
+                // 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
+                if let cachedCity = locationService.lastKnownCity, !cachedCity.isEmpty, userStats?.region.isEmpty == true {
+                        userStats?.region = cachedCity
+                }
+
 		// Ensure initial defaults per MVP PRD
 		if let stats = userStats, stats.totalEnergy <= 0 {
 			stats.totalEnergy = 100
@@ -131,11 +136,13 @@ final class AppViewModel: ObservableObject {
 		todayTasks = storage.fetchTasks(for: .now)
 		applyDailyBondingDecayIfNeeded()
 
-		if let stats = userStats, stats.shareLocationAndWeather {
-			beginLocationUpdates()
-		}
+                if let stats = userStats, stats.shareLocationAndWeather {
+                        beginLocationUpdates()
+                        // 主动请求一次定位，确保启动时天气和城市更新
+                        locationService.requestLocationOnce()
+                }
 
-		await refreshWeather(using: locationService.lastKnownLocation)
+                await refreshWeather(using: locationService.lastKnownLocation)
                 storage.resetAllCompletionDates()
 
 		if todayTasks.isEmpty {
