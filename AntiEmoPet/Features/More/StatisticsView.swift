@@ -33,7 +33,7 @@ struct StatisticsView: View {
         moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
         energySummary = energyViewModel.energySummary(
             metrics: appModel.dailyMetricsCache,
-            tasks: appModel.todayTasks
+            tasks: appModel.tasksSince(days: 30)
         ) ?? .empty
     }
 }

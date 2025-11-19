@@ -231,18 +231,23 @@ struct EnergyTrendSection: View {
 		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
 
-		// 日模式：按小时计算
-		if windowDays == 1 {
-			let todayEntries = energyHistory.filter { cal.isDate($0.date, inSameDayAs: now) }
-			guard !todayEntries.isEmpty else { return [:] }
+                // 日模式：按小时计算
+                if windowDays == 1 {
+                        let todayEntries = energyHistory.filter { cal.isDate($0.date, inSameDayAs: now) }
+                        guard !todayEntries.isEmpty else { return [:] }
 
-			var hourly: [Date: Int] = [:]
-			var prev: EnergyHistoryEntry?
+                        var hourly: [Date: Int] = [:]
+                        let startOfDay = cal.startOfDay(for: now)
+                        let previousSnapshot = energyHistory
+                                .filter { $0.date < startOfDay }
+                                .sorted(by: { $0.date < $1.date })
+                                .last
+                        var prev: EnergyHistoryEntry? = previousSnapshot
 
-			for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
-				let hour = cal.date(bySetting: .minute, value: 0, of: entry.date)!
-				if let p = prev {
-					let diff = entry.totalEnergy - p.totalEnergy
+                        for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
+                                let hour = cal.date(bySetting: .minute, value: 0, of: entry.date)!
+                                if let p = prev {
+                                        let diff = entry.totalEnergy - p.totalEnergy
 					if diff > 0 {
 						hourly[hour, default: 0] += diff
 					} else {
@@ -254,8 +259,8 @@ struct EnergyTrendSection: View {
 					// This ensures single data point is shown
 					hourly[hour] = 0
 				}
-				prev = entry
-			}
+                                prev = entry
+                        }
 
 			return hourly
 		}

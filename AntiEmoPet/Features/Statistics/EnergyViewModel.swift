@@ -32,21 +32,30 @@ final class EnergyStatisticsViewModel: ObservableObject {
 	}
 
 	// MARK: - Main Calculation
-	func energySummary(
-		metrics: [DailyActivityMetrics]? = nil,
-		tasks: [UserTask] = [],
-		days: Int = 7
-	) -> EnergySummary? {
-		guard !tasks.isEmpty else { return nil }
+        func energySummary(
+                metrics: [DailyActivityMetrics]? = nil,
+                tasks: [UserTask] = [],
+                days: Int = 7
+        ) -> EnergySummary? {
+                guard !tasks.isEmpty else { return nil }
 
-		let calendar = TimeZoneManager.shared.calendar
-		let now = Date()
-		let startDate = calendar.startOfDay(
-			for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
-		)
+                let calendar = TimeZoneManager.shared.calendar
+                let now = Date()
+                let startDate = calendar.startOfDay(
+                        for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
+                )
 
-		let dailyEnergyAdds = calculateDailyEnergy(from: tasks, since: startDate, days: days)
-		let todayAdd = dailyEnergyAdds[calendar.startOfDay(for: now)] ?? 0
+#if DEBUG
+                let completed = tasks.filter { $0.status == .completed }
+                let missingTimestamps = completed.filter { $0.completedAt == nil }
+                if !missingTimestamps.isEmpty {
+                        print("⚠️ Completed tasks missing timestamps: \(missingTimestamps.map { $0.id })")
+                }
+                print("[EnergySummary] tasks=\(tasks.count), completed=\(completed.count), windowDays=\(days)")
+#endif
+
+                let dailyEnergyAdds = calculateDailyEnergy(from: tasks, since: startDate, days: days)
+                let todayAdd = dailyEnergyAdds[calendar.startOfDay(for: now)] ?? 0
 
 		let averageAddWeek = {
 			guard !dailyEnergyAdds.isEmpty else { return 0 }

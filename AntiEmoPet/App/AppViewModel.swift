@@ -149,13 +149,11 @@ final class AppViewModel: ObservableObject {
                 }
 
                 await refreshWeather(using: locationService.lastKnownLocation)
-                storage.resetAllCompletionDates()
-
-		if todayTasks.isEmpty {
-			let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
-			storage.save(tasks: generated)
-			todayTasks = generated
-		} else {
+                if todayTasks.isEmpty {
+                        let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
+                        storage.save(tasks: generated)
+                        todayTasks = generated
+                } else {
 			// No-op: weather is derived from weatherReport; no assignment needed here.
 		}
 
@@ -442,13 +440,13 @@ final class AppViewModel: ObservableObject {
 		relatedTaskCategory: TaskCategory? = nil,
 		relatedWeather: WeatherType? = nil
 	) {
-		let entry = MoodEntry(
-			value: value,
-			source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
-			delta: delta,
-			relatedTaskCategory: relatedTaskCategory,
-			relatedWeather: relatedWeather ?? weatherReport?.currentWeather
-		)
+                let entry = MoodEntry(
+                        value: value,
+                        source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
+                        delta: delta,
+                        relatedTaskCategory: relatedTaskCategory,
+                        relatedWeather: relatedWeather ?? weather
+                )
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 		
@@ -803,18 +801,23 @@ final class AppViewModel: ObservableObject {
                 showPettingNotice("Lumio felt a bit lonely (bonding level down)")
         }
 
-	private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {
-		let slotIntervals = taskGenerator.scheduleIntervals(for: date)
-		let now = Date()
-		return slotIntervals
-			.filter { $0.value.end <= now && $0.key != slot }
-			.map { $0.key }
-	}
+        private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {
+                let slotIntervals = taskGenerator.scheduleIntervals(for: date)
+                let now = Date()
+                return slotIntervals
+                        .filter { $0.value.end <= now && $0.key != slot }
+                        .map { $0.key }
+        }
 
-	func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
-		let cal = TimeZoneManager.shared.calendar
-		let now = Date()
-		let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!)
+        /// Fetch cached tasks for the latest `days` to power analytics without mutating state.
+        func tasksSince(days: Int) -> [UserTask] {
+                storage.fetchTasks(since: days)
+        }
+
+        func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
+                let cal = TimeZoneManager.shared.calendar
+                let now = Date()
+                let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!)
 
 		let interactions = (UserDefaults.standard.dictionary(forKey: interactionsKey) as? [String: Int]) ?? [:]
 		let timeSlots = (UserDefaults.standard.dictionary(forKey: timeSlotKey) as? [String: [String: Int]]) ?? [:]
@@ -885,13 +888,11 @@ final class AppViewModel: ObservableObject {
 		}
 		await refreshWeather(using: locationService.lastKnownLocation)
 		
-		storage.resetAllCompletionDates()
-		if let retained {
-			retained.status = .pending
-			retained.completedAt = nil
-		}
-		storage.resetCompletionDates(for: Date())
-		storage.deleteTasks(for: Date(), excluding: retainIDs)
+                if let retained {
+                        retained.status = .pending
+                        retained.completedAt = nil
+                }
+                storage.deleteTasks(for: Date(), excluding: retainIDs, includeCompleted: false)
 		
 		// Ensure templates are loaded
 		storage.bootstrapIfNeeded()
