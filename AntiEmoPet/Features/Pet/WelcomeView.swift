@@ -45,7 +45,7 @@ struct WelcomeView: View {
 					welcomeText
 						.transition(.opacity)
 						.frame(maxWidth: .infinity)
-						.padding(.top, 120)
+						.padding(.top, 150)
 						.padding(.bottom, 120)
 
 					Spacer(minLength: 50)

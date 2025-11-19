@@ -43,8 +43,6 @@ struct TasksView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(Color(uiColor: .systemGroupedBackground))
 
                 if let reward = activeReward {
                     RewardToastView(event: reward)
@@ -56,7 +54,7 @@ struct TasksView: View {
                 
                 if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
                     ZStack {
-                         Color.black.opacity(0.4).ignoresSafeArea()
+                         Color.clear.ignoresSafeArea()
                              .onTapGesture { } // Block taps
                          MoodFeedbackOverlayView(taskCategory: task.category)
                              .frame(maxWidth: 360)

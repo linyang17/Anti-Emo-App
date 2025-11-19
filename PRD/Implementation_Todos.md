@@ -790,3 +790,13 @@
 
 ### Pending Verification
 - [ ] **Upload Integration**: 数据上传服务 (Section 0.3) 仍为 Not Started, 需确认后端 API 规范后实施。
+
+### Fixed (Latest Session)
+- [x] **Shop Items Loading**: Fixed `items.json` structure mismatch - removed unused `name` field from `ItemSeed` struct. Items from JSON now load correctly.
+- [x] **Energy Statistics First Data Point**: Fixed missing first data point in EnergyTrend charts by ensuring first entry is included (with 0 value when no previous entry exists).
+- [x] **Energy Summary Calculation**: Changed from energy history differences to task-based calculation - now sums energy gained from completed tasks by day, then averages daily totals (per PRD requirement).
+- [x] **Refresh Button**: Enhanced to always fetch fresh weather before generating tasks, and ensures task templates are bootstrapped.
+- [x] **Weather on App Open**: App now always fetches weather on open (even if location sharing is off, uses cached location) for mood/task recording.
+
+### Database/Backend Work Required
+- **None identified**: All fixes use local data storage (SwiftData, UserDefaults). No backend API changes or database schema migrations needed for these fixes.

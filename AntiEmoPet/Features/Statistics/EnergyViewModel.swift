@@ -84,7 +84,16 @@ final class EnergyStatisticsViewModel: ObservableObject {
         let todayDelta = todayAdd - todayDeduct
 		let averageToday = countToday > 0 ? totalToday / countToday : 0
 
-        var addPerDay = [Date: Int]()
+        // Calculate energy gained from tasks by day (PRD requirement: sum by day, then average)
+        var taskEnergyPerDay: [Date: Int] = [:]
+        for task in tasks where task.status == .completed, let completedAt = task.completedAt {
+            let day = calendar.startOfDay(for: completedAt)
+            if completedAt >= startDate {
+                taskEnergyPerDay[day, default: 0] += task.energyReward
+            }
+        }
+        
+        // Also track energy changes from history for "use" calculation
         var usePerDay = [Date: Int]()
         var sumPerDay = [Date: (total: Int, count: Int)]()
         previousEnergy = nil
@@ -93,9 +102,7 @@ final class EnergyStatisticsViewModel: ObservableObject {
             let day = calendar.startOfDay(for: entry.date)
             if let previous = previousEnergy {
                 let difference = entry.totalEnergy - previous
-                if difference > 0 {
-                    addPerDay[day, default: 0] += difference
-                } else {
+                if difference < 0 {
                     usePerDay[day, default: 0] += abs(difference)
                 }
             }
@@ -107,14 +114,15 @@ final class EnergyStatisticsViewModel: ObservableObject {
             previousEnergy = entry.totalEnergy
         }
 
-        let dayCount = sumPerDay.count
-		// Divide by days (window size) for consistency with "Past Week"
-		let averageAddWeek = Int(Double(addPerDay.values.reduce(0, +)) / Double(max(1, days)))
-		let averageUseWeek = Int(Double(usePerDay.values.reduce(0, +)) / Double(max(1, days)))
+        let dayCount = max(1, days) // Use window size for averaging
+		// Average daily energy gained from tasks (sum by day, then average)
+		let totalTaskEnergy = taskEnergyPerDay.values.reduce(0, +)
+		let averageAddWeek = Int(Double(totalTaskEnergy) / Double(dayCount))
+		let averageUseWeek = Int(Double(usePerDay.values.reduce(0, +)) / Double(dayCount))
 		
 		// Average daily total energy (not add)
 		let totalSum = sumPerDay.values.reduce(0) { $0 + ($1.total / max($1.count, 1)) }
-		let averageWeek = Int(Double(totalSum) / Double(max(1, days)))
+		let averageWeek = Int(Double(totalSum) / Double(dayCount))
 
         var todayTaskCount = 0
         var averageTaskCountWeek: Double = 0

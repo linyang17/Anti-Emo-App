@@ -439,7 +439,6 @@ enum DefaultSeeds {
     private struct ItemSeed: Decodable {
         let sku: String
         let type: ItemType
-        let name: String
         let assetName: String
         let costEnergy: Int
         let BondingBoost: Int

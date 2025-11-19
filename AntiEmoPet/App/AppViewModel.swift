@@ -128,9 +128,13 @@ final class AppViewModel: ObservableObject {
                 todayTasks = storage.fetchTasks(for: .now)
                 applyDailyBondingDecayIfNeeded()
 
+                // Always fetch weather on app open (even if location sharing is off, use cached location)
                 if let stats = userStats, stats.shareLocationAndWeather {
                         beginLocationUpdates()
                         _ = await requestWeatherAccess()
+                        locationService.requestLocationOnce()
+                } else {
+                        // Still try to fetch weather using last known location for mood/task recording
                         locationService.requestLocationOnce()
                 }
 
@@ -870,26 +874,35 @@ final class AppViewModel: ObservableObject {
 		if let retained {
 			reservedTitles.insert(retained.title)
 		}
+		
+		// Always fetch fresh weather before generating tasks
 		if let stats = userStats, stats.shareLocationAndWeather {
 			beginLocationUpdates()
+			locationService.requestLocationOnce()
 		}
-                await refreshWeather(using: locationService.lastKnownLocation)
-                storage.resetAllCompletionDates()
-                if let retained {
-                        retained.status = .pending
-                        retained.completedAt = nil
-                }
-                storage.resetCompletionDates(for: Date())
-                storage.deleteTasks(for: Date(), excluding: retainIDs)
-                var generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
-                if generated.isEmpty {
-                        storage.bootstrapIfNeeded()
-                        generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
-                }
-                storage.save(tasks: generated)
-                todayTasks = storage.fetchTasks(for: .now)
-                scheduleTaskNotifications()
-        }
+		await refreshWeather(using: locationService.lastKnownLocation)
+		
+		storage.resetAllCompletionDates()
+		if let retained {
+			retained.status = .pending
+			retained.completedAt = nil
+		}
+		storage.resetCompletionDates(for: Date())
+		storage.deleteTasks(for: Date(), excluding: retainIDs)
+		
+		// Ensure templates are loaded
+		storage.bootstrapIfNeeded()
+		
+		var generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+		if generated.isEmpty {
+			// Retry with fresh bootstrap
+			storage.bootstrapIfNeeded()
+			generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+		}
+		storage.save(tasks: generated)
+		todayTasks = storage.fetchTasks(for: .now)
+		scheduleTaskNotifications()
+	}
 
 	func scheduleTaskNotifications() {
 		guard userStats?.notificationsEnabled == true else { return }

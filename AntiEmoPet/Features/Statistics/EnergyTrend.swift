@@ -245,7 +245,14 @@ struct EnergyTrendSection: View {
 					let diff = entry.totalEnergy - p.totalEnergy
 					if diff > 0 {
 						hourly[hour, default: 0] += diff
+					} else {
+						// Still include the hour even if no gain
+						hourly[hour, default: 0] = hourly[hour] ?? 0
 					}
+				} else {
+					// First entry: include it with 0 (can't calculate diff from nothing)
+					// This ensures single data point is shown
+					hourly[hour] = 0
 				}
 				prev = entry
 			}
@@ -264,12 +271,21 @@ struct EnergyTrendSection: View {
 			let day = cal.startOfDay(for: entry.date)
 			if let p = prev {
 				let diff = entry.totalEnergy - p.totalEnergy
-				if diff > 0 { daily[day, default: 0] += diff }
+				if diff > 0 { 
+					daily[day, default: 0] += diff 
+				}
+			} else {
+				// First entry: initialize the day with 0 (or could use initial energy if available)
+				daily[day, default: 0] = 0
 			}
 			prev = entry
 		}
 
-		daily[cal.startOfDay(for: now)] = energy.todayAdd
+		// Ensure today is included even if no new entries
+		let today = cal.startOfDay(for: now)
+		if daily[today] == nil {
+			daily[today] = energy.todayAdd
+		}
 		
 		// Week 和 Month 都按天显示
 		return daily

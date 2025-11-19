@@ -30,13 +30,14 @@ struct OnboardingView: View {
                                         .transition(.opacity)
                         } else {
                                 VStack {
-                                        Spacer(minLength: 50)
+                                        Spacer(minLength: 30)
 
                                         StepFactory(
                                                 step: step,
                                                 viewModel: viewModel,
                                                 onAdvance: handleAdvance
                                         )
+										.padding(.bottom, 24)
                                         .id(step.rawValue)
                                         .animation(.easeInOut(duration: 0.3), value: step)
 
