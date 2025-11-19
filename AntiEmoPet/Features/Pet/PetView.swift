@@ -1,15 +1,19 @@
 import SwiftUI
 
 struct PetView: View {
-	@EnvironmentObject private var appModel: AppViewModel
-	@StateObject private var viewModel = PetViewModel()
-	@State private var mood: MoodStatisticsViewModel.MoodSummary = .empty
-	@State private var activeSheet: ActiveSheet?
-	@State private var taskOffset: CGSize = .zero
-	@State private var taskBreathUp: Bool = false
-	@State private var taskFloatTask: Task<Void, Never>?
-	@State private var showPettingHearts = false
-	@State private var pettingEffectTask: Task<Void, Never>?
+        @EnvironmentObject private var appModel: AppViewModel
+        @StateObject private var viewModel = PetViewModel()
+        private let moodModel = MoodStatisticsViewModel()
+        @State private var mood: MoodStatisticsViewModel.MoodSummary = .empty
+        @State private var activeSheet: ActiveSheet?
+        @State private var taskOffset: CGSize = .zero
+        @State private var taskBreathUp: Bool = false
+        @State private var taskFloatTask: Task<Void, Never>?
+        @State private var showPettingHearts = false
+        @State private var pettingEffectTask: Task<Void, Never>?
+        @State private var activeReward: RewardEvent?
+        @State private var rewardOpacity: Double = 0
+        @State private var bannerTask: Task<Void, Never>?
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -27,33 +31,68 @@ struct PetView: View {
 
 			content
 		}
-		.overlay(alignment: .topTrailing) {
-			VStack(alignment: .trailing, spacing: 120) {
-				MoreButton
-					.padding(32)
-				taskButton
-					.padding(12)
-			}
-		}
-		.overlay(alignment: .bottomLeading) {
-			shopButton
-				.padding(.leading, 40)
-				.padding(.bottom, 130)
-		}
-		.sheet(item: $activeSheet, content: presentSheet(for:))
-		.toolbar(.hidden, for: .navigationBar)
-		.onAppear { viewModel.sync(with: appModel) }
-		.onReceive(appModel.$pet) { pet in
-			viewModel.updateStatus(stats: appModel.userStats, pet: pet)
-			viewModel.updatePetState(pet: pet)
-		}
-		.onReceive(appModel.$userStats) { stats in
-			viewModel.updateStatus(stats: stats, pet: appModel.pet)
-		}
-		.onReceive(appModel.$weather) { weather in
-			viewModel.updateScene(weather: weather)
-		}
-	}
+                .overlay(alignment: .topTrailing) {
+                        VStack(alignment: .trailing, spacing: 120) {
+                                MoreButton
+                                        .padding(32)
+                                taskButton
+                                        .padding(12)
+                        }
+                }
+                .overlay(alignment: .bottomLeading) {
+                        shopButton
+                                .padding(.leading, 40)
+                                .padding(.bottom, 130)
+                }
+                .overlay { overlayStack }
+                .sheet(item: $activeSheet, content: presentSheet(for:))
+                .toolbar(.hidden, for: .navigationBar)
+                .onAppear {
+                        viewModel.sync(with: appModel)
+                        if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
+                                mood = summary
+                        }
+                }
+                .onReceive(appModel.$pet) { pet in
+                        viewModel.updateStatus(stats: appModel.userStats, pet: pet)
+                        viewModel.updatePetState(pet: pet)
+                }
+                .onReceive(appModel.$userStats) { stats in
+                        viewModel.updateStatus(stats: stats, pet: appModel.pet)
+                }
+                .onReceive(appModel.$weather) { weather in
+                        viewModel.updateScene(weather: weather)
+                }
+                .onReceive(appModel.$moodEntries) { entries in
+                        if let summary = moodModel.moodSummary(entries: entries) {
+                                mood = summary
+                        }
+                }
+                .onReceive(appModel.objectWillChange) { _ in
+                        viewModel.updateStatus(stats: appModel.userStats, pet: appModel.pet)
+                        viewModel.updatePetState(pet: appModel.pet)
+                }
+                .onChange(of: appModel.rewardBanner) { _, newValue in
+                        guard activeSheet != .tasks, let reward = newValue else { return }
+                        activeReward = reward
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                rewardOpacity = 1
+                        }
+                        bannerTask?.cancel()
+                        bannerTask = Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                        rewardOpacity = 0
+                                }
+                                try? await Task.sleep(nanoseconds: 350_000_000)
+                                activeReward = nil
+                                appModel.consumeRewardBanner()
+                        }
+                }
+                .onDisappear {
+                        bannerTask?.cancel()
+                }
+        }
 
 	@ViewBuilder
 	private var content: some View {
@@ -103,11 +142,11 @@ struct PetView: View {
 
 			Spacer()
 		}
-	}
+        }
 
-	private func petStage(for pet: Pet) -> some View {
-		ZStack(alignment: .bottomTrailing) {
-			Image(viewModel.screenState.petAsset)
+        private func petStage(for pet: Pet) -> some View {
+                ZStack(alignment: .bottomTrailing) {
+                        Image(viewModel.screenState.petAsset)
 				.resizable()
 				.scaledToFit()
 				.frame(maxWidth: 220)
@@ -269,13 +308,12 @@ struct PetView: View {
 		taskFloatTask = nil
 	}
 
-	private func triggerPettingInteraction() {
-		guard appModel.petting() else { return }
-		pettingEffectTask?.cancel()
-		appModel.petEngine.applyPettingReward()
-		withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
-			showPettingHearts = true
-		}
+        private func triggerPettingInteraction() {
+                guard appModel.petting() else { return }
+                pettingEffectTask?.cancel()
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
+                        showPettingHearts = true
+                }
 		pettingEffectTask = Task { @MainActor in
 			try? await Task.sleep(nanoseconds: 1_200_000_000)
 			withAnimation(.easeOut(duration: 0.3)) {
@@ -313,20 +351,55 @@ struct PetView: View {
 	}
 	
 	@ViewBuilder
-	private func presentSheet(for sheet: ActiveSheet) -> some View {
-		switch sheet {
-		case .tasks:
-			TasksView(lastMood: mood.lastMood)
-			.environmentObject(appModel)
-			.presentationDetents([.fraction(0.55)])
-			.presentationBackground(.thickMaterial.opacity(0.7))
-			.presentationDragIndicator(.hidden)
-		case .shop:
-			ShopView()
-				.environmentObject(appModel)
-				.presentationDetents([.fraction(0.6)])
-				.presentationBackground(.ultraThickMaterial.opacity(0.7))
-				.presentationDragIndicator(.hidden)
-		}
-	}
+        private func presentSheet(for sheet: ActiveSheet) -> some View {
+                switch sheet {
+                case .tasks:
+                        TasksView(lastMood: mood.lastMood)
+                        .environmentObject(appModel)
+                        .presentationDetents([.fraction(0.55)])
+                        .presentationBackground(.thickMaterial.opacity(0.7))
+                        .presentationDragIndicator(.hidden)
+                case .shop:
+                        ShopView()
+                                .environmentObject(appModel)
+                                .presentationDetents([.fraction(0.6)])
+                                .presentationBackground(.ultraThickMaterial.opacity(0.7))
+                                .presentationDragIndicator(.hidden)
+                }
+        }
+
+        @ViewBuilder
+        private var overlayStack: some View {
+                ZStack {
+                        if appModel.showMoodCapture && !appModel.showOnboarding {
+                                MoodCaptureOverlayView() { value in
+                                        appModel.recordMoodOnLaunch(value: value)
+                                }
+                                .frame(maxWidth: 360)
+                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        }
+
+                        if let task = appModel.pendingMoodFeedbackTask {
+                                MoodFeedbackOverlayView(
+                                        taskCategory: task.category
+                                )
+                                .frame(maxWidth: 360)
+                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        }
+
+                        if let reward = activeReward {
+                                VStack {
+                                        RewardToastView(event: reward)
+                                                .opacity(rewardOpacity)
+                                                .padding(.top, 16)
+                                                .padding(.horizontal)
+                                                .transition(.move(edge: .top).combined(with: .opacity))
+                                        Spacer(minLength: 0)
+                                }
+                                .allowsHitTesting(false)
+                        }
+                }
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.showMoodCapture)
+        }
 }

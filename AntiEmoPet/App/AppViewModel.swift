@@ -57,11 +57,12 @@ final class AppViewModel: ObservableObject {
         private let slotGenerationKey = "taskSlotGenerationRecords"
         private let penaltyRecordsKey = "taskSlotPenaltyRecords"
         private let pettingLimitKey = "dailyPettingLimit"
+        private var lastObservedSlot: TimeSlot?
         private typealias RefreshRecordMap = [String: [String: Double]]
         private typealias SlotScheduleMap = [String: [String: Double]]
         private typealias SlotGenerationMap = [String: [String: Bool]]
         private typealias SlotPenaltyMap = [String: [String: Bool]]
-		private var slotMonitorTask: Task<Void, Never>?
+                private var slotMonitorTask: Task<Void, Never>?
 		private var pettingNoticeTask: Task<Void, Never>?
 		private let isoDayFormatter: ISO8601DateFormatter = {
 		let formatter = ISO8601DateFormatter()
@@ -123,19 +124,21 @@ final class AppViewModel: ObservableObject {
 
 		shopItems = StaticItemLoader.loadAllItems()
 
-		moodEntries = storage.fetchMoodEntries()
-		refreshMoodLoggingState()
-		sunEvents = storage.fetchSunEvents()
-		inventory = storage.fetchInventory()
+                moodEntries = storage.fetchMoodEntries()
+                refreshMoodLoggingState()
+                sunEvents = storage.fetchSunEvents()
+                inventory = storage.fetchInventory()
 
-		todayTasks = storage.fetchTasks(for: .now)
-		applyDailyBondingDecayIfNeeded()
+                todayTasks = storage.fetchTasks(for: .now)
+                applyDailyBondingDecayIfNeeded()
 
-		if let stats = userStats, stats.shareLocationAndWeather {
-			beginLocationUpdates()
-		}
+                if let stats = userStats, stats.shareLocationAndWeather {
+                        beginLocationUpdates()
+                        _ = await requestWeatherAccess()
+                        locationService.requestLocationOnce()
+                }
 
-		await refreshWeather(using: locationService.lastKnownLocation)
+                await refreshWeather(using: locationService.lastKnownLocation)
                 storage.resetAllCompletionDates()
 
 		if todayTasks.isEmpty {
@@ -277,19 +280,23 @@ final class AppViewModel: ObservableObject {
 		pendingMoodFeedbackTask = task
 	}
 	
-	/// 提交任务完成后的情绪反馈
-	/// - Parameters:
-	///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
-	///   - task: 完成的任务
-	func submitMoodFeedback(delta: Int, for task: TaskCategory) {
-		let entry = MoodEntry(
-			date: Date(),
-			value: max(10, min(100, 50 + delta)), // 基准值50,加上delta并限制在10-100范围
-			source: .afterTask,
-			delta: delta,
-			relatedTaskCategory: task,
-			relatedWeather: weather
-		)
+        /// 提交任务完成后的情绪反馈
+        /// - Parameters:
+        ///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
+        ///   - task: 完成的任务
+        func submitMoodFeedback(delta: Int, for task: TaskCategory) {
+                let lastValue: Int = {
+                        let sorted = moodEntries.sorted { $0.date < $1.date }
+                        return sorted.last?.value ?? 50
+                }()
+                let entry = MoodEntry(
+                        date: Date(),
+                        value: max(10, min(100, lastValue + delta)),
+                        source: .afterTask,
+                        delta: delta,
+                        relatedTaskCategory: task,
+                        relatedWeather: weather
+                )
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
 		
@@ -304,19 +311,19 @@ final class AppViewModel: ObservableObject {
 	}
 	
 
-	@discardableResult
-	func petting() -> Bool {
-		let count = pettingCount()
-		let maxcount = 5
-		guard count < maxcount else {
-			showPettingNotice("You've interacted a lot with Lumio today")
-			return false
-		}
-		petEngine.handleAction(.pat)
-		incrementPetInteractionCount()
-		incrementPettingCount()
-		storage.persist()
-		objectWillChange.send()
+        @discardableResult
+        func petting() -> Bool {
+                let count = pettingCount()
+                let maxcount = 5
+                guard count < maxcount else {
+                        showPettingNotice("You've interacted a lot with Lumio today")
+                        return false
+                }
+                petEngine.applyPettingReward()
+                incrementPetInteractionCount()
+                incrementPettingCount()
+                storage.persist()
+                objectWillChange.send()
 		analytics.log(event: "pet_pat", metadata: ["count": "\(count + 1)"])
 		dailyMetricsCache = makeDailyActivityMetrics()
 		let remaining = max(0, maxcount - (count + 1))
@@ -612,13 +619,18 @@ final class AppViewModel: ObservableObject {
 		saveSlotGenerationRecords(generation)
 	}
 
-	private func startSlotMonitor() {
-		slotMonitorTask?.cancel()
-		slotMonitorTask = Task.detached { [weak self] in
+        private func startSlotMonitor() {
+                slotMonitorTask?.cancel()
+                slotMonitorTask = Task.detached { [weak self] in
                                 while !Task.isCancelled {
                                         try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
                                         await MainActor.run {
                                                 guard let self else { return }
+                                                let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+                                                if currentSlot != self.lastObservedSlot {
+                                                        self.lastObservedSlot = currentSlot
+                                                        Task { await self.refreshWeather(using: self.locationService.lastKnownLocation) }
+                                                }
                                                 self.prepareSlotGenerationSchedule(for: Date())
                                                 self.checkSlotGenerationTrigger()
                                                 self.updateTaskRefreshEligibility()
@@ -859,19 +871,23 @@ final class AppViewModel: ObservableObject {
 		if let stats = userStats, stats.shareLocationAndWeather {
 			beginLocationUpdates()
 		}
-		await refreshWeather(using: locationService.lastKnownLocation)
+                await refreshWeather(using: locationService.lastKnownLocation)
                 storage.resetAllCompletionDates()
-		if let retained {
-			retained.status = .pending
-			retained.completedAt = nil
-		}
-		storage.resetCompletionDates(for: Date())
-		storage.deleteTasks(for: Date(), excluding: retainIDs)
-		let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
-		storage.save(tasks: generated)
-		todayTasks = storage.fetchTasks(for: .now)
-		scheduleTaskNotifications()
-	}
+                if let retained {
+                        retained.status = .pending
+                        retained.completedAt = nil
+                }
+                storage.resetCompletionDates(for: Date())
+                storage.deleteTasks(for: Date(), excluding: retainIDs)
+                var generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+                if generated.isEmpty {
+                        storage.bootstrapIfNeeded()
+                        generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+                }
+                storage.save(tasks: generated)
+                todayTasks = storage.fetchTasks(for: .now)
+                scheduleTaskNotifications()
+        }
 
 	func scheduleTaskNotifications() {
 		guard userStats?.notificationsEnabled == true else { return }

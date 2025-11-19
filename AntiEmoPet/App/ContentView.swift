@@ -46,35 +46,19 @@ struct MainTabView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 
 	var body: some View {
-		NavigationStack { PetView() }
-			.fullScreenCover(isPresented: Binding(
-				get: { appModel.showOnboarding },
-				set: { appModel.showOnboarding = $0 }
-			)) {
-				OnboardingView(locationService: appModel.locationService)
-					.environmentObject(appModel)
-			}
-                        .interactiveDismissDisabled(true)
-                        // 每日首次打开时强制情绪记录弹窗
+                NavigationStack { PetView() }
                         .fullScreenCover(isPresented: Binding(
-                                get: { appModel.showMoodCapture && !appModel.showOnboarding },
-                                set: { newValue in
-                                        if !appModel.shouldForceMoodCapture {
-                                                appModel.showMoodCapture = newValue
-                                        }
-                                }
+                                get: { appModel.showOnboarding },
+                                set: { appModel.showOnboarding = $0 }
                         )) {
-                                ZStack {
-                                        MoodCaptureOverlayView() { value in
-                                                appModel.recordMoodOnLaunch(value: value)
-                                        }
-                                }
+                                OnboardingView(locationService: appModel.locationService)
+                                        .environmentObject(appModel)
                         }
-                        .interactiveDismissDisabled(appModel.shouldForceMoodCapture && !appModel.showOnboarding)
-			.alert(
-				"Time for bed...",
-				isPresented: Binding(
-					get: { appModel.showSleepReminder && !appModel.showOnboarding },
+                        .interactiveDismissDisabled(true)
+                        .alert(
+                                "Time for bed...",
+                                isPresented: Binding(
+                                        get: { appModel.showSleepReminder && !appModel.showOnboarding },
 					set: { newValue in
 						if !newValue {
 							appModel.dismissSleepReminder()

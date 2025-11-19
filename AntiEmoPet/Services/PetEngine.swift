@@ -41,17 +41,17 @@ final class PetEngine {
 	}
 
 	// MARK: - 动作处理
-	func handleAction(_ action: PetActionType) {
-		guard let pet else { return }
+        func handleAction(_ action: PetActionType) {
+                guard let pet else { return }
 
-		switch action {
-		case .pat:
-			updateBonding(for: pet, bondingAddValue: 5)
-		case .feed:
-			updateBonding(for: pet, bondingAddValue: 2)
-			awardXP(2, to: pet)
-		case .penalty:
-			updateBonding(for: pet, bondingAddValue: -1)
+                switch action {
+                case .pat:
+                        updateBonding(for: pet, bondingAddValue: 1)
+                case .feed:
+                        updateBonding(for: pet, bondingAddValue: 2)
+                        awardXP(2, to: pet)
+                case .penalty:
+                        updateBonding(for: pet, bondingAddValue: -1)
 		}
 	}
 
