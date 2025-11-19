@@ -28,7 +28,8 @@ enum StaticDataLoader {
         }
 
         guard let url = Bundle.main.url(forResource: resource, withExtension: "json", subdirectory: "Static") else {
-            throw StaticDataError.resourceNotFound(resource)
+			print("❌ \(resource).json not found in Static folder")
+			throw StaticDataError.resourceNotFound(resource)
         }
 
         do {

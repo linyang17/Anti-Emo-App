@@ -21,7 +21,7 @@ struct WelcomeView: View {
 
 		let calendar = TimeZoneManager.shared.calendar
 		let slot = TimeSlot.from(date: Date(), using: calendar)
-		let weather: WeatherType? = appModel.weather
+		let weather: WeatherType = appModel.weather
 		let lastMood = mood.lastMood
 
 		let context = GreetingContext(
@@ -30,6 +30,12 @@ struct WelcomeView: View {
 			weather: weather,
 			lastMood: lastMood
 		)
+		let starter = appModel.taskGenerator.makeOnboardingTasks(
+			for: Date(),
+			weather: weather
+		)
+		appModel.storage.save(tasks: starter)
+		
 		return GreetingEngine.makeGreeting(from: context)
 	}
 	

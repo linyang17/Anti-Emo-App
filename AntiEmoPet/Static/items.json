@@ -1,30 +1,33 @@
-[
-  {
-    "sku": "clothing.heart.bag",
-    "type": "clothing",
-    "assetName": "heartbag",
-    "costEnergy": 60,
-    "BondingBoost": 15
-  },
-  {
-    "sku": "clothing.sunrise.pack",
-    "type": "clothing",
-    "assetName": "backpack",
-    "costEnergy": 150,
-    "BondingBoost": 20
-  },
-  {
-    "sku": "shoes.bloom.suitcase",
-    "type": "decor",
-    "assetName": "suitcase",
-    "costEnergy": 100,
-    "BondingBoost": 10
-  },
-  {
-    "sku": "shoes.moon.mailbox",
-    "type": "decor",
-    "assetName": "mailbox",
-    "costEnergy": 200,
-    "BondingBoost": 16
-  }
-]
+{
+	"version": 1,
+	"items": [
+		{
+			"sku": "clothing.heart.bag",
+			"type": "clothing",
+			"assetName": "heartbag",
+			"costEnergy": 60,
+			"bondingBoost": 15
+		},
+		{
+			"sku": "clothing.sunrise.pack",
+			"type": "clothing",
+			"assetName": "backpack",
+			"costEnergy": 150,
+			"bondingBoost": 20
+		},
+		{
+			"sku": "shoes.bloom.suitcase",
+			"type": "decor",
+			"assetName": "suitcase",
+			"costEnergy": 100,
+			"bondingBoost": 10
+		},
+		{
+			"sku": "shoes.moon.mailbox",
+			"type": "decor",
+			"assetName": "mailbox",
+			"costEnergy": 200,
+			"bondingBoost": 16
+		}
+	]
+}

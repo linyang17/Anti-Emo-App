@@ -62,7 +62,7 @@ struct PetView: View {
                 .onReceive(appModel.$userStats) { stats in
                         viewModel.updateStatus(stats: stats, pet: appModel.pet)
                 }
-                .onReceive(appModel.$weather) { weather in
+                .onChange(of: appModel.weather) { _, weather in
                         viewModel.updateScene(weather: weather)
                 }
                 .onReceive(appModel.$moodEntries) { entries in
@@ -424,3 +424,4 @@ struct PetView: View {
 	
 	
 }
+

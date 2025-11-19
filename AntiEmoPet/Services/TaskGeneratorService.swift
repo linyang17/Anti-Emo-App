@@ -33,7 +33,6 @@ final class TaskGeneratorService {
 				let task = UserTask(
 					title: template.title,
 					weatherType: scheduled.weather,
-					difficulty: template.difficulty,
 					category: template.category,
 					energyReward: template.energyReward,
 					date: scheduled.date
@@ -41,7 +40,6 @@ final class TaskGeneratorService {
 				tasks.append(task)
 			}
 		}
-		print("模板数：", templates.count, "前3个标题：", templates.prefix(3).map(\.title))
 
 		return tasks.sorted { $0.date < $1.date }
 	}
@@ -67,7 +65,6 @@ final class TaskGeneratorService {
 			let task = UserTask(
 				title: template.title,
 				weatherType: scheduled.weather,
-				difficulty: template.difficulty,
 				category: template.category,
 				energyReward: template.energyReward,
 				date: scheduled.date
@@ -81,24 +78,23 @@ final class TaskGeneratorService {
 	func generationTriggerTime(for slot: TimeSlot, date: Date, report: WeatherReport?) -> Date? {
 		guard let interval = scheduleIntervals(for: date)[slot] else { return nil }
 		let windows = overlappingWindows(interval: interval, report: report)
-		let schedule = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
+		let schedule = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .cloudy)
 		return schedule.date
 	}
 
-    func makeOnboardingTasks(for date: Date) -> [UserTask] {
+	func makeOnboardingTasks(for date: Date, weather: WeatherType) -> [UserTask] {
         let titles = [
-            "Say hello to Lumio",
-            "Check out shop panel",
-            "Do 20 burpee"
+            "Say hello to Lumio, drag up and down to play together",
+            "Check out shop panel by clicking the gift box",
+			"Try to refresh after all tasks are done (mark this as done first before trying)"
         ]
         let baseDate = calendar.startOfDay(for: date)
         return titles.enumerated().map { index, title in
             UserTask(
                 title: title,
-                weatherType: .sunny,
-                difficulty: .easy,
+				weatherType: weather,
                 category: .indoorDigital,
-                energyReward: 6,
+                energyReward: 5,
                 date: calendar.date(byAdding: .minute, value: index * 10, to: baseDate) ?? baseDate
             )
         }
@@ -198,15 +194,15 @@ final class TaskGeneratorService {
     private func categoryWeights(for weather: WeatherType) -> [TaskCategory: Int] {
         switch weather {
         case .sunny:
-            return [.outdoor: 6, .indoorDigital: 3, .indoorActivity: 4, .socials: 4, .petCare: 3]
+            return [.outdoor: 6, .indoorDigital: 1, .indoorActivity: 1, .socials: 1, .petCare: 1, .physical: 4]
         case .cloudy:
-            return [.outdoor: 2, .indoorDigital: 4, .indoorActivity: 4, .socials: 3, .petCare: 3]
+            return [.outdoor: 6, .indoorDigital: 1, .indoorActivity: 2, .socials: 2, .petCare: 1, .physical: 6]
         case .rainy:
-            return [.indoorDigital: 5, .indoorActivity: 4, .socials: 3, .petCare: 4]
+            return [.indoorDigital: 5, .indoorActivity: 4, .socials: 4, .petCare: 4, .physical: 4]
         case .snowy:
-            return [.outdoor: 1, .indoorDigital: 4, .indoorActivity: 5, .socials: 3, .petCare: 3]
+            return [.outdoor: 2, .indoorDigital: 4, .indoorActivity: 5, .socials: 6, .petCare: 2, .physical: 4]
         case .windy:
-            return [.outdoor: 2, .indoorDigital: 4, .indoorActivity: 4, .socials: 3, .petCare: 3]
+            return [.outdoor: 3, .indoorDigital: 4, .indoorActivity: 4, .socials: 4, .petCare: 2, .physical: 4]
         }
     }
 

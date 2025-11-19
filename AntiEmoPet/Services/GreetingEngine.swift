@@ -45,14 +45,14 @@ enum GreetingEngine {
 	// MARK: - 各类别生成函数
 
 	private static func makeBaseGreeting(context: GreetingContext, name: String) -> String {
-		let store = GreetingTemplateStore.shared
+		let store = GreetingTemplateLoader.shared
 		let templates = store.baseTemplates(for: context.timeSlot)
 		let template = templates.randomElement() ?? "Welcome back, {name}!"
 		return store.render(template, name: name)
 	}
 
 	private static func makeWeatherGreeting(context: GreetingContext, name: String) -> String {
-		let store = GreetingTemplateStore.shared
+		let store = GreetingTemplateLoader.shared
 		if let weather = context.weather {
 			let templates = store.weatherTemplates(for: weather)
 			if let template = templates.randomElement() {
@@ -64,7 +64,7 @@ enum GreetingEngine {
 	}
 
 	private static func makeMoodGreeting(context: GreetingContext, name: String) -> String {
-		let store = GreetingTemplateStore.shared
+		let store = GreetingTemplateLoader.shared
 		guard let value = context.lastMood else {
 			return makeBaseGreeting(context: context, name: name)
 		}

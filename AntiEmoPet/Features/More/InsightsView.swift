@@ -30,7 +30,6 @@ struct InsightsView: View {
     private func refreshSummaries() {
         moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
         energySummary = energyViewModel.energySummary(
-            from: appModel.energyHistory,
             metrics: appModel.dailyMetricsCache,
             tasks: appModel.todayTasks
         ) ?? .empty

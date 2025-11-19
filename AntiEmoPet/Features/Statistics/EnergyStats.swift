@@ -13,11 +13,6 @@ struct EnergyStatsSection: View {
                         .font(.title2.weight(.semibold))
                     Text("\(energy.todayAdd)")
                         .font(.title2.weight(.semibold))
-                    if energy.trend != .flat {
-                        Image(systemName: energy.trend == .up ? "arrow.up" : "arrow.down")
-                            .font(.title2)
-                            .foregroundStyle(energy.trend == .up ? .green : .red)
-                    }
                 }
 
 				Divider().padding(.vertical, 6)
@@ -26,7 +21,7 @@ struct EnergyStatsSection: View {
 				HStack(spacing: 20) {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Avg Daily Add")
+							Text("Avg Past Week")
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(energy.averageDailyAddPastWeek)")
@@ -44,10 +39,10 @@ struct EnergyStatsSection: View {
 					
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Avg Tasks/Day")
+							Text("Avg Tasks Completed")
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
-							Text(String(format: "%.1f", energy.averageDailyTaskCountPastWeek))
+							Text(String(format: "%.0f", energy.averageDailyTaskCountPastWeek))
 								.font(.title3.weight(.medium))
 						}
 						VStack(alignment: .leading, spacing: 5) {

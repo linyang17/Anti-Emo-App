@@ -1,9 +1,6 @@
 import Foundation
 import SwiftData
 
-enum TaskDifficulty: String, Codable, CaseIterable {
-    case easy, medium, hard
-}
 
 enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     case outdoor
@@ -85,7 +82,6 @@ final class UserTask: Identifiable {
     @Attribute(.unique) var id: UUID
     var title: String
     var weatherType: WeatherType
-    var difficulty: TaskDifficulty
     var category: TaskCategory
     var energyReward: Int = 0
     var date: Date
@@ -98,7 +94,6 @@ final class UserTask: Identifiable {
         id: UUID = UUID(),
         title: String,
         weatherType: WeatherType,
-        difficulty: TaskDifficulty,
         category: TaskCategory,
         energyReward: Int,
         date: Date,
@@ -110,7 +105,6 @@ final class UserTask: Identifiable {
         self.id = id
         self.title = title
         self.weatherType = weatherType
-        self.difficulty = difficulty
         self.category = category
         self.energyReward = energyReward
         self.date = date

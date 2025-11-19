@@ -291,7 +291,7 @@ struct ShopView: View {
 
 	private func showToast(for item: Item) {
 		let toast = ShopToast(
-			message: "Energy -\(item.costEnergy) · XP + 20 · Bonding + \(item.BondingBoost)"
+			message: "Energy -\(item.costEnergy) · XP + 20 · Bonding + \(item.bondingBoost)"
 		)
 		withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
 			purchaseToast = toast

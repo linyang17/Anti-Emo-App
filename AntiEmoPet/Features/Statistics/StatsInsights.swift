@@ -29,9 +29,6 @@ struct StatsInsightsSection: View {
 					Text(moodEnergyCorrelationText(mood: mood, energy: energy))
 						.font(.subheadline)
 
-					// 能量使用模式：今天是「补充型」还是「透支型」
-					Text(energyUsagePatternText(energy: energy))
-						.font(.subheadline)
 
 					// 任务完成率与情绪改善（占位说明：可直接接 Task 数据，不需改此 View）
 					Text(taskEffectPlaceholderText())
@@ -70,20 +67,6 @@ private extension StatsInsightsSection {
 		}
 	}
 
-	/// 根据今日补充 / 消耗 / 净变化，给出能量使用模式的解释
-	func energyUsagePatternText(energy: EnergyStatisticsViewModel.EnergySummary) -> String {
-		if energy.todayAdd == 0 && energy.todayDeduct == 0 {
-			return "No energy activity recorded today. Try logging a recharge or spend to see your pattern."
-		}
-
-		if energy.todayDelta > 0 {
-			return "Today seems more recharging — you’re giving yourself some energy back, which is great."
-		} else if energy.todayDelta < 0 {
-			return "You’re slightly running on empty today. Try some rest or an early night to recover."
-		} else {
-			return "Your energy is roughly balanced today — that’s a healthy rhythm to keep."
-		}
-	}
 
 	/// 任务完成率与情绪改善的占位说明：后续可接入 Task 数据，直接在此输出统计结论
 	func taskEffectPlaceholderText() -> String {
@@ -157,9 +140,8 @@ private extension MoodStatisticsViewModel.MoodSummary {
 
 	/// 轻量规则版：后面可无缝替换为 AI 模型，不影响调用方
 	func combinedAdvice(with energy: EnergyStatisticsViewModel.EnergySummary) -> String? {
-		// 轻量规则版：后面可无缝替换为 AI 模型，不影响调用方
 		let moodLevel = averageToday
-		let energyLevel = energy.averageToday
+		let energyLevel = energy.todayAdd
 
 		// 情绪和能量都低 → 给温和、可执行的小目标
 		if moodLevel <= 30 && energyLevel <= 30 {

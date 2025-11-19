@@ -7,21 +7,20 @@ struct ChatView: View {
 
         var body: some View {
                 VStack {
-                        ScrollViewReader { proxy in
-                                ScrollView {
-                                        LazyVStack(alignment: .leading, spacing: 12) {
-                                                ForEach(viewModel.messages) { message in
-                                                        HStack {
-                                                                if message.role == .user { Spacer() }
-                                                                Text(message.content)
-                                                                        .padding(12)
-                                                                        .background(
-                                                                                RoundedRectangle(cornerRadius: 12)
-                                                                                        .fill(message.role == .user
-                                                                                                  ? Color.accentColor.opacity(0.2)
-                                                                                                  : Color.green.opacity(0.2))
-                                                                        )
-                                                                if message.role == .pet { Spacer() }
+					ScrollViewReader { proxy in
+						ScrollView {
+							LazyVStack(alignment: .leading, spacing: 12) {
+									ForEach(viewModel.messages) { message in
+										HStack {
+											if message.role == .user { Spacer() }
+											Text(message.content)
+													.padding(12)
+													.background(RoundedRectangle(cornerRadius: 12)
+														.fill(message.role == .user
+																  ? Color.accentColor.opacity(0.2)
+																  : Color.green.opacity(0.2))
+															)
+											if message.role == .pet { Spacer() }
                                                         }
                                                 }
                                         }

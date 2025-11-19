@@ -27,6 +27,7 @@ struct TasksView: View {
         ZStack {
             VStack(spacing: 0) {
                 header
+					.background(Color(UIColor.systemGroupedBackground))
                 
                 ZStack(alignment: .top) {
                     List {
@@ -62,6 +63,7 @@ struct TasksView: View {
                     }
                     .transition(.opacity)
                     .zIndex(10)
+					.interactiveDismissDisabled(true)
                 }
             }
         }
@@ -73,16 +75,16 @@ struct TasksView: View {
             }
             bannerTask?.cancel()
             bannerTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-                withAnimation(.easeInOut(duration: 0.3)) {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                withAnimation(.easeInOut(duration: 0.2)) {
                     rewardOpacity = 0
                 }
-                try? await Task.sleep(nanoseconds: 350_000_000)
+                try? await Task.sleep(nanoseconds: 50_000_000)
                 activeReward = nil
                 appModel.consumeRewardBanner()
                 
                 if appModel.pendingMoodFeedbackTask != nil {
-                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    try? await Task.sleep(nanoseconds: 50_000_000)
                     withAnimation {
                         showMoodFeedback = true
                     }

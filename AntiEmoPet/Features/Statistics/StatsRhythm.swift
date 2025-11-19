@@ -19,9 +19,6 @@ struct StatsRhythmSection: View {
 
 	var body: some View {
 		VStack(spacing: 16) {
-			DashboardCard(title: "情绪时段分析", icon: "clock") {
-				rhythmSlotChart(data: analysis.timeSlotAverages)
-			}
 
             DashboardCard(title: "Mood Heatmap", icon: "grid") {
                 MoodHeatmapView(data: analysis.heatmapData)
@@ -29,10 +26,6 @@ struct StatsRhythmSection: View {
 
 			DashboardCard(title: "天气关联度", icon: "cloud.sun") {
 				rhythmWeatherChart(data: analysis.weatherAverages)
-			}
-
-			DashboardCard(title: "日照关联度 (Day/Night)", icon: "moon.stars") {
-				rhythmDaylightView(buckets: analysis.dayPeriodAverages, hint: analysis.daylightHint)
 			}
 
 			DashboardCard(title: "Sunlight Duration vs Mood", icon: "sun.max") {
@@ -51,35 +44,6 @@ struct StatsRhythmSection: View {
 		}
 	}
 
-	// MARK: - 时段图
-	@ViewBuilder
-	private func rhythmSlotChart(data: [TimeSlot: Double]) -> some View {
-		if data.isEmpty {
-			rhythmPlaceholder(systemImage: "clock")
-		} else {
-			let theme = ChartTheme.shared
-			Chart(slotAnimator.displayData) { item in
-				BarMark(
-					x: .value("Timeslot", item.slot.rawValue),
-					y: .value("Mood", item.value)
-				)
-				.foregroundStyle(theme.gradient(for: .sunny))
-				.cornerRadius(6)
-				.annotation(position: .trailing) {
-					Text(String(format: "%.0f", item.value))
-						.font(.caption2.weight(.medium))
-						.foregroundColor(.white.opacity(0.85))
-				}
-			}
-			.chartXAxis { AxisMarks(position: .bottom) }
-			.chartYAxis { AxisMarks(position: .leading) }
-			.frame(height: 160)
-			.drawingGroup()
-			.task(id: data) {
-				await updateSlotData(data)
-			}
-		}
-	}
 
 	// MARK: - 天气图
 	@ViewBuilder
@@ -106,45 +70,6 @@ struct StatsRhythmSection: View {
 		}
 	}
 
-	// MARK: - 日照图 (Day/Night)
-	@ViewBuilder
-	private func rhythmDaylightView(buckets: [DayPeriod: Double], hint: String) -> some View {
-		if buckets.isEmpty {
-			VStack(alignment: .center, spacing: 8) {
-				rhythmPlaceholder(systemImage: "moon.stars")
-				if !hint.isEmpty {
-					Text(hint)
-						.font(.caption)
-						.foregroundStyle(.secondary)
-				}
-			}
-		} else {
-			let theme = ChartTheme.shared
-			VStack(alignment: .leading, spacing: 12) {
-				Chart(daylightAnimator.displayData) { item in
-					BarMark(
-						x: .value("Mood", item.value),
-						y: .value("Period", item.period.dayPeriodTitle)
-					)
-					.foregroundStyle(theme.gradient(for: .sunny))
-					.cornerRadius(6)
-				}
-				.chartXAxis { AxisMarks(position: .bottom) }
-				.chartYAxis { AxisMarks(position: .leading) }
-				.frame(height: 140)
-				.drawingGroup()
-				.task(id: buckets) {
-					await updateDaylightData(buckets)
-				}
-
-				if !hint.isEmpty {
-					Text(hint)
-						.font(.caption)
-						.foregroundStyle(.secondary)
-				}
-			}
-		}
-	}
 
 	// MARK: - 日照时长折线图
 	@ViewBuilder

@@ -1,26 +1,26 @@
 import Foundation
 
 /// JSON 结构
-private struct GreetingTemplatesPayload: Decodable {
+private struct GreetingTemplates: Decodable {
 	let base: [String: [String]]
 	let weather: [String: [String]]
 	let mood: [String: [String]]
 }
 
 /// 负责从 JSON 加载 & 提供访问 API 的模板存储
-final class GreetingTemplateStore {
+final class GreetingTemplateLoader {
 
-	static let shared = GreetingTemplateStore()
+	static let shared = GreetingTemplateLoader()
 
-	private let templates: GreetingTemplatesPayload
+	private let templates: GreetingTemplates
 
 	init(bundle: Bundle = .main) {
 		guard
 			let url = bundle.url(forResource: "GreetingTemplates", withExtension: "json"),
 			let data = try? Data(contentsOf: url),
-			let payload = try? JSONDecoder().decode(GreetingTemplatesPayload.self, from: data)
+			let payload = try? JSONDecoder().decode(GreetingTemplates.self, from: data)
 		else {
-			self.templates = GreetingTemplatesPayload(
+			self.templates = GreetingTemplates(
 				base: [:],
 				weather: [:],
 				mood: [:]

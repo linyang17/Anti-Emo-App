@@ -1,7 +1,9 @@
 import Foundation
 
 struct ChatService {
-    // TODO(中/EN): Swap stub with AI backend (OpenAI/Vertex) and streaming replies per PRD Chat 模块.
+	
+    // TODO: Swap stub with AI backend (OpenAI/Vertex/other models) and streaming replies (up to 3 rounds per day)
+	
     func reply(to text: String, weather: WeatherType,) -> String {
         let base: String
         switch weather {

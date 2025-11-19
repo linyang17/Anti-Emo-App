@@ -441,50 +441,109 @@ enum DefaultSeeds {
         let type: ItemType
         let assetName: String
         let costEnergy: Int
-        let BondingBoost: Int
+        let bondingBoost: Int
     }
 
     private struct TaskTemplateSeed: Decodable {
         let title: String
-        let difficulty: TaskDifficulty
         let isOutdoor: Bool
         let category: TaskCategory
         let energyReward: Int
     }
 
-    static func makeItems(logger: Logger? = nil) -> [Item] {
-        do {
-            let seeds: [ItemSeed] = try StaticDataLoader.decode("items")
-            return seeds.map { seed in
-                Item(
-                    sku: seed.sku,
-                    type: seed.type,
-                    assetName: seed.assetName,
-                    costEnergy: seed.costEnergy,
-                    BondingBoost: seed.BondingBoost
-                )
-            }
-        } catch {
-            logger?.error("Failed to load items seed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
+	private struct ItemSeedContainer: Decodable {
+		let version: Int
+		let items: [ItemSeed]
+	}
+	
+	private struct TaskTemplateSeedContainer: Decodable {
+		let version: Int
+		let templates: [TaskTemplateSeed]
+	}
 
-    static func makeTaskTemplates(logger: Logger? = nil) -> [TaskTemplate] {
-        do {
-            let seeds: [TaskTemplateSeed] = try StaticDataLoader.decode("task_templates")
-            return seeds.map { seed in
-                TaskTemplate(
-                    title: seed.title,
-                    difficulty: seed.difficulty,
-                    isOutdoor: seed.isOutdoor,
-                    category: seed.category,
-                    energyReward: seed.energyReward
-                )
-            }
-        } catch {
-            logger?.error("Failed to load task templates seed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
+
+	static func makeItems(logger: Logger? = nil) -> [Item] {
+		do {
+			// Locate JSON file
+			guard let url = Bundle.main.url(forResource: "items", withExtension: "json") else {
+				logger?.error("❌ items.json not found in app bundle.")
+				return []
+			}
+
+			// Read file data
+			let data = try Data(contentsOf: url)
+			let decoder = JSONDecoder()
+			decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+			// Decode versioned structure
+			let container = try decoder.decode(ItemSeedContainer.self, from: data)
+
+			let items = container.items.map { seed in
+				Item(
+					sku: seed.sku,
+					type: seed.type,
+					assetName: seed.assetName,
+					costEnergy: seed.costEnergy,
+					bondingBoost: seed.bondingBoost
+				)
+			}
+
+			logger?.info("✅ Loaded \(items.count) items from items.json (version \(container.version))")
+			return items
+		} catch {
+			logger?.error("❌ Failed to load or decode items.json: \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
+
+	
+	static func makeTaskTemplates(logger: Logger? = nil) -> [TaskTemplate] {
+		do {
+			// Locate JSON file
+			guard let url = Bundle.main.url(forResource: "task_templates", withExtension: "json") else {
+				logger?.error("❌ task_templates.json not found in app bundle.")
+				return []
+			}
+
+			// Load and decode JSON
+			let data = try Data(contentsOf: url)
+			let decoder = JSONDecoder()
+			decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+			let container = try decoder.decode(TaskTemplateSeedContainer.self, from: data)
+
+			// Map to SwiftData models safely
+			let templates: [TaskTemplate] = container.templates.compactMap { seed in
+				guard let category = TaskCategory(rawValue: seed.category.rawValue) else {
+					logger?.warning("⚠️ Unknown task category: \(seed.category.rawValue, privacy: .public)")
+					return nil
+				}
+				return TaskTemplate(
+					title: seed.title.trimmingCharacters(in: .whitespacesAndNewlines),
+					isOutdoor: seed.isOutdoor,
+					category: category,
+					energyReward: max(1, seed.energyReward)
+				)
+			}
+
+			// Logging and version tracking
+			logger?.info("✅ Loaded \(templates.count) task templates (version \(container.version))")
+			UserDefaults.standard.set(container.version, forKey: "TaskTemplateDataVersion")
+
+			return templates
+
+		} catch let DecodingError.dataCorrupted(context) {
+			logger?.error("❌ JSON data corrupted: \(context.debugDescription, privacy: .public)")
+			return []
+		} catch let DecodingError.keyNotFound(key, context) {
+			logger?.error("❌ Missing key '\(key.stringValue, privacy: .public)' in JSON: \(context.debugDescription, privacy: .public)")
+			return []
+		} catch let DecodingError.typeMismatch(type, context) {
+			logger?.error("❌ Type mismatch for \(type, privacy: .public): \(context.debugDescription, privacy: .public)")
+			return []
+		} catch {
+			logger?.error("❌ Failed to load or decode task_templates.json: \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
 }

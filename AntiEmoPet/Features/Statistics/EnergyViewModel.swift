@@ -8,207 +8,186 @@ final class EnergyStatisticsViewModel: ObservableObject {
 	init() {
 		self.energySummary = .empty
 	}
-	
-    struct EnergySummary {
-        let lastEnergy: Int
-        let delta: Int
-        let todayAdd: Int
-        let todayDeduct: Int
-        let todayDelta: Int
-        let averageDailyAddPastWeek: Int
-        let averageDailyUsePastWeek: Int
-        let averageToday: Int
-        let averagePastWeek: Int
-        let todayTaskCount: Int
-        let averageDailyTaskCountPastWeek: Double
-        let trend: TrendDirection
-        let comment: String
-        let taskTypeCounts: [TaskCategory: Int]
 
-        static let empty = EnergySummary(
-            lastEnergy: 0,
-            delta: 0,
-            todayAdd: 0,
-            todayDeduct: 0,
-            todayDelta: 0,
-            averageDailyAddPastWeek: 0,
-            averageDailyUsePastWeek: 0,
-            averageToday: 0,
-            averagePastWeek: 0,
-            todayTaskCount: 0,
-            averageDailyTaskCountPastWeek: 0,
-            trend: .flat,
-            comment: "",
-            taskTypeCounts: [:]
-        )
-    }
+	struct EnergySummary {
+		let todayAdd: Int
+		let averageDailyAddPastWeek: Int
+		let todayTaskCount: Int
+		let averageDailyTaskCountPastWeek: Double
+		let trend: TrendDirection
+		let comment: String
+		let taskTypeCounts: [TaskCategory: Int]
+		let dailyEnergyAdds: [Date: Int]
 
+		static let empty = EnergySummary(
+			todayAdd: 0,
+			averageDailyAddPastWeek: 0,
+			todayTaskCount: 0,
+			averageDailyTaskCountPastWeek: 0,
+			trend: .flat,
+			comment: "",
+			taskTypeCounts: [:],
+			dailyEnergyAdds: [:]
+		)
+	}
 
-    func energySummary(
-        from history: [EnergyHistoryEntry],
-        metrics: [DailyActivityMetrics]? = nil,
-        tasks: [UserTask] = [],
-        days: Int = 7
-    ) -> EnergySummary? {
-        guard !history.isEmpty,
-              let last = history.max(by: { $0.date < $1.date }) else { return nil }
+	// MARK: - Main Calculation
+	func energySummary(
+		metrics: [DailyActivityMetrics]? = nil,
+		tasks: [UserTask] = [],
+		days: Int = 7
+	) -> EnergySummary? {
+		guard !tasks.isEmpty else { return nil }
 
-        let calendar = TimeZoneManager.shared.calendar
-        let now = Date()
-        let startDate = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!)
+		let calendar = TimeZoneManager.shared.calendar
+		let now = Date()
+		let startDate = calendar.startOfDay(
+			for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
+		)
 
-        let sorted = history.sorted { $0.date < $1.date }
-        let previousEntry = sorted.dropLast().last
-        let delta = last.totalEnergy - (previousEntry?.totalEnergy ?? last.totalEnergy)
+		let dailyEnergyAdds = calculateDailyEnergy(from: tasks, since: startDate, days: days)
+		let todayAdd = dailyEnergyAdds[calendar.startOfDay(for: now)] ?? 0
 
-        var todayAdd = 0
-        var todayDeduct = 0
-        var totalToday = 0
-        var countToday = 0
-        var previousEnergy: Int?
-
-        for entry in sorted where calendar.isDate(entry.date, inSameDayAs: now) {
-            totalToday += entry.totalEnergy
-            countToday += 1
-            if let previous = previousEnergy {
-                let difference = entry.totalEnergy - previous
-                if difference > 0 {
-                    todayAdd += difference
-                } else {
-                    todayDeduct -= difference
-                }
-            }
-            previousEnergy = entry.totalEnergy
-        }
-
-        let todayDelta = todayAdd - todayDeduct
-		let averageToday = countToday > 0 ? totalToday / countToday : 0
-
-        // Calculate energy gained from tasks by day (PRD requirement: sum by day, then average)
-        var taskEnergyPerDay: [Date: Int] = [:]
-        for task in tasks where task.status == .completed, let completedAt = task.completedAt {
-            let day = calendar.startOfDay(for: completedAt)
-            if completedAt >= startDate {
-                taskEnergyPerDay[day, default: 0] += task.energyReward
-            }
-        }
-        
-        // Also track energy changes from history for "use" calculation
-        var usePerDay = [Date: Int]()
-        var sumPerDay = [Date: (total: Int, count: Int)]()
-        previousEnergy = nil
-
-        for entry in sorted where entry.date >= startDate {
-            let day = calendar.startOfDay(for: entry.date)
-            if let previous = previousEnergy {
-                let difference = entry.totalEnergy - previous
-                if difference < 0 {
-                    usePerDay[day, default: 0] += abs(difference)
-                }
-            }
-
-            var bucket = sumPerDay[day] ?? (0, 0)
-            bucket.total += entry.totalEnergy
-            bucket.count += 1
-            sumPerDay[day] = bucket
-            previousEnergy = entry.totalEnergy
-        }
-
-        let dayCount = max(1, days) // Use window size for averaging
-		// Average daily energy gained from tasks (sum by day, then average)
-		let totalTaskEnergy = taskEnergyPerDay.values.reduce(0, +)
-		let averageAddWeek = Int(Double(totalTaskEnergy) / Double(dayCount))
-		let averageUseWeek = Int(Double(usePerDay.values.reduce(0, +)) / Double(dayCount))
-		
-		// Average daily total energy (not add)
-		let totalSum = sumPerDay.values.reduce(0) { $0 + ($1.total / max($1.count, 1)) }
-		let averageWeek = Int(Double(totalSum) / Double(dayCount))
-
-        var todayTaskCount = 0
-        var averageTaskCountWeek: Double = 0
-        
-        var score = todayAdd > averageAddWeek ? 1 : (todayAdd < averageAddWeek ? -1 : 0)
-        if let metrics {
-            let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })
-            
-            // Task Counts
-            if let todayMetric = metrics.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
-                todayTaskCount = todayMetric.completedTaskCount
-            }
-            let weekMetrics = metrics.filter { $0.date >= startDate }
-            let totalTasksWeek = weekMetrics.reduce(0) { $0 + $1.completedTaskCount }
-            averageTaskCountWeek = Double(totalTasksWeek) / Double(max(1, days)) // Using 'days' (7) as divisor for weekly average, or dayCount? usually 7.
-            
-            let daysSorted = Array(sumPerDay.keys).sorted()
-            let midpoint = daysSorted.count / 2
-            var firstHalfTasks = 0
-            var secondHalfTasks = 0
-            var firstHalfInteractions = 0
-            var secondHalfInteractions = 0
-            for (index, day) in daysSorted.enumerated() {
-                guard let metric = metricsByDay[day] else { continue }
-                if index < midpoint {
-                    firstHalfTasks += metric.completedTaskCount
-                    firstHalfInteractions += metric.petInteractionCount
-                } else {
-                    secondHalfTasks += metric.completedTaskCount
-                    secondHalfInteractions += metric.petInteractionCount
-                }
-            }
-            if secondHalfTasks > firstHalfTasks { score += 1 }
-            else if secondHalfTasks < firstHalfTasks { score -= 1 }
-            if secondHalfInteractions > firstHalfInteractions { score += 1 }
-            else if secondHalfInteractions < firstHalfInteractions { score -= 1 }
-        }
-        let trend: TrendDirection = score > 0 ? .up : (score < 0 ? .down : .flat)
-
-		let comment: String = {
-			var parts: [String] = []
-
-			if let metrics {
-				let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
-				let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
-				parts.append("You've completed \(totalTasks) in \(days) days，and interacted with Lumio \(totalInteractions) times. Keep it up!")
-			}
-
-			switch trend {
-			case .up:
-				parts.append("You've done great job recently！")
-			case .down:
-				parts.append("You came less these days, the energy pod is drying. Try to complete more tasks and interact with Lumio more often!")
-			case .flat:
-				parts.append("Your routine is being established. Keep going!")
-			}
-
-			return parts.joined(separator: "\n")
+		let averageAddWeek = {
+			guard !dailyEnergyAdds.isEmpty else { return 0 }
+			let total = dailyEnergyAdds.values.reduce(0, +)
+			let divisor = min(days, max(1, dailyEnergyAdds.count))
+			return Int(Double(total) / Double(divisor))
 		}()
 
-        let taskTypeCounts = taskCategoryCompletionRatio(tasks: tasks)
+		var todayTaskCount = 0
+		var averageTaskCountWeek: Double = 0
+		if let metrics {
+			let result = calculateTaskMetrics(metrics, since: startDate, days: days)
+			todayTaskCount = result.today
+			averageTaskCountWeek = result.average
+		}
 
-        return EnergySummary(
-            lastEnergy: last.totalEnergy,
-            delta: delta,
-            todayAdd: todayAdd,
-            todayDeduct: todayDeduct,
-            todayDelta: todayDelta,
-            averageDailyAddPastWeek: averageAddWeek,
-            averageDailyUsePastWeek: averageUseWeek,
-            averageToday: averageToday,
-            averagePastWeek: averageWeek,
-            todayTaskCount: todayTaskCount,
-            averageDailyTaskCountPastWeek: averageTaskCountWeek,
-            trend: trend,
-            comment: comment,
-            taskTypeCounts: taskTypeCounts
-        )
-    }
+		let trend = calculateTrend(from: metrics, and: dailyEnergyAdds)
+		let comment = generateComment(for: trend, metrics: metrics, days: days)
+		let taskTypeCounts = taskCategoryCompletionRatio(tasks: tasks)
+		
+#if DEBUG
+for task in tasks {
+	print("TASK:", task.id, task.status, task.completedAt ?? "nil", task.energyReward)
+}
+print("Daily Energy Adds:", dailyEnergyAdds)
+print("Today Add:", todayAdd)
+print("Avg Week:", averageAddWeek)
+print("StartDate:", startDate)
+print("Calendar:", calendar.timeZone)
+print("Today key:", calendar.startOfDay(for: now))
+#endif
 
-    func taskCategoryCompletionRatio(tasks: [UserTask]) -> [TaskCategory: Int] {
-        let completed = tasks.filter { $0.status == .completed }
-        var counts: [TaskCategory: Int] = [:]
-        for task in completed {
-            counts[task.category, default: 0] += 1
-        }
-        return counts
-    }
+		return EnergySummary(
+			todayAdd: todayAdd,
+			averageDailyAddPastWeek: averageAddWeek,
+			todayTaskCount: todayTaskCount,
+			averageDailyTaskCountPastWeek: averageTaskCountWeek,
+			trend: trend,
+			comment: comment,
+			taskTypeCounts: taskTypeCounts,
+			dailyEnergyAdds: dailyEnergyAdds
+		)
+	}
+
+	// MARK: - Subfunctions
+
+	/// 每日任务能量 (sum by day)
+	private func calculateDailyEnergy(from tasks: [UserTask], since startDate: Date, days: Int) -> [Date: Int] {
+		let calendar = TimeZoneManager.shared.calendar
+		var energyPerDay: [Date: Int] = [:]
+
+		for task in tasks {
+			guard task.status == .completed, let completedAt = task.completedAt else { continue }
+			let day = calendar.startOfDay(for: completedAt)
+			if completedAt >= startDate {
+				energyPerDay[day, default: 0] += task.energyReward
+			}
+		}
+
+		// 限定最多取最近 N 天
+		let sortedKeys = energyPerDay.keys.sorted(by: <)
+		let limitedKeys = Array(sortedKeys.suffix(days))
+		return Dictionary(uniqueKeysWithValues: limitedKeys.map { ($0, energyPerDay[$0] ?? 0) })
+	}
+
+	/// 任务指标：今日任务数 + 平均任务数
+	private func calculateTaskMetrics(_ metrics: [DailyActivityMetrics], since startDate: Date, days: Int) -> (today: Int, average: Double) {
+		let calendar = TimeZoneManager.shared.calendar
+		let now = Date()
+
+		let today = metrics.first(where: { calendar.isDate($0.date, inSameDayAs: now) })?.completedTaskCount ?? 0
+		let weekMetrics = metrics.filter { $0.date >= startDate }
+		let recordedDays = Set(weekMetrics.map { calendar.startOfDay(for: $0.date) }).count
+		let divisor = min(days, max(1, recordedDays))
+		let totalTasksWeek = weekMetrics.reduce(0) { $0 + $1.completedTaskCount }
+		let average = Double(totalTasksWeek) / Double(divisor)
+
+		return (today, average)
+	}
+
+	/// 趋势计算
+	private func calculateTrend(from metrics: [DailyActivityMetrics]?, and taskEnergyPerDay: [Date: Int]) -> TrendDirection {
+		guard let metrics else { return .flat }
+		let calendar = TimeZoneManager.shared.calendar
+		let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })
+
+		let daysSorted = Array(taskEnergyPerDay.keys).sorted()
+		let midpoint = daysSorted.count / 2
+		var firstHalfTasks = 0
+		var secondHalfTasks = 0
+		var firstHalfInteractions = 0
+		var secondHalfInteractions = 0
+
+		for (index, day) in daysSorted.enumerated() {
+			guard let metric = metricsByDay[day] else { continue }
+			if index < midpoint {
+				firstHalfTasks += metric.completedTaskCount
+				firstHalfInteractions += metric.petInteractionCount
+			} else {
+				secondHalfTasks += metric.completedTaskCount
+				secondHalfInteractions += metric.petInteractionCount
+			}
+		}
+
+		var score = 0
+		if secondHalfTasks > firstHalfTasks { score += 1 }
+		else if secondHalfTasks < firstHalfTasks { score -= 1 }
+		if secondHalfInteractions > firstHalfInteractions { score += 1 }
+		else if secondHalfInteractions < firstHalfInteractions { score -= 1 }
+
+		return score > 0 ? .up : (score < 0 ? .down : .flat)
+	}
+
+	/// 文案
+	private func generateComment(for trend: TrendDirection, metrics: [DailyActivityMetrics]?, days: Int) -> String {
+		var parts: [String] = []
+		if let metrics {
+			let totalTasks = metrics.reduce(0) { $0 + $1.completedTaskCount }
+			let totalInteractions = metrics.reduce(0) { $0 + $1.petInteractionCount }
+			parts.append("You've completed \(totalTasks) tasks and interacted with Lumio \(totalInteractions) times in \(days) days.")
+		}
+
+		switch trend {
+		case .up:
+			parts.append("You've done great job recently!")
+		case .down:
+			parts.append("You came less these days, the energy pod is drying. Try to complete more tasks and interact with Lumio more often!")
+		case .flat:
+			parts.append("Your routine is being established. Keep going!")
+		}
+
+		return parts.joined(separator: "\n")
+	}
+
+	/// 任务类别完成统计
+	func taskCategoryCompletionRatio(tasks: [UserTask]) -> [TaskCategory: Int] {
+		let completed = tasks.filter { $0.status == .completed }
+		var counts: [TaskCategory: Int] = [:]
+		for task in completed {
+			counts[task.category, default: 0] += 1
+		}
+		return counts
+	}
 }

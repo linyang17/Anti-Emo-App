@@ -45,8 +45,6 @@ struct MoodHeatmapView: View {
                 }
             }
         }
-        .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
     
     private struct Cell: View {
@@ -71,9 +69,9 @@ struct MoodHeatmapView: View {
             if v < 40 {
                 return Color.blue.opacity(0.3 + (v / 40.0) * 0.4)
             } else if v < 70 {
-                return Color.green.opacity(0.3 + ((v - 40) / 30.0) * 0.4)
+                return Color.yellow.opacity(0.3 + ((v - 40) / 30.0) * 0.4)
             } else {
-                return Color.orange.opacity(0.3 + ((v - 70) / 30.0) * 0.6)
+                return Color.pink.opacity(0.3 + ((v - 70) / 30.0) * 0.6)
             }
         }
     }

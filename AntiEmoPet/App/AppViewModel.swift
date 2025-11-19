@@ -13,11 +13,11 @@ final class AppViewModel: ObservableObject {
 			updateTaskRefreshEligibility()
 		}
 	}
-	@Published var pet: Pet? {didSet {petEngine.updatePetReference(pet) }}
+	@Published var pet: Pet? { didSet {petEngine.updatePetReference(pet) }}
 	@Published var userStats: UserStats?
 	@Published var shopItems: [Item] = []
-	@Published var weather: WeatherType = .sunny
 	@Published var weatherReport: WeatherReport?
+	var weather: WeatherType { weatherReport?.currentWeather ?? .sunny }
 	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = false
@@ -38,38 +38,39 @@ final class AppViewModel: ObservableObject {
 	@Published var pettingNotice: String?
 	lazy var petEngine = PetEngine(pet: nil)
 
-		let locationService = LocationService()
-		private let storage: StorageService
-		private let taskGenerator: TaskGeneratorService
-		private let rewardEngine = RewardEngine()
-		private let notificationService = NotificationService()
-		private let weatherService = WeatherService()
-		private let analytics = AnalyticsService()
-		private var cancellables: Set<AnyCancellable> = []
-		private let sleepReminderService = SleepReminderService()
-        private let refreshRecordsKey = "taskRefreshRecords"
-        private let slotScheduleKey = "taskSlotSchedule"
-        private let slotGenerationKey = "taskSlotGenerationRecords"
-        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
-        private let pettingLimitKey = "dailyPettingLimit"
-        private var lastObservedSlot: TimeSlot?
-        private typealias RefreshRecordMap = [String: [String: Double]]
-        private typealias SlotScheduleMap = [String: [String: Double]]
-        private typealias SlotGenerationMap = [String: [String: Bool]]
-        private typealias SlotPenaltyMap = [String: [String: Bool]]
-                private var slotMonitorTask: Task<Void, Never>?
-		private var pettingNoticeTask: Task<Void, Never>?
-		private let isoDayFormatter: ISO8601DateFormatter = {
-		let formatter = ISO8601DateFormatter()
-		formatter.formatOptions = [.withFullDate]
-		formatter.timeZone = TimeZone(secondsFromGMT: 0)
-		return formatter
+	let locationService = LocationService()
+	let storage: StorageService
+	let taskGenerator: TaskGeneratorService
+	private let rewardEngine = RewardEngine()
+	private let notificationService = NotificationService()
+	private let weatherService = WeatherService()
+	private let analytics = AnalyticsService()
+	private var cancellables: Set<AnyCancellable> = []
+	private let sleepReminderService = SleepReminderService()
+	private let refreshRecordsKey = "taskRefreshRecords"
+	private let slotScheduleKey = "taskSlotSchedule"
+	private let slotGenerationKey = "taskSlotGenerationRecords"
+	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+	private let pettingLimitKey = "dailyPettingLimit"
+	private var lastObservedSlot: TimeSlot?
+	private typealias RefreshRecordMap = [String: [String: Double]]
+	private typealias SlotScheduleMap = [String: [String: Double]]
+	private typealias SlotGenerationMap = [String: [String: Bool]]
+	private typealias SlotPenaltyMap = [String: [String: Bool]]
+	private var slotMonitorTask: Task<Void, Never>?
+	private var pettingNoticeTask: Task<Void, Never>?
+	private let isoDayFormatter: ISO8601DateFormatter = {
+	let formatter = ISO8601DateFormatter()
+	formatter.formatOptions = [.withFullDate]
+	formatter.timeZone = TimeZone(secondsFromGMT: 0)
+	return formatter
 	}()
 
 	init(modelContext: ModelContext) {
 		storage = StorageService(context: modelContext)
 		taskGenerator = TaskGeneratorService(storage: storage)
 		bindLocationUpdates()
+		observeWeather()
 		bindSleepReminder()
 		configureSleepReminderMonitoring()
 	}
@@ -83,6 +84,15 @@ final class AppViewModel: ObservableObject {
 		userStats?.totalEnergy ?? 0
 	}
 
+	private func observeWeather() {
+		weatherService.$currentWeatherReport
+			.receive(on: RunLoop.main)
+			.sink { [weak self] report in
+				guard let report else { return }
+				self?.weatherReport = report
+			}
+	}
+	
 
 	/// Update app language and persist to UserDefaults.
 	func setLanguage(_ code: String) {
@@ -146,7 +156,7 @@ final class AppViewModel: ObservableObject {
 			storage.save(tasks: generated)
 			todayTasks = generated
 		} else {
-			weather = weatherReport?.currentWeather ?? weather
+			// No-op: weather is derived from weatherReport; no assignment needed here.
 		}
 
                 scheduleTaskNotifications()
@@ -241,14 +251,13 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func completeTask(_ task: UserTask) {
-		guard let stats = userStats, task.status != .completed else { return }
-		
-		// 检查是否可以完成:pending直接完成,或者已达到buffer时间
+		guard let stats = userStats else { return }
 		guard task.status.isCompletable else { return }
 		if task.status == .started, let canComplete = task.canCompleteAfter, Date() < canComplete {
 			// 未到buffer时间,不能完成
 			return
 		}
+		
 		task.status = .completed
 		task.completedAt = Date()
 		
@@ -377,12 +386,6 @@ final class AppViewModel: ObservableObject {
 		if !showSleepReminder {
 			checkAndShowMoodCapture()
 		}
-		storage.resetCompletionDates(for: Date())
-		storage.deleteTasks(for: Date())
-		let starter = taskGenerator.makeOnboardingTasks(for: Date())
-		storage.save(tasks: starter)
-		todayTasks = storage.fetchTasks(for: .now)
-		scheduleTaskNotifications()
 		analytics.log(
 			event: "onboarding_done",
 			metadata: [
@@ -913,7 +916,6 @@ final class AppViewModel: ObservableObject {
 		let locality = locationService.lastKnownCity
 		let report = await weatherService.fetchWeather(for: location, locality: locality)
 		weatherReport = report
-		weather = report.currentWeather
 		if !report.sunEvents.isEmpty {
 			storage.saveSunEvents(report.sunEvents)
 			let merged = storage.fetchSunEvents()
@@ -985,3 +987,4 @@ final class AppViewModel: ObservableObject {
                 return item.sku
 	}
 }
+

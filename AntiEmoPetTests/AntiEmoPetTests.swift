@@ -73,7 +73,7 @@ struct AntiEmoPetTests {
             type: .snack,
             assetName: "apple",
             costEnergy: 2,
-            BondingBoost: 4
+            bondingBoost: 4
         )
 
         let engine = PetEngine()
