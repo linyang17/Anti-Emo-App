@@ -45,8 +45,7 @@ final class ChatViewModel: ObservableObject {
         currentInput = ""
         let reply = chatService.reply(
             to: trimmed,
-            weather: appModel.weather,
-            bonding: appModel.pet?.bonding ?? .curious
+            weather: appModel.weather
         )
         messages.append(Message(role: .pet, content: reply))
         analytics.log(event: "chat_message")

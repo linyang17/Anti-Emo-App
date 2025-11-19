@@ -116,21 +116,18 @@ struct MoodTrendSection: View {
 			// 「日」模式：按小时聚合
 			let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
 			guard !todayEntries.isEmpty else { return [] }
+			
+			let groupedByHour = Dictionary(grouping: todayEntries) { entry in
+					calendar.dateInterval(of: .hour, for: entry.date)!.start
+				}
 
-			var hourly: [Date: (sum: Int, count: Int)] = [:]
-			for entry in todayEntries {
-				let hour = calendar.date(bySetting: .minute, value: 0, of: entry.date)!
-				let normalized = calendar.date(bySetting: .second, value: 0, of: hour)!
-				var item = hourly[normalized] ?? (0, 0)
-				item.sum += entry.value
-				item.count += 1
-				hourly[normalized] = item
+			let averaged = groupedByHour.map { (hour, group) -> MoodTrendPoint in
+				let total = group.reduce(0.0) { $0 + Double($1.value) }
+				let avg = total / Double(group.count)
+				return MoodTrendPoint(date: hour, average: avg)
 			}
 
-			return hourly.map { (key, value) in
-				MoodTrendPoint(date: key, average: Double(value.sum) / Double(max(1, value.count)))
-			}
-			.sorted(by: { $0.date < $1.date })
+			return averaged.sorted { $0.date < $1.date }
 		}
 
 		// 其他窗口（周、月、季）

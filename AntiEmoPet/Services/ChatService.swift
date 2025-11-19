@@ -2,7 +2,7 @@ import Foundation
 
 struct ChatService {
     // TODO(中/EN): Swap stub with AI backend (OpenAI/Vertex) and streaming replies per PRD Chat 模块.
-    func reply(to text: String, weather: WeatherType, bonding: PetBonding) -> String {
+    func reply(to text: String, weather: WeatherType,) -> String {
         let base: String
         switch weather {
         case .sunny:
@@ -16,7 +16,6 @@ struct ChatService {
         case .windy:
             base = "风有点大，把烦恼吹走"
         }
-        let moodLine = "我现在\(bonding.displayName)，和你一起加油！"
-        return "\(base)。\n\(moodLine)"
+        return "\(base)。"
     }
 }

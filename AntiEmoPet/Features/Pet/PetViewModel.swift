@@ -53,7 +53,7 @@ final class PetViewModel: ObservableObject {
         summary.energy = stats?.totalEnergy ?? 0
 
         if let pet {
-            summary.bond = bondValue(for: pet.bonding)
+			summary.bond = pet.bondingScore
             let requirement = XPProgression.requirement(for: pet.level)
             let clampedRequirement = max(requirement, 1)
             let progress = Double(max(0, min(pet.xp, clampedRequirement))) / Double(clampedRequirement)
@@ -85,12 +85,13 @@ final class PetViewModel: ObservableObject {
 
     func updatePetState(pet: Pet?) {
         var state = screenState
-        state.petAsset = petAsset(for: pet?.bonding ?? .curious)
+		let bondingState = PetBonding.from(score: pet!.bondingScore)
+		state.petAsset = petAsset(for: bondingState)
         screenState = state
     }
 
 
-    private func petAsset(for bonding: PetBonding) -> String {
+    func petAsset(for bonding: PetBonding) -> String {
         switch bonding {
         case .ecstatic:
             return "foxlying"

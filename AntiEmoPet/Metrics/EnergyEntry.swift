@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct EnergyHistoryEntry: Identifiable, Codable {
 	let id: UUID
@@ -14,6 +15,8 @@ struct EnergyHistoryEntry: Identifiable, Codable {
 
 
 struct EnergyEngine {
+	@EnvironmentObject private var appModel: AppViewModel
+	
     static func add(_ amount: Int, to stats: UserStats) {
         stats.totalEnergy = clamp(stats.totalEnergy + amount)
         stats.lastActiveDate = .now
@@ -29,4 +32,6 @@ struct EnergyEngine {
     static func clamp(_ value: Int) -> Int {
         return max(0, min(999, value))
     }
+
 }
+

@@ -41,6 +41,7 @@ final class TaskGeneratorService {
 				tasks.append(task)
 			}
 		}
+		print("模板数：", templates.count, "前3个标题：", templates.prefix(3).map(\.title))
 
 		return tasks.sorted { $0.date < $1.date }
 	}
