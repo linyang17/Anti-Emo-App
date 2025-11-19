@@ -27,7 +27,6 @@ final class RewardEngine {
 
     func purchase(item: Item, stats: UserStats) -> Bool {
         guard EnergyEngine.spend(item.costEnergy, from: stats) else { return false }
-		stats.totalEnergy -= item.costEnergy
         stats.lastActiveDate = .now
         return true
     }
