@@ -20,6 +20,7 @@ struct TasksView: View {
     @State private var activeReward: RewardEvent?
     @State private var rewardOpacity: Double = 0
     @State private var bannerTask: Task<Void, Never>?
+	let lastMood: Int
 
     var body: some View {
         ZStack {
@@ -35,7 +36,7 @@ struct TasksView: View {
                     }
                     if appModel.todayTasks.isEmpty {
                         Section {
-                            Text("当前时段暂无任务，请稍候或留意 Lumio 的通知。")
+                            Text("There's currently nothing to do for you, take some time to relax and recharge!.")
                                 .appFont(FontTheme.body)
                         }
                     }
@@ -71,22 +72,35 @@ struct TasksView: View {
             bannerTask?.cancel()
         }
             
-            // 任务完成后的情绪反馈弹窗
-            if let task = appModel.pendingMoodFeedbackTask {
-                MoodFeedbackOverlayView(taskCategory: task.category) { delta in
-                    appModel.submitMoodFeedback(delta: delta, for: task)
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                .zIndex(999)
-            }
+			// 任务完成后的情绪反馈弹窗
+			if let task = appModel.pendingMoodFeedbackTask {
+				ZStack {
+					// Centered floating popup
+					MoodFeedbackOverlayView(
+						taskCategory: task.category
+					)
+					.frame(maxWidth: 360)
+					.padding()
+					.background(
+						RoundedRectangle(cornerRadius: 24, style: .continuous)
+							.fill(.ultraThinMaterial)
+							.shadow(radius: 16)
+					)
+					.transition(
+						.asymmetric(
+							insertion: .scale(scale: 0.9).combined(with: .opacity),
+							removal: .opacity
+						)
+					)
+					.zIndex(999)
+				}
+				.animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
+			}
         }
     }
 
     private var header: some View {
         HStack {
-            Text("Tasks")
-                .appFont(FontTheme.title2)
-                .foregroundStyle(.primary)
             Spacer()
             if viewModel.isRefreshing {
                 ProgressView()
@@ -100,11 +114,11 @@ struct TasksView: View {
                 }
                 .appFont(FontTheme.caption)
             } else if allTasksCompleted {
-                Text(appModel.hasUsedRefreshThisSlot ? "本时段刷新次数已用" : "完成奖励已结算")
+                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
                     .appFont(FontTheme.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("完成全部任务可刷新一次")
+                Text("Refresh")
                     .appFont(FontTheme.caption)
                     .foregroundStyle(.secondary)
             }
@@ -132,21 +146,26 @@ private struct TaskRow: View {
 			VStack(alignment: .leading, spacing: 6) {
 				Text(task.title)
 					.appFont(FontTheme.headline)
-                                Text(viewModel.badge(for: task))
-                                        .appFont(FontTheme.caption)
-                                        .foregroundStyle(.secondary)
-
-                                // 显示倒计时
-                                if task.status == .started, let canComplete = task.canCompleteAfter {
-                                        Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
-                                                .appFont(FontTheme.caption)
-                                                .foregroundStyle(.orange)
-                                }
+				HStack{
+					Text(task.category.title)
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.secondary)
+					Text(viewModel.badge(for: task))
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.secondary)
+				}
                         }
                         Spacer()
-			
-			// 根据状态显示不同按钮
-			taskActionButton
+			VStack {
+					// 显示倒计时
+				if task.status == .started, let canComplete = task.canCompleteAfter {
+					Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
+					.appFont(FontTheme.caption)
+					.foregroundStyle(.orange)
+	}
+					// 根据状态显示不同按钮
+				taskActionButton
+			}
                 }
                 .padding(.vertical, 6)
                 .onAppear {
@@ -166,7 +185,7 @@ private struct TaskRow: View {
 			Button {
 				appModel.startTask(task)
 			} label: {
-				Text("开始")
+				Text("Start")
 					.font(.subheadline.weight(.medium))
 					.foregroundStyle(.white)
 					.padding(.horizontal, 16)
@@ -180,7 +199,7 @@ private struct TaskRow: View {
 			HStack(spacing: 4) {
 				ProgressView()
 					.scaleEffect(0.8)
-				Text("等待中")
+				Text("On it...")
 					.font(.caption)
 					.foregroundStyle(.secondary)
 			}
@@ -190,7 +209,7 @@ private struct TaskRow: View {
 			Button {
 				appModel.completeTask(task)
 			} label: {
-				Text("完成")
+				Text("Done!")
 					.font(.subheadline.weight(.medium))
 					.foregroundStyle(.white)
 					.padding(.horizontal, 16)
@@ -213,9 +232,9 @@ private struct TaskRow: View {
                 let seconds = Int(remaining) % 60
 		
 		if minutes > 0 {
-			return String(format: "还需 %d:%02d", minutes, seconds)
+			return String(format: "%d:%02d", minutes, seconds)
 		} else {
-			return String(format: "还需 %d秒", seconds)
+			return String(format: "00:%02d", seconds)
 		}
 	}
 	
@@ -236,7 +255,7 @@ private struct TaskRow: View {
 	}
 }
 
-private struct RewardToastView: View {
+struct RewardToastView: View {
     let event: RewardEvent
 
     var body: some View {
@@ -246,10 +265,8 @@ private struct RewardToastView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Energy +\(event.energy)")
                 Text("Xp +\(event.xp)")
-				if let snack = event.snackName {
-					Text("获得零食：\(snack)")
+				Text("You got some snack in the bag!")
 						.font(.caption2)
-				}
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)

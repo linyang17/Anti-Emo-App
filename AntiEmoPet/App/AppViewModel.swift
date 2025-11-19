@@ -18,7 +18,7 @@ final class AppViewModel: ObservableObject {
 			updateTaskRefreshEligibility()
 		}
 	}
-	@Published var pet: Pet?
+	@Published var pet: Pet? {didSet {petEngine.updatePetReference(pet) }}
 	@Published var userStats: UserStats?
 	@Published var shopItems: [Item] = []
 	@Published var weather: WeatherType = .sunny
@@ -27,26 +27,26 @@ final class AppViewModel: ObservableObject {
 	@Published var isLoading = true
 	@Published var showOnboarding = false
 	@Published var moodEntries: [MoodEntry] = []
-        @Published var energyHistory: [EnergyHistoryEntry] = []
-        @Published var inventory: [InventoryEntry] = []
-        @Published var dailyMetricsCache: [DailyActivityMetrics] = []
-        @Published var showSleepReminder = false
-        @Published var rewardBanner: RewardEvent?
-        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-        @Published var shouldShowNotificationSettingsPrompt = false
-        @Published private(set) var hasLoggedMoodToday = false
-        @Published var showMoodCapture = false
-        @Published var shouldForceMoodCapture = false
-        @Published var pendingMoodFeedbackTask: UserTask?
-        @Published private(set) var canRefreshCurrentSlot = false
-        @Published private(set) var hasUsedRefreshThisSlot = false
-        @Published var pettingNotice: String?
+	@Published var energyHistory: [EnergyHistoryEntry] = []
+	@Published var inventory: [InventoryEntry] = []
+	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
+	@Published var showSleepReminder = false
+	@Published var rewardBanner: RewardEvent?
+	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+	@Published var shouldShowNotificationSettingsPrompt = false
+	@Published private(set) var hasLoggedMoodToday = false
+	@Published var showMoodCapture = false
+	@Published var shouldForceMoodCapture = false
+	@Published var pendingMoodFeedbackTask: UserTask?
+	@Published private(set) var canRefreshCurrentSlot = false
+	@Published private(set) var hasUsedRefreshThisSlot = false
+	@Published var pettingNotice: String?
+	lazy var petEngine = PetEngine(pet: nil)
 
 		let locationService = LocationService()
 		private let storage: StorageService
 		private let taskGenerator: TaskGeneratorService
 		private let rewardEngine = RewardEngine()
-		private let petEngine = PetEngine()
 		private let notificationService = NotificationService()
 		private let weatherService = WeatherService()
 		private let analytics = AnalyticsService()
@@ -102,7 +102,6 @@ final class AppViewModel: ObservableObject {
         func load() async {
                 storage.bootstrapIfNeeded()
                 pet = storage.fetchPet()
-                normalizePetBondingState()
                 userStats = storage.fetchStats()
 
 		// Ensure initial defaults per MVP PRD
@@ -166,7 +165,7 @@ final class AppViewModel: ObservableObject {
         }
 
         /// 检查今天是否已记录情绪，如果没有则显示弹窗
-        private func checkAndShowMoodCapture() {
+        func checkAndShowMoodCapture() {
 			guard !hasLoggedMoodToday else {
                         showMoodCapture = false
                         shouldForceMoodCapture = false
@@ -239,7 +238,7 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func completeTask(_ task: UserTask) {
-		guard let stats = userStats, let pet, task.status != .completed else { return }
+		guard let stats = userStats, task.status != .completed else { return }
 		
 		// 检查是否可以完成:pending直接完成,或者已达到buffer时间
 		guard task.status.isCompletable else { return }
@@ -250,10 +249,9 @@ final class AppViewModel: ObservableObject {
 		task.status = .completed
 		task.completedAt = Date()
 		
-		// 确保使用category标准能量奖励
 		task.energyReward = task.category.energyReward
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
-		petEngine.applyTaskCompletion(pet: pet)
+		petEngine.applyTaskCompletion()
 
 		// 随机掉落一份 snack 奖励
 		var snackName: String?
@@ -283,13 +281,13 @@ final class AppViewModel: ObservableObject {
 	/// - Parameters:
 	///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
 	///   - task: 完成的任务
-	func submitMoodFeedback(delta: Int, for task: UserTask) {
+	func submitMoodFeedback(delta: Int, for task: TaskCategory) {
 		let entry = MoodEntry(
 			date: Date(),
 			value: max(10, min(100, 50 + delta)), // 基准值50,加上delta并限制在10-100范围
 			source: .afterTask,
 			delta: delta,
-			relatedTaskCategory: task.category,
+			relatedTaskCategory: task,
 			relatedWeather: weather
 		)
 		storage.saveMoodEntry(entry)
@@ -297,53 +295,53 @@ final class AppViewModel: ObservableObject {
 		
 		analytics.log(event: "mood_feedback_after_task", metadata: [
 			"delta": "\(delta)",
-			"category": task.category.rawValue,
+			"category": task.rawValue,
 			"weather": weather.rawValue
 		])
 		
 		// 清除待处理的反馈任务
 		pendingMoodFeedbackTask = nil
 	}
+	
 
 	@discardableResult
 	func petting() -> Bool {
-		guard let pet else { return false }
 		let count = pettingCount()
-		guard count < 3 else {
-			showPettingNotice("今天已经抚摸 3/3 次啦")
+		let maxcount = 5
+		guard count < maxcount else {
+			showPettingNotice("You've interacted a lot with Lumio today")
 			return false
 		}
-		petEngine.handleAction(.pat, pet: pet)
+		petEngine.handleAction(.pat)
 		incrementPetInteractionCount()
 		incrementPettingCount()
 		storage.persist()
 		objectWillChange.send()
 		analytics.log(event: "pet_pat", metadata: ["count": "\(count + 1)"])
 		dailyMetricsCache = makeDailyActivityMetrics()
-		let remaining = max(0, 3 - (count + 1))
-		showPettingNotice(remaining > 0 ? "已抚摸 \(count + 1)/3 次，今日还可 \(remaining) 次" : "已抚摸 3/3 次，Lumio 要休息啦")
+		let remaining = max(0, maxcount - (count + 1))
+		showPettingNotice(remaining > 0 ? "Played with Lumio, \(remaining)/\(maxcount) left" : "You've played with Lumio today")
 		return true
 	}
 
         func feed(item: Item) {
-                guard let pet else { return }
-                petEngine.handleAction(.feed(item: item), pet: pet)
-                incrementPetInteractionCount()
-                storage.persist()
-		dailyMetricsCache = makeDailyActivityMetrics()
+			petEngine.handleAction(.feed(item: item))
+			incrementPetInteractionCount()
+			storage.persist()
+			dailyMetricsCache = makeDailyActivityMetrics()
 	}
 
 	func purchase(item: Item) -> Bool {
-                guard let stats = userStats, let pet else { return false }
-                let success = rewardEngine.purchase(item: item, stats: stats)
-                guard success else { return false }
-                incrementInventory(for: item)
-                petEngine.applyPurchaseReward(pet: pet, xpGain: 20, bondingBoost: 10)
-                storage.persist()
-                objectWillChange.send()
-                analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
-                logTodayEnergySnapshot()
-                return true
+		guard let stats = userStats else { return false }
+		let success = rewardEngine.purchase(item: item, stats: stats)
+		guard success else { return false }
+		incrementInventory(for: item)
+		petEngine.applyPurchaseReward(xpGain: 20, bondingBoost: item.BondingBoost)
+		storage.persist()
+		objectWillChange.send()
+		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
+		logTodayEnergySnapshot()
+		return true
 	}
 
 	func updateProfile(
@@ -487,13 +485,12 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func useItem(sku: String) -> Bool {
-		guard let pet else { return false }
 		// Check inventory count first
 		if let entry = inventory.first(where: { $0.sku == sku }), entry.count > 0,
 		   let item = shopItems.first(where: { $0.sku == sku }) {
 			storage.decrementInventory(forSKU: sku)
 			inventory = storage.fetchInventory()
-			petEngine.handleAction(.feed(item: item), pet: pet)
+			petEngine.handleAction(.feed(item: item))
 			storage.persist()
 			analytics.log(event: "item_used", metadata: ["sku": sku])
 			logTodayEnergySnapshot()
@@ -509,7 +506,7 @@ final class AppViewModel: ObservableObject {
 		return Double(completed) / Double(todayTasks.count)
 	}
 
-	private func logTodayEnergySnapshot() {
+	func logTodayEnergySnapshot() {
 		guard userStats != nil else { return }
 		_ = TimeZoneManager.shared.calendar
 		// Always append a new entry with exact timestamp Date()
@@ -743,16 +740,9 @@ final class AppViewModel: ObservableObject {
 		return filtered
 	}
 
-	private func normalizePetBondingState() {
-		guard let pet else { return }
-		if pet.bondingScore == 0 {
-			pet.bondingScore = PetBonding.defaultScore(for: pet.bonding)
-		}
-		pet.bonding = PetBonding.from(score: pet.bondingScore)
-	}
 
         private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
-                guard let stats = userStats, let pet else { return }
+                guard let stats = userStats else { return }
                 let calendar = TimeZoneManager.shared.calendar
                 let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
                 let today = calendar.startOfDay(for: date)
@@ -762,13 +752,12 @@ final class AppViewModel: ObservableObject {
 		}
 		let decayDays = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
 		guard decayDays > 0 else { return }
-                petEngine.applyDailyDecay(pet: pet, days: decayDays)
+                petEngine.applyDailyDecay(days: decayDays)
                 stats.lastActiveDate = date
                 storage.persist()
         }
 
         func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
-                guard let pet else { return }
                 let calendar = TimeZoneManager.shared.calendar
                 let dkey = dayKey(for: date)
                 var penaltyRecords = purgePenaltyRecords(loadPenaltyRecords(), keepingDay: dkey)
@@ -785,12 +774,12 @@ final class AppViewModel: ObservableObject {
 
                 guard slotTasks.contains(where: { $0.status != .completed }) else { return }
 
-                petEngine.applyLightPenalty(to: pet)
+			petEngine.applyLightPenalty()
                 storage.persist()
                 slotMap[slot.rawValue] = true
                 penaltyRecords[dkey] = slotMap
                 savePenaltyRecords(penaltyRecords)
-                showPettingNotice("Lumio felt a little lonely (-5 bond)")
+                showPettingNotice("Lumio felt a bit lonely (bonding level down)")
         }
 
 	private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {

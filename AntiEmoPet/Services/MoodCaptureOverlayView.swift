@@ -15,9 +15,6 @@ struct MoodCaptureOverlayView: View {
 	// MARK: - Body
 	var body: some View {
 		ZStack {
-			Color.black.opacity(0.3)
-				.ignoresSafeArea()
-
 			VStack(spacing: 24) {
 				// Fixed title
 				Text("How do you feel now?")

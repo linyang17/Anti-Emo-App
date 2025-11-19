@@ -62,6 +62,24 @@ enum TaskStatus: String, Codable, CaseIterable, Sendable {
 	}
 }
 
+
+
+public struct DailyActivityMetrics: Codable, Sendable, Equatable {
+	public var date: Date // startOfDay
+	public var completedTaskCount: Int
+	public var petInteractionCount: Int
+	public var timeSlotTaskCounts: [TimeSlot: Int]
+
+	public init(date: Date, completedTaskCount: Int = 0, petInteractionCount: Int = 0, timeSlotTaskCounts: [TimeSlot: Int] = [:]) {
+		self.date = date
+		self.completedTaskCount = completedTaskCount
+		self.petInteractionCount = petInteractionCount
+		self.timeSlotTaskCounts = timeSlotTaskCounts
+	}
+}
+
+
+
 @Model
 final class UserTask: Identifiable {
     @Attribute(.unique) var id: UUID

@@ -1,5 +1,6 @@
 import SwiftUI
 
+
 struct ShopView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var viewModel = ShopViewModel()
@@ -278,7 +279,9 @@ struct ShopView: View {
 	}
 
 	private func showToast(for item: Item) {
-		let toast = ShopToast(message: "Energy -\(item.costEnergy) · XP +1 · Bonding +20")
+		let toast = ShopToast(
+			message: "Energy -\(item.costEnergy) · XP + 1 · Bonding + \(item.BondingBoost)"
+		)
 		withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
 			purchaseToast = toast
 		}

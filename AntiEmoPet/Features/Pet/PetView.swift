@@ -3,6 +3,7 @@ import SwiftUI
 struct PetView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var viewModel = PetViewModel()
+	@State private var mood: MoodStatisticsViewModel.MoodSummary = .empty
 	@State private var activeSheet: ActiveSheet?
 	@State private var taskOffset: CGSize = .zero
 	@State private var taskBreathUp: Bool = false
@@ -118,11 +119,11 @@ struct PetView: View {
 						.onEnded { triggerPettingInteraction() }
 				)
 				.simultaneousGesture(
-					DragGesture(minimumDistance: 20)
+					DragGesture(minimumDistance: 30)
 						.onEnded { value in
 							let vertical = abs(value.translation.height)
 							let horizontal = abs(value.translation.width)
-							if vertical > horizontal, vertical > 30 {
+							if vertical > horizontal, vertical > 50 {
 								triggerPettingInteraction()
 							}
 						}
@@ -271,6 +272,7 @@ struct PetView: View {
 	private func triggerPettingInteraction() {
 		guard appModel.petting() else { return }
 		pettingEffectTask?.cancel()
+		appModel.petEngine.applyPettingReward()
 		withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
 			showPettingHearts = true
 		}
@@ -289,7 +291,7 @@ struct PetView: View {
 					Image(systemName: "heart.fill")
 						.font(.system(size: 32))
 						.foregroundStyle(Color.pink.opacity(0.85 - Double(index) * 0.2))
-						.offset(x: CGFloat(index * 14 - 14), y: CGFloat(-50 - index * 20))
+						.offset(x: CGFloat(index * 5), y: CGFloat(-180 - index * 20))
 						.scaleEffect(1 + CGFloat(index) * 0.2)
 				}
 			}
@@ -302,7 +304,7 @@ struct PetView: View {
 			Text(notice)
 				.appFont(FontTheme.subheadline)
 				.padding(.horizontal, 18)
-				.padding(.vertical, 10)
+				.padding(.vertical, 50)
 				.background(.ultraThinMaterial, in: Capsule())
 				.shadow(radius: 6)
 				.padding(.top, 12)
@@ -314,7 +316,7 @@ struct PetView: View {
 	private func presentSheet(for sheet: ActiveSheet) -> some View {
 		switch sheet {
 		case .tasks:
-			TasksView()
+			TasksView(lastMood: mood.lastMood)
 			.environmentObject(appModel)
 			.presentationDetents([.fraction(0.55)])
 			.presentationBackground(.thickMaterial.opacity(0.7))

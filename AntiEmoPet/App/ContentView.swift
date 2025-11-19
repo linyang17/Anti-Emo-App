@@ -65,9 +65,6 @@ struct MainTabView: View {
                                 }
                         )) {
                                 ZStack {
-                                        Color.black.opacity(0.3)
-                                                .ignoresSafeArea()
-
                                         MoodCaptureOverlayView() { value in
                                                 appModel.recordMoodOnLaunch(value: value)
                                         }
