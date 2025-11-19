@@ -30,6 +30,8 @@ final class AnalysisViewModel: ObservableObject {
     @Published var weatherAverages: [WeatherType: Double] = [:]
     @Published var daylightHint: String = ""
     @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
+    @Published var heatmapData: [TimeSlot: [Int: Double]] = [:]
+    @Published var daylightLengthData: [Int: Double] = [:]
 
     // MARK: - Unified Wrapper Function
     func rhythmAnalysis(for entries: [MoodEntry], tasks: [UserTask], sunEvents: [Date: SunTimes]) -> (
@@ -42,11 +44,15 @@ final class AnalysisViewModel: ObservableObject {
         let weather = weatherMoodAverages(entries: entries, tasks: tasks)
         let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: sunEvents)
         let text = daylightCorrelationText(slotAverages: slot)
+        let heatmap = timeSlotAndWeekdayMoodAverages(entries: entries)
+        let daylightLen = daylightLengthMoodAverages(entries: entries, sunEvents: sunEvents)
 
         timeSlotAverages = slot
         weatherAverages = weather
         dayPeriodAverages = daylightBuckets
         daylightHint = text
+        heatmapData = heatmap
+        daylightLengthData = daylightLen
 
         return (slot, weather, text, daylightBuckets)
     }
@@ -163,5 +169,63 @@ final class AnalysisViewModel: ObservableObject {
             guard bucket.count > 0 else { return }
             partial[period] = Double(bucket.sum) / Double(bucket.count)
         }
+    }
+
+    // 4.2 Heatmap Data: TimeSlot + Weekday -> Mood
+    func timeSlotAndWeekdayMoodAverages(entries: [MoodEntry]) -> [TimeSlot: [Int: Double]] {
+        guard !entries.isEmpty else { return [:] }
+        var accumulator: [TimeSlot: [Int: (sum: Int, count: Int)]] = [:]
+
+        for entry in entries {
+            let slot = TimeSlot.from(date: entry.date, using: cal)
+            let weekday = cal.component(.weekday, from: entry.date) // 1=Sun, ... 7=Sat
+            
+            var slotMap = accumulator[slot] ?? [:]
+            var bucket = slotMap[weekday] ?? (0, 0)
+            bucket.sum += entry.value
+            bucket.count += 1
+            slotMap[weekday] = bucket
+            accumulator[slot] = slotMap
+        }
+
+        var result: [TimeSlot: [Int: Double]] = [:]
+        for (slot, slotMap) in accumulator {
+            var weekdayMap: [Int: Double] = [:]
+            for (weekday, bucket) in slotMap {
+                weekdayMap[weekday] = Double(bucket.sum) / Double(bucket.count)
+            }
+            result[slot] = weekdayMap
+        }
+        return result
+    }
+
+    // 4.5 Daylight Duration Line Chart Data
+    func daylightLengthMoodAverages(entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> [Int: Double] {
+        guard !entries.isEmpty else { return [:] }
+        // Group by day -> calculate avg mood for day -> correlate with daylight duration of that day
+        
+        let dayGroups = Dictionary(grouping: entries) { cal.startOfDay(for: $0.date) }
+        var durationAccumulator: [Int: (sum: Double, count: Int)] = [:] // Duration (hours) -> sum of daily avg mood
+
+        for (day, dailyEntries) in dayGroups {
+            guard let sun = sunEvents[day] else { continue }
+            let duration = sun.sunset.timeIntervalSince(sun.sunrise)
+            let hours = Int(round(duration / 3600.0))
+            guard hours > 0 else { continue }
+
+            let dailySum = dailyEntries.reduce(0) { $0 + $1.value }
+            let dailyAvg = Double(dailySum) / Double(dailyEntries.count)
+
+            var bucket = durationAccumulator[hours] ?? (0.0, 0)
+            bucket.sum += dailyAvg
+            bucket.count += 1
+            durationAccumulator[hours] = bucket
+        }
+
+        var result: [Int: Double] = [:]
+        for (hours, bucket) in durationAccumulator {
+            result[hours] = bucket.sum / Double(bucket.count)
+        }
+        return result
     }
 }
