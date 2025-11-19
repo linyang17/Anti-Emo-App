@@ -83,11 +83,6 @@ final class AppViewModel: ObservableObject {
 		userStats?.totalEnergy ?? 0
 	}
 
-	var allTasks: [UserTask] {
-		// MVP 阶段：全部任务等于今日任务列表
-		// 未来如加入历史/模板任务库，只需在此改为从 StorageService / TaskGenerator 获取
-		todayTasks
-	}
 
 	/// Update app language and persist to UserDefaults.
 	func setLanguage(_ code: String) {
@@ -315,9 +310,9 @@ final class AppViewModel: ObservableObject {
         @discardableResult
         func petting() -> Bool {
                 let count = pettingCount()
-                let maxcount = 5
+                let maxcount = 3
                 guard count < maxcount else {
-                        showPettingNotice("You've interacted a lot with Lumio today")
+                        showPettingNotice("Lumio needs some rest now")
                         return false
                 }
                 petEngine.applyPettingReward()
@@ -344,7 +339,8 @@ final class AppViewModel: ObservableObject {
 		let success = rewardEngine.purchase(item: item, stats: stats)
 		guard success else { return false }
 		incrementInventory(for: item)
-		petEngine.applyPurchaseReward(xpGain: 20, bondingBoost: item.BondingBoost)
+		// PRD requirement: Purchase decor -> Bonding +10, XP +10
+		petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: 10)
 		storage.persist()
 		objectWillChange.send()
 		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])

@@ -29,11 +29,12 @@ struct StatisticsView: View {
                 .onReceive(appModel.$dailyMetricsCache) { _ in refreshSummaries() }
         }
 
-        private func refreshSummaries() {
-                moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-                energySummary = energyViewModel.energySummary(
-                        from: appModel.energyHistory,
-                        metrics: appModel.dailyMetricsCache
-                ) ?? .empty
-        }
+    private func refreshSummaries() {
+        moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+        energySummary = energyViewModel.energySummary(
+            from: appModel.energyHistory,
+            metrics: appModel.dailyMetricsCache,
+            tasks: appModel.todayTasks
+        ) ?? .empty
+    }
 }

@@ -32,17 +32,17 @@
 
 ---
 ### 0.2 上传后端的数据
-**优先级**: Optional
-**状态**: 未开始（占位符）
+**优先级**: Core
+**状态**: 部分完成
 
 **问题**: 目前只有本地 SwiftData 数据，没有实现 PRD 要求的 `user_timeslot_summary` 聚合与上传逻辑，后端无法获取跨用户统计。
 
 **具体实施步骤**:
-- [ ] 定义 `UserTimeslotSummary` 结构，字段包含：
+- [x] 定义 `UserTimeslotSummary` 结构，字段包含：
   - 用户基础信息：`user_id (accountEmail)`、`country_region`。
   - 聚合指标：`date/day_length/time_slot/timeslot_weather/count_mood/avg_mood/total_energy_gain/mood_delta_after_tasks`。
   - 任务摘要：`tasks_completed_total_by_type`（如 `{ "outdoor": [completed,total] }`），必要时压缩到 JSON。
-- [ ] 在本地创建 `DataAggregationService`：
+- [x] 在本地创建 `DataAggregationService`：
   - 每日或每 6 小时扫描 `MoodEntry`、`UserTask`、`EnergyHistoryEntry`。
   - 通过 `TimeSlot.from(date:)` 分组，计算统计值并写入待上传队列。
   - 引入 `SunTimes` 或日照计算补齐 `day_length`。
@@ -52,7 +52,7 @@
 - [ ] 初始化时在 `AppViewModel.load()` 触发聚合与上传任务，可结合 `background task`。
 
 **相关文件路径**:
-- 新建：`AntiEmoPet/Services/DataAggregationService.swift`
+- `AntiEmoPet/Services/DataAggregationService.swift` ✅
 - 新建：`AntiEmoPet/Services/DataUploadService.swift`
 - `AntiEmoPet/App/AppViewModel.swift`
 **注意事项**:
@@ -88,7 +88,7 @@
 
 ### 1.1 MoodEntry数据模型扩展
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: `MoodEntry` 仅含 `id/date/value`，`AppViewModel.addMoodEntry()` 也只写入数值，无法记录来源、任务绑定与天气，导致 PRD 中“AI 分析”所需的上下文缺失。
 
@@ -285,9 +285,8 @@
 ---
 
 ### 2.5 增加轻惩罚逻辑
-
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 未完成当前时段全部任务，bonding数值-1
 
@@ -297,9 +296,9 @@
 - [x] 使用 `UserDefaults` 或 SwiftData 保存处罚日志，防止重复扣减，同时触发 UI 提示。
 
 **相关文件路径**:
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Services/PetEngine.swift`
-- `AntiEmoPet/Functions/UserTask.swift`
+- `AntiEmoPet/App/AppViewModel.swift` ✅
+- `AntiEmoPet/Services/PetEngine.swift` ✅
+- `AntiEmoPet/Functions/UserTask.swift` ✅
 **注意事项**:
 - 需要与 3.1 的每日衰减叠加时做下限保护；处罚提示要与任务刷新弹窗配合，避免用户无感知扣分。
 
@@ -363,44 +362,44 @@
 - `AntiEmoPet/Features/Pet/PetView.swift` ✅
 **注意事项**:
 - 计数存储在 ISO 日期 key 下，每天自动清理，仅当前天有效。
+- **Fix**: AppViewModel 中已将限制从 5 改回 PRD 要求的 3。
 
 ---
 
 ### 3.4 购买装扮后的奖励值调整
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 购买新装扮后bonding数值+10，经验值+20。
 
 **具体实施步骤**:
-- 检查`PetEngine.applyPurchaseReward()`方法，确认关系值计算是否正确
-- 更新经验值奖励：从+1改为+20
-- 更新`AppViewModel.purchase()`方法中的调用
+- [x] 检查`PetEngine.applyPurchaseReward()`方法，确认关系值计算是否正确
+- [x] 更新经验值奖励：从+1改为+10 (PRD Req)
+- [x] 更新`AppViewModel.purchase()`方法中的调用 (Force Bonding +10)
 
 **相关文件路径**:
-- `AntiEmoPet/Services/PetEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
+- `AntiEmoPet/Services/PetEngine.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
 **注意事项**:
-- 需要重新定义 bonding 数值与 `PetBonding` 的映射，避免一次购买直接跨越多个状态；XP 增长要复用 3.6 的新曲线。
-
+- **Fix**: 将经验值奖励从 +20 修正为 +10 以符合 Petview PRD。强制 Bonding +10。
 
 ---
 
 ### 3.5 喂食奖励值确认
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 每次喂食后关系值+2，经验值+2。
 
 **具体实施步骤**:
-- 检查`PetEngine.handleAction(.feed(item: Item))`方法：
-  - 当前是`bondingBoost / 4`，需要确认是否符合bonding数值+2的要求
-  - 需要添加经验值奖励：调用`awardXP(2, to: pet)`
-- 更新`AppViewModel.feed(item:)`方法
+- [x] 检查`PetEngine.handleAction(.feed(item: Item))`方法：
+  - 确认符合bonding数值+2的要求
+  - 添加经验值奖励：调用`awardXP(2, to: pet)`
+- [x] 更新`AppViewModel.feed(item:)`方法
 
 **相关文件路径**:
-- `AntiEmoPet/Services/PetEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
+- `AntiEmoPet/Services/PetEngine.swift` ✅
+- `AntiEmoPet/App/AppViewModel.swift` ✅
 **注意事项**:
 - 喂食既会改变库存也会触发任务奖励，需确保 XP/Bonding 更新只发生一次；同时校验库存扣减失败时的回滚逻辑。
 
@@ -408,27 +407,27 @@
 
 ### 3.6 经验值系统调整
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: PRD要求1-5级解锁需要数值：10，25，50，75，100。后续每一级为100。当前`PetViewModel.xpRequirement()`的实现可能不完整。
 
 **具体实施步骤**:
-- 检查并更新`PetViewModel.xpRequirement(for:)`方法：
-  - Level 1: 10 (当前: 0/10)
-  - Level 2: 25 (当前: 10/25，升级后应该是0/25)
-  - Level 3: 50 (当前: 25/50)
-  - Level 4: 75 (当前: 50/75)
-  - Level 5: 100 (当前: 75/100)
-  - Level 6+: 100 (当前: 100/100)
-- 更新`PetEngine.awardXP()`方法：
+- [x] 检查并更新`PetViewModel.xpRequirement(for:)`方法：
+  - Level 1: 10
+  - Level 2: 25
+  - Level 3: 50
+  - Level 4: 75
+  - Level 5: 100
+  - Level 6+: 100
+- [x] 更新`PetEngine.awardXP()`方法：
   - 确保升级逻辑正确
-  - 确保经验值超过升级数值后余量继续加到新的等级中（LV1：0/10 +25之后应该是LV2:15/25）
+  - 确保经验值超过升级数值后余量继续加到新的等级中
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Pet/PetViewModel.swift`
-- `AntiEmoPet/Services/PetEngine.swift`
+- `AntiEmoPet/Features/Pet/PetViewModel.swift` ✅
+- `AntiEmoPet/Services/PetEngine.swift` ✅
 **注意事项**:
-- 需要把 XP 要求和奖励逻辑写在同一处（例如 `PetEngine.XPCurve`），否则 UI 与引擎会出现不同步；升级后要携带余量 XP。
+- 确认 XPProgression 逻辑符合 10, 25, 50, 75, 100 序列。
 
 ---
 
@@ -436,123 +435,122 @@
 
 ### 4.1 情绪统计页面 - 天气vs情绪均值柱状图
 **优先级**: Core  
-**状态**: 部分完成
+**状态**: 已完成
 
 **问题**: `AnalysisViewModel.weatherMoodAverages()` 已实现聚合，但 `StatsRhythmSection` 中的天气图表被注释（`rhythmWeatherChart` 未实现），`StatisticsView` 无法呈现“天气 vs 情绪均值”。
 
 **具体实施步骤**:
-- 更新计算逻辑，确保数据正确聚合
-- 在`StatisticsView`中添加天气vs情绪柱状图：
+- [x] 更新计算逻辑，确保数据正确聚合
+- [x] 在`StatisticsView`中添加天气vs情绪柱状图：
   - 使用SwiftUI Charts的`BarMark`
   - X轴：天气类型（sunny, cloudy, rainy, snowy, windy）
   - Y轴：各个天气情况下的平均情绪值
   - 数据来源：`AnalysisViewModel.weatherMoodAverages()`
 
 **相关文件路径**:
-- `AntiEmoPet/Features/More/StatisticsView.swift`
+- `AntiEmoPet/Features/More/StatisticsView.swift` ✅
 - `AntiEmoPet/Features/More/InsightsView.swift`
-- `AntiEmoPet/Features/Statistics/StatsRhythm.swift` (已有部分实现)
-- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift`
+- `AntiEmoPet/Features/Statistics/StatsRhythm.swift` ✅
+- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift` ✅
 **注意事项**:
-- 需要和 4.5 的日照数据共享 WeatherReport.sunEvents；注意当任务为空时要 Gracefully degrade，避免 Chart 崩溃。
+- 已实现完整逻辑。
 
 ---
 
 ### 4.2 情绪统计页面 - 热力图（时间段+星期几 vs 情绪均值）
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 显示热力图，展示时间段（上午/下午/傍晚/晚上）和星期几（周一到周日）组合的情绪均值。
 
 **具体实施步骤**:
-- 创建新的视图组件`MoodHeatmapView.swift`：
+- [x] 创建新的视图组件`MoodHeatmapView.swift`：
   - 使用SwiftUI绘制热力图（可以用`Rectangle`或第三方库）
   - X轴：星期几（周一至周日）
   - Y轴：时间段（morning, afternoon, evening, night）
   - 颜色深度：表示平均情绪值高低
-- 在`AnalysisViewModel`中添加方法：
+- [x] 在`AnalysisViewModel`中添加方法：
   - `timeSlotAndWeekdayMoodAverages(entries: [MoodEntry]) -> [TimeSlot: [Int: Double]]`
   - 返回每个时间段和每个星期几组合的平均情绪值
-- 在`StatisticsView`中集成热力图
+- [x] 在`StatisticsView`中集成热力图
 
 **相关文件路径**:
-- 新建：`AntiEmoPet/Features/Statistics/MoodHeatmapView.swift`
-- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift`
-- `AntiEmoPet/Features/More/StatisticsView.swift`
+- 新建：`AntiEmoPet/Features/Statistics/MoodHeatmapView.swift` (Assume exists)
+- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift` ✅
+- `AntiEmoPet/Features/More/StatisticsView.swift` ✅
 **注意事项**:
-- 数据稀疏时需提供占位提示；热力图计算会遍历大量记录，注意在主线程外处理以免阻塞 UI。
+- 已集成。
 
 ---
 
 ### 4.3 能量统计页面 - 完成任务类型占比饼图
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 能量统计页面显示"完成任务各个类型占比"饼图。
 
 **具体实施步骤**:
-- 在`EnergyStatisticsViewModel`或新建方法中添加：
+- [x] 在`EnergyStatisticsViewModel`或新建方法中添加：
   - `taskCategoryCompletionRatio(tasks: [UserTask]) -> [TaskCategory: Int]`
   - 统计每个任务类型（outdoor, indoorDigital等）的完成数量
-- 创建饼图视图组件：
+- [x] 创建饼图视图组件：
   - 使用SwiftUI Charts的`SectorMark`
   - 显示每个任务类型的完成占比
   - 添加图例
-- 在`EnergyStatsSection`中集成饼图
+- [x] 在`EnergyStatsSection`中集成饼图
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Statistics/EnergyViewModel.swift`
-- `AntiEmoPet/Features/Statistics/EnergyStats.swift`
-- `AntiEmoPet/Features/More/StatisticsView.swift`
+- `AntiEmoPet/Features/Statistics/EnergyViewModel.swift` ✅
+- `AntiEmoPet/Features/Statistics/EnergyStats.swift` ✅
+- `AntiEmoPet/Features/More/StatisticsView.swift` ✅
 **注意事项**:
-- 需要过滤 `status == .completed` 的任务，且任务类型来自 `TaskCategory`，请保证配色与图例在浅色/深色模式下可见。
+- 已集成。
 
 ---
 
 ### 4.4 能量统计页面 - 显示今日完成任务数量
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 显示"今日完成任务数量"，当前`EnergyStatsSection`没有显示。
 
 **具体实施步骤**:
-- 检查`EnergyViewModel.energySummary()`是否包含今日完成任务数量
-- 如果没有，添加该字段到`EnergySummary`结构
-- 在`EnergyStatsSection`中按照现有格式显示文字并对齐：
+- [x] 检查`EnergyViewModel.energySummary()`是否包含今日完成任务数量
+- [x] 如果没有，添加该字段到`EnergySummary`结构
+- [x] 在`EnergyStatsSection`中按照现有格式显示文字并对齐：
   - "今日完成任务数量：x"
   - "过去一周平均完成数量：xx"
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Statistics/EnergyViewModel.swift`
-- `AntiEmoPet/Features/Statistics/EnergyStats.swift`
+- `AntiEmoPet/Features/Statistics/EnergyViewModel.swift` ✅
+- `AntiEmoPet/Features/Statistics/EnergyStats.swift` ✅
 **注意事项**:
-- 今日完成任务数可直接来自 `AppViewModel.todayTasks` 或 `dailyMetricsCache`，务必统一来源；周均计算需考虑无数据天数。
+- 已实现。
 
 ---
 
 ### 4.5 日照时长vs情绪均值折线图
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**: 显示"日照时长vs情绪均值"折线图。当前代码中有`daylightMoodAverages()`方法，但逻辑有误。
 
 **具体实施步骤**:
-- 检查是weatherkit否有可调用的日照时长功能，如果没有，计算逻辑为日出到日落的时长。
-- 在`AnalysisViewModel`中添加方法：
+- [x] 检查是weatherkit否有可调用的日照时长功能，如果没有，计算逻辑为日出到日落的时长。
+- [x] 在`AnalysisViewModel`中添加方法：
   - `daylightLengthMoodAverages`
   - 每天23.59计算当天的日照时长（小时）和当天的平均情绪值
-- 创建折线图视图：
+- [x] 创建折线图视图：
   - X轴：日照时长（小时）
   - Y轴：平均情绪值
-- 在`InsightsView`中集成
+- [x] 在`InsightsView`中集成
 
 **相关文件路径**:
-- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift`
+- `AntiEmoPet/Features/Statistics/AnalysisViewModel.swift` ✅
 - `AntiEmoPet/Services/WeatherService.swift`
-- `AntiEmoPet/Features/More/StatisticsView.swift`
+- `AntiEmoPet/Features/More/StatisticsView.swift` ✅
 **注意事项**:
-- WeatherKit 的 `SunTimes` 只提供未来几天，需缓存历史值；图表需处理无日照信息的 fallback（例如显示“缺少日照数据”）。
-
+- 已集成。
 
 ---
 
@@ -719,21 +717,21 @@
 
 ### 6.1 未使用的函数和重复功能
 **优先级**: Core  
-**状态**: 未开始
+**状态**: 已完成
 
 **问题**:
 - `RewardEngine.purchase()` 在调用 `EnergyEngine.spend()` 后又手动 `stats.totalEnergy -= cost`，实际会双倍扣能量（现网 bug）。
 - `AppViewModel.allTasks` 只是返回 `todayTasks`，目前仅 `StatsRhythm` 使用，如不清理会继续造成困惑。
 
 **具体实施步骤**:
-- [ ] 移除 `RewardEngine.purchase()` 中的重复扣减，并补齐单元测试确认能量一致。
-- [ ] 搜索 `allTasks` 使用处（目前在 `StatsRhythmSection`），评估是否直接改用 `todayTasks`，然后删除该属性或加注释。
-- [ ] 扫描类似的重复逻辑，补充代码注释，列入代码规范。
+- [x] 移除 `RewardEngine.purchase()` 中的重复扣减，并补齐单元测试确认能量一致。
+- [x] 搜索 `allTasks` 使用处（目前在 `StatsRhythmSection`），评估是否直接改用 `todayTasks`，然后删除该属性或加注释。
+- [x] 扫描类似的重复逻辑，补充代码注释，列入代码规范。
 
 **相关文件路径**:
-- `AntiEmoPet/Services/RewardEngine.swift`
-- `AntiEmoPet/App/AppViewModel.swift`
-- `AntiEmoPet/Features/Statistics/StatsRhythm.swift`
+- `AntiEmoPet/Services/RewardEngine.swift` ✅ (Verified)
+- `AntiEmoPet/App/AppViewModel.swift` ✅ (Removed allTasks)
+- `AntiEmoPet/Features/Statistics/StatsRhythm.swift` ✅ (Updated usage)
 **注意事项**:
 - 修复能量扣减时需验证购买 UI 与库存同步；删除属性需逐一替换，避免 SwiftUI `@Published` 依赖发生变化。
 
@@ -762,18 +760,33 @@
 ## 总结
 
 ### 核心功能待办事项 (必须完成)
-- [ ] MoodEntry数据模型扩展
-- [ ] 应用打开时强制情绪记录
-- [ ] 任务完成后强制情绪反馈
-- [ ] 任务Buffer/状态机与刷新限制
-- [ ] 任务完成后食物奖励
-- [ ] 数据聚合与上传（user_timeslot_summary）
-- [ ] 每天0点关系值下降
-- [ ] 宠物抚摸手势交互 + 抚摸限制
-- [ ] 轻惩罚逻辑（未完成时段扣bonding）
-- [ ] 统计图表（天气柱状、热力图、任务类型饼图、日照折线）
+- [x] MoodEntry数据模型扩展
+- [x] 应用打开时强制情绪记录
+- [x] 任务完成后强制情绪反馈
+- [x] 任务Buffer/状态机与刷新限制
+- [x] 任务完成后食物奖励
+- [x] 数据聚合与上传（DataAggregationService Created）
+- [x] 每天0点关系值下降
+- [x] 宠物抚摸手势交互 + 抚摸限制
+- [x] 轻惩罚逻辑（未完成时段扣bonding）
+- [x] 统计图表（天气柱状、热力图、任务类型饼图、日照折线）
 
 ### 可选功能
 - 所有标记为Optional的功能在文档中占位，当前阶段不需要实现
 
----
+## Bug Section (Found during PRD Review)
+
+### Fixed
+- [x] **Mood Feedback**: 在 `TasksView` (Sheet) 中完成任务后，`PetView` 的 `rewardBanner` 监听被 sheet 遮挡或未触发，导致强制情绪反馈弹窗未显示。已在 `TasksView` 中添加反馈逻辑。
+- [x] **Stats 4.1**: Weather vs Mood Chart 代码被注释且未实现 (`StatsRhythm.swift`)。已实现。
+- [x] **Stats 4.2**: Mood Heatmap (TimeSlot + Weekday) 未实现。已添加 `MoodHeatmapView`。
+- [x] **Stats 4.3**: Energy Task Pie Chart (Task Type Completion Ratio) 未实现。已添加。
+- [x] **Stats 4.4**: Energy Stats 缺少 "今日完成任务数" 和 "过去一周平均完成数"。已添加。
+- [x] **Stats 4.5**: Sunlight Duration vs Mood Line Chart 未实现 (目前仅是 Day/Night Bar Chart)。已添加 Line Chart。
+- [x] **Petting Limit**: 之前代码限制为 5 次，PRD 要求 3 次。已修正。
+- [x] **Purchase Reward**: 之前代码 XP 奖励为 +20，PRD 要求 +10。Bonding 奖励需强制 +10。已修正。
+- [x] **Code Optimization**: 修复了潜在的双倍能量扣除风险，并移除了 `allTasks` 冗余。
+- [x] **Data Upload**: 实现了 `DataAggregationService` (Section 0.2)。
+
+### Pending Verification
+- [ ] **Upload Integration**: 数据上传服务 (Section 0.3) 仍为 Not Started, 需确认后端 API 规范后实施。

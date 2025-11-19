@@ -19,8 +19,11 @@ final class EnergyStatisticsViewModel: ObservableObject {
         let averageDailyUsePastWeek: Int
         let averageToday: Int
         let averagePastWeek: Int
+        let todayTaskCount: Int
+        let averageDailyTaskCountPastWeek: Double
         let trend: TrendDirection
         let comment: String
+        let taskTypeCounts: [TaskCategory: Int]
 
         static let empty = EnergySummary(
             lastEnergy: 0,
@@ -32,8 +35,11 @@ final class EnergyStatisticsViewModel: ObservableObject {
             averageDailyUsePastWeek: 0,
             averageToday: 0,
             averagePastWeek: 0,
+            todayTaskCount: 0,
+            averageDailyTaskCountPastWeek: 0,
             trend: .flat,
-            comment: ""
+            comment: "",
+            taskTypeCounts: [:]
         )
     }
 
@@ -41,6 +47,7 @@ final class EnergyStatisticsViewModel: ObservableObject {
     func energySummary(
         from history: [EnergyHistoryEntry],
         metrics: [DailyActivityMetrics]? = nil,
+        tasks: [UserTask] = [],
         days: Int = 7
     ) -> EnergySummary? {
         guard !history.isEmpty,
@@ -106,9 +113,21 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		let averageUseWeek = dayCount > 0 ? usePerDay.values.reduce(0, +) / dayCount : 0
 		let averageWeek = dayCount > 0 ? totalSum / dayCount : 0
 
+        var todayTaskCount = 0
+        var averageTaskCountWeek: Double = 0
+        
         var score = todayAdd > averageAddWeek ? 1 : (todayAdd < averageAddWeek ? -1 : 0)
         if let metrics {
             let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })
+            
+            // Task Counts
+            if let todayMetric = metrics.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
+                todayTaskCount = todayMetric.completedTaskCount
+            }
+            let weekMetrics = metrics.filter { $0.date >= startDate }
+            let totalTasksWeek = weekMetrics.reduce(0) { $0 + $1.completedTaskCount }
+            averageTaskCountWeek = Double(totalTasksWeek) / Double(max(1, days)) // Using 'days' (7) as divisor for weekly average, or dayCount? usually 7.
+            
             let daysSorted = Array(sumPerDay.keys).sorted()
             let midpoint = daysSorted.count / 2
             var firstHalfTasks = 0
@@ -153,6 +172,8 @@ final class EnergyStatisticsViewModel: ObservableObject {
 			return parts.joined(separator: "\n")
 		}()
 
+        let taskTypeCounts = taskCategoryCompletionRatio(tasks: tasks)
+
         return EnergySummary(
             lastEnergy: last.totalEnergy,
             delta: delta,
@@ -163,8 +184,20 @@ final class EnergyStatisticsViewModel: ObservableObject {
             averageDailyUsePastWeek: averageUseWeek,
             averageToday: averageToday,
             averagePastWeek: averageWeek,
+            todayTaskCount: todayTaskCount,
+            averageDailyTaskCountPastWeek: averageTaskCountWeek,
             trend: trend,
-            comment: comment
+            comment: comment,
+            taskTypeCounts: taskTypeCounts
         )
+    }
+
+    func taskCategoryCompletionRatio(tasks: [UserTask]) -> [TaskCategory: Int] {
+        let completed = tasks.filter { $0.status == .completed }
+        var counts: [TaskCategory: Int] = [:]
+        for task in completed {
+            counts[task.category, default: 0] += 1
+        }
+        return counts
     }
 }
