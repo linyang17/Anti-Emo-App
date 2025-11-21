@@ -258,7 +258,10 @@ struct PetView: View {
 	}
 
 	private var MoreButton: some View {
-		NavigationLink(destination: MoreView().environmentObject(appModel)) {
+		NavigationLink(
+			destination: MoreView(energyHistory: appModel.energyHistory)
+				.environmentObject(appModel)
+		) {
 			Image(systemName: "ellipsis")
 				.font(.system(size: 20))
 				.fontWeight(.bold)

@@ -29,11 +29,8 @@ struct SettingView: View {
 						Text("English").tag("en")
 						Text("中文").tag("zh")
 					}
-					.onChange(of: selectedLanguage) { newLang in
-						appModel.setLanguage(newLang)
-					}
 					// TODO: complete language switch and support to 中文（zh）
-					// TODO: add privacy
+					// TODO: add privacy note
 				}
 			}
 		}

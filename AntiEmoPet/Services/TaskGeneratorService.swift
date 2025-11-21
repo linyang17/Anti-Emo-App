@@ -21,9 +21,11 @@ final class TaskGeneratorService {
 
 		for slot in slotOrder {
 			guard let interval = intervals[slot] else { continue }
+			print("current slot: \(slot)")
 			let windows = overlappingWindows(interval: interval, report: report)
-			let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
-			guard count > 0 else { continue }
+			//let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
+			//guard count > 0 else { continue }
+			let count = 3
 
 			for _ in 0..<count {
 				guard let template = pickTemplate(from: templates, used: &usedTitles, windows: windows, defaultWeather: report?.currentWeather ?? .sunny) else {
@@ -206,20 +208,21 @@ final class TaskGeneratorService {
         }
     }
 
+	// 不同天气生成不同数量的任务
     private func taskCount(for windows: [WeatherWindow], defaultWeather: WeatherType) -> Int {
         let weather = dominantWeather(in: windows) ?? defaultWeather
         let baseRange: [Int]
         switch weather {
         case .sunny:
-            baseRange = [3, 3, 2, 1]
+            baseRange = [4, 3, 3, 2]
         case .cloudy:
-            baseRange = [1, 2, 2]
+            baseRange = [4, 3, 3, 3]
         case .rainy:
-            baseRange = [1, 1, 2]
+            baseRange = [3, 2]
         case .snowy:
-            baseRange = [1, 2, 2]
+            baseRange = [3, 2, 2]
         case .windy:
-            baseRange = [1, 2, 3]
+            baseRange = [3, 3, 2]
         }
         return baseRange.randomElement() ?? 1
     }

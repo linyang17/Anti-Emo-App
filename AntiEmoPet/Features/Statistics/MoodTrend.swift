@@ -13,7 +13,7 @@ struct MoodTrendSection: View {
 						Text("Day").tag(1)
 						Text("Week").tag(7)
 						Text("Month").tag(30)
-						Text("3M").tag(90)
+						Text("3M").tag(91)
 					}
 					.pickerStyle(.segmented)
 					
@@ -57,7 +57,7 @@ struct MoodTrendSection: View {
 										case 7:
 											Text(date, format: .dateTime.weekday(.abbreviated))
 												.font(.caption2)
-										case 30, 90:
+										case 30, 91:
 											Text(date, format: .dateTime.day().month(.abbreviated))
 												.font(.caption2)
 										default:
@@ -73,6 +73,7 @@ struct MoodTrendSection: View {
 						}
 						.frame(height: 200)
 						.frame(maxWidth: .infinity)
+						.chartPlotStyle { plotArea in plotArea.padding(.trailing, 12) }
 					}
 				}
 			}
@@ -81,7 +82,7 @@ struct MoodTrendSection: View {
 	// MARK: - 动态步进
 	private func strideStep(for window: Int) -> Int {
 		switch window {
-		case 90: return 15
+		case 91: return 15
 		case 30: return 7
 		case 7: return 1
 		default: return 3 // 日视图中每3小时显示一个刻度
@@ -95,11 +96,13 @@ struct MoodTrendSection: View {
 		if window == 1 {
 			// 今日00:00到23:59
 			let start = cal.startOfDay(for: now)
-			let end = cal.date(byAdding: .hour, value: 23, to: start)!
+			let end = cal.date(byAdding: .hour, value: 26, to: start)!
 			return start...end
 		} else {
 			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-			return start...now
+			let paddedEnd = cal.startOfDay(for: cal.date(byAdding: .day, value: window / 7, to: now)!
+			)
+			return start...paddedEnd
 		}
 	}
 
@@ -158,7 +161,7 @@ struct MoodTrendSection: View {
 		}
 
 		// 聚合逻辑
-		if windowDays >= 30 {
+		if windowDays > 30 {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
 			for (day, value) in daily {
 				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {

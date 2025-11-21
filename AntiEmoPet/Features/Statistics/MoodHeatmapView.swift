@@ -12,7 +12,7 @@ struct MoodHeatmapView: View {
     private let timeSlots: [TimeSlot] = [.morning, .afternoon, .evening, .night]
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 16) {
             // Header (Weekdays)
             HStack(spacing: 4) {
                 Text("") // Spacer for Y axis labels
@@ -57,7 +57,7 @@ struct MoodHeatmapView: View {
                 .overlay {
                     if let v = value {
                         Text("\(Int(v))")
-                            .font(.system(size: 8))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white.opacity(0.8))
                     }
                 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MoreView: View {
 	@EnvironmentObject private var appModel: AppViewModel
+	let energyHistory: [EnergyHistoryEntry]
 
 	var body: some View {
 		List {
@@ -12,7 +13,10 @@ struct MoreView: View {
 			}
 
 			Section(header: Text("Statistics")) {
-				NavigationLink(destination: StatisticsView().environmentObject(appModel)) {
+				NavigationLink(
+					destination: StatisticsView()
+						.environmentObject(appModel)
+				) {
 					Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
 				}
 
