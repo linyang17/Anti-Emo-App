@@ -71,7 +71,6 @@ final class AppViewModel: ObservableObject {
 		storage = StorageService(context: modelContext)
 		taskGenerator = TaskGeneratorService(storage: storage)
 		bindLocationUpdates()
-		observeWeather()
 		bindSleepReminder()
 		configureSleepReminderMonitoring()
 	}
@@ -149,7 +148,6 @@ final class AppViewModel: ObservableObject {
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
 		recordMoodOnLaunch()
 		
-		print("[AppViewModel] Load complete. Onboarded: \(!showOnboarding)")
 	}
 	
 	private func fetchInitialWeather() async {
@@ -166,7 +164,7 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func refreshIfNeeded() async {
-		print("[AppViewModel] Refreshing if needed...")
+		print("[AppViewModel] \(Date()): Refreshing...")
 		await load()
 		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
 		if !showOnboarding && !showSleepReminder {
@@ -198,14 +196,7 @@ final class AppViewModel: ObservableObject {
                 showMoodCapture = false
                 shouldForceMoodCapture = false
         }
-	
-	func refreshIfNeeded() async {
-		await load()
-		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
-		if !showOnboarding && !showSleepReminder {
-			checkAndShowMoodCapture()
-		}
-	}
+
 
 	func refreshCurrentSlotTasks(retaining retained: UserTask? = nil) async {
 		guard canRefreshCurrentSlot else { return }

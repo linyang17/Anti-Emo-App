@@ -6,7 +6,6 @@ struct StatisticsView: View {
         @EnvironmentObject private var appModel: AppViewModel
         @StateObject private var moodViewModel = MoodStatisticsViewModel()
         @StateObject private var energyViewModel = EnergyStatisticsViewModel()
-
         @State private var moodSummary: MoodStatisticsViewModel.MoodSummary = .empty
         @State private var energySummary: EnergyStatisticsViewModel.EnergySummary = .empty
 
@@ -19,7 +18,7 @@ struct StatisticsView: View {
 
 					// 能量统计区
 					EnergyStatsSection(energy: energySummary)
-					EnergyTrendSection().environmentObject(appModel)
+					EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
 					}
                 }
 		.navigationTitle("Statistics")

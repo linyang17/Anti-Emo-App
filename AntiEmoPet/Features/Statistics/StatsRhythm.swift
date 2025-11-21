@@ -19,15 +19,15 @@ struct StatsRhythmSection: View {
 	var body: some View {
 		VStack(spacing: 16) {
 
-            DashboardCard(title: "Mood Heatmap", icon: "grid") {
+            DashboardCard(title: "Mood Heatmap", icon: "deskclock") {
                 MoodHeatmapView(data: analysis.heatmapData)
             }
 
-			DashboardCard(title: "天气关联度", icon: "cloud.sun") {
+			DashboardCard(title: "Weather Correlation", icon: "cloud.sun") {
 				rhythmWeatherChart(data: analysis.weatherAverages)
 			}
 
-			DashboardCard(title: "Sunlight Duration vs Mood", icon: "sun.max") {
+			DashboardCard(title: "Daylight Correlation", icon: "sun.max") {
 				rhythmDaylightLineChart(data: analysis.daylightLengthData)
 			}
 		}
@@ -64,13 +64,9 @@ struct StatsRhythmSection: View {
 			}
 			.chartXAxis { AxisMarks(position: .bottom) }
 			.chartYAxis { AxisMarks(position: .leading) }
-			.frame(height: 160)
-			.drawingGroup()
+			.frame(height: 200)
 			.task(id: data) {
 				await updateWeatherData(data)
-#if DEBUG
-				print(data)
-#endif
 			}
 		}
 	}
@@ -82,6 +78,11 @@ struct StatsRhythmSection: View {
 		if data.isEmpty {
 			rhythmPlaceholder(systemImage: "sun.max")
 		} else {
+			let hoursValues = data.keys.sorted()
+			// 自动范围 + buffer（左右各留 1 小时）
+			let minX = max(0, (hoursValues.min() ?? 0) - 1)
+			let maxX = min(25, (hoursValues.max() ?? 0) + 2)
+			
 			Chart(daylightLineAnimator.displayData) { item in
 				LineMark(
 					x: .value("Hours", item.hours),
@@ -91,6 +92,7 @@ struct StatsRhythmSection: View {
 				.symbol(.circle)
 				.foregroundStyle(Color.orange)
 			}
+			.chartXScale(domain: minX...maxX)
 			.chartXAxis {
 				AxisMarks(position: .bottom) { value in
 					if let intValue = value.as(Int.self) {
@@ -99,8 +101,7 @@ struct StatsRhythmSection: View {
 				}
 			}
 			.chartYAxis { AxisMarks(position: .leading) }
-			.frame(height: 160)
-			.drawingGroup()
+			.frame(height: 200)
 			.task(id: data) {
 				await updateDaylightLineData(data)
 			}

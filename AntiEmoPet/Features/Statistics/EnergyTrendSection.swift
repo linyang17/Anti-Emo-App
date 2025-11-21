@@ -2,17 +2,18 @@ import SwiftUI
 import Charts
 
 struct EnergyTrendSection: View {
-	@EnvironmentObject private var appModel: AppViewModel
+	let energyHistory: [EnergyHistoryEntry]
+	let energy: EnergyStatisticsViewModel.EnergySummary
 	@State private var window: Int = 7
 
 	var body: some View {
 		DashboardCard(title: "Energy Trend", icon: "chart.bar.fill") {
-			VStack(alignment: .leading, spacing: 12) {
+			VStack(alignment: .leading, spacing: 24) {
 				Picker("window", selection: $window) {
 					Text("Day").tag(1)
 					Text("Week").tag(7)
 					Text("Month").tag(30)
-					Text("3M").tag(90)
+					Text("3M").tag(91)
 				}
 				.pickerStyle(.segmented)
 				
@@ -32,10 +33,10 @@ struct EnergyTrendSection: View {
 					.frame(maxWidth: .infinity)
 				} else {
 					Chart(data.sorted(by: { $0.date < $1.date })) { point in
-						BarMark(
-							x: .value("time", point.date),
-							y: .value("Energy Added", point.averageTotal)
-						)
+							BarMark(
+								x: .value(window == 1 ? "hour" : "day", point.date),
+								y: .value("Energy Added", point.averageTotal)
+								)
 						.foregroundStyle(.blue)
 
 					}
@@ -50,7 +51,7 @@ struct EnergyTrendSection: View {
 									case 7:
 										Text(date, format: .dateTime.weekday(.abbreviated))
 											.font(.caption2)
-									case 30, 90:
+									case 30, 91:
 										Text(date, format: .dateTime.day().month(.abbreviated))
 											.font(.caption2)
 									default:
@@ -74,7 +75,7 @@ struct EnergyTrendSection: View {
 	// MARK: - 动态步进
 	private func strideStep(for window: Int) -> Int {
 		switch window {
-		case 90: return 15
+		case 91: return 15
 		case 30: return 7
 		case 7: return 1
 		default: return 3 // 日视图中每3小时显示一个刻度
@@ -88,11 +89,12 @@ struct EnergyTrendSection: View {
 		if window == 1 {
 			// 今日00:00到23:59
 			let start = cal.startOfDay(for: now)
-			let end = cal.date(byAdding: .hour, value: 23, to: start)!
+			let end = cal.date(byAdding: .hour, value: 26, to: start)!
 			return start...end
 		} else {
 			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-			return start...now
+			let paddedEnd = cal.date(byAdding: .day, value: window / 7, to: now)!
+			return start...paddedEnd
 		}
 	}
 
@@ -111,50 +113,56 @@ struct EnergyTrendSection: View {
 
 	// MARK: - 动态平均值计算
 	private func dailyAdded(windowDays: Int) -> [EnergyTrendPoint] {
-		guard !appModel.energyHistory.isEmpty else { return [] }
+		guard !energyHistory.isEmpty else { return [] }
 
-		let calendar = TimeZoneManager.shared.calendar
+		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
-		let startOfDay = calendar.startOfDay(for: now)
 
+			// 日模式：按小时计算
 		if windowDays == 1 {
-			// 「日」模式：按小时聚合
-				let todayEntries = appModel.energyHistory.filter { calendar.isDate($0.date, inSameDayAs: now) }
-				guard !todayEntries.isEmpty else { return [] }
-
-				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
-						calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
+			let todayEntries = energyHistory.filter { cal.isDate($0.date, inSameDayAs: now) }
+			guard !todayEntries.isEmpty else { return [] }
+			
+			var hourly: [Date: Int] = [:]
+			let startOfDay = cal.startOfDay(for: now)
+			let previousSnapshot = energyHistory
+				.filter { $0.date < startOfDay }
+				.sorted(by: { $0.date < $1.date })
+				.last
+			var prev: EnergyHistoryEntry? = previousSnapshot
+			
+			for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
+				let hour = cal.date(bySetting: .minute, value: 0, of: entry.date)!
+				if let p = prev {
+					let diff = entry.totalEnergy - p.totalEnergy
+					if diff > 0 {
+						hourly[hour, default: 0] += diff
+					} else {
+							// Still include the hour even if no gain
+						hourly[hour, default: 0] = hourly[hour] ?? 0
+					}
+				} else {
+					hourly[hour] = entry.totalEnergy
 				}
-
-				var averagedTotal: [EnergyTrendPoint] = []
-				for (hour, group) in groupedByHour {
-						let total = group.reduce(0.0) { $0 + Double($1.totalEnergy) }
-						averagedTotal.append(EnergyTrendPoint(date: hour, averageTotal: total))
-				}
-
-				return averagedTotal.sorted { $0.date < $1.date }
-                }
+				prev = entry
+			}
+			
+			return hourly.map { (key, value) in
+				EnergyTrendPoint(date: key, averageTotal: Double(value))
+			}
+		}
 
 		// 其他窗口（周、月、季）
-		let start = calendar.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
-		let longEntries = appModel.energyHistory.filter { $0.date >= start }
+		let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
+		let longEntries = energy.dailyEnergyAdds.filter { $0.key >= start }
 		guard !longEntries.isEmpty else { return [] }
-
-		var daily: [Date: (sum: Int, count: Int)] = [:]
-		for entry in longEntries {
-			let day = calendar.startOfDay(for: entry.date)
-			var item = daily[day] ?? (0, 0)
-			item.sum += entry.totalEnergy
-			item.count += 1
-			daily[day] = item
-		}
 
 		// 聚合逻辑
 		if windowDays >= 30 {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
-			for (day, value) in daily {
-				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {
-					weekly[weekStart, default: (0, 0)].sum += value.sum / max(1, value.count)
+			for (day, value) in energy.dailyEnergyAdds {
+				if let weekStart = cal.dateInterval(of: .weekOfYear, for: day)?.start {
+					weekly[weekStart, default: (0, 0)].sum += value
 					weekly[weekStart]!.count += 1
 				}
 			}
@@ -165,8 +173,8 @@ struct EnergyTrendSection: View {
 			.sorted(by: { $0.date < $1.date })
 		}
 
-		return daily.map { (key, value) in
-			EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
+		return energy.dailyEnergyAdds.map { (key, value) in
+			EnergyTrendPoint(date: key, averageTotal: Double(value))
 		}
 		.sorted(by: { $0.date < $1.date })
 	}
