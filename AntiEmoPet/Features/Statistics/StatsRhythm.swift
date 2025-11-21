@@ -5,7 +5,6 @@ import Combine
 struct StatsRhythmSection: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var analysis = AnalysisViewModel()
-
 	@StateObject private var slotAnimator = AnimatedChartData<SlotAverage>()
 	@StateObject private var weatherAnimator = AnimatedChartData<WeatherAverage>()
 	@StateObject private var daylightAnimator = AnimatedChartData<DaylightAverage>()
@@ -32,13 +31,16 @@ struct StatsRhythmSection: View {
 				rhythmDaylightLineChart(data: analysis.daylightLengthData)
 			}
 		}
-		.onAppear(perform: refreshRhythms)
-		.onReceive(appModel.$moodEntries) { _ in refreshRhythms() }
-		.onReceive(appModel.$todayTasks) { _ in refreshRhythms() }
-		.onReceive(appModel.$sunEvents) { _ in refreshRhythms() }
+		.onAppear {
+			if !appModel.isLoading {
+				refreshRhythms()
+			}
+		}
 	}
 
 	private func refreshRhythms() {
+		guard !appModel.isLoading else { return }
+		
 		Task(priority: .userInitiated) {
 			await analysis.rhythmAnalysis(for: appModel.moodEntries, sunEvents: appModel.sunEvents)
 		}
@@ -66,6 +68,9 @@ struct StatsRhythmSection: View {
 			.drawingGroup()
 			.task(id: data) {
 				await updateWeatherData(data)
+#if DEBUG
+				print(data)
+#endif
 			}
 		}
 	}

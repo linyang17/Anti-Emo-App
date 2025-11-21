@@ -1,20 +1,12 @@
-//
-//  MoodTrendSection.swift
-//  AntiEmoPet
-//
-//  Created by Selena Yang on 19/11/2025.
-//
-
-
 import SwiftUI
 import Charts
 
-struct MoodTrendSection: View {
+struct EnergyTrendSection: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@State private var window: Int = 7
 
 	var body: some View {
-		DashboardCard(title: "Mood Trend", icon: "chart.line.uptrend.xyaxis") {
+		DashboardCard(title: "Energy Trend", icon: "chart.bar.fill") {
 			VStack(alignment: .leading, spacing: 12) {
 				Picker("window", selection: $window) {
 					Text("Day").tag(1)
@@ -23,31 +15,29 @@ struct MoodTrendSection: View {
 					Text("3M").tag(90)
 				}
 				.pickerStyle(.segmented)
+				
+				Text(rangeDescription(for: window))
+					.font(.caption)
+					.foregroundStyle(.secondary)
 
-				let data = moodAverages(windowDays: window)
+				let data = dailyAdded(windowDays: window)
 
 				if data.isEmpty {
 					ContentUnavailableView(
 						"No Data",
-						systemImage: "chart.line.uptrend.xyaxis",
-						description: Text("Unlock when you record more moods")
+						systemImage: "chart.bar.fill",
+						description: Text("Unlock when you complete tasks")
 					)
 					.frame(height: 200)
 					.frame(maxWidth: .infinity)
 				} else {
 					Chart(data.sorted(by: { $0.date < $1.date })) { point in
-						LineMark(
+						BarMark(
 							x: .value("time", point.date),
-							y: .value("Avg Mood", point.average)
+							y: .value("Energy Added", point.averageTotal)
 						)
-						.interpolationMethod(.catmullRom)
 						.foregroundStyle(.blue)
 
-						PointMark(
-							x: .value("time", point.date),
-							y: .value("Avg Mood", point.average)
-						)
-						.foregroundStyle(.blue)
 					}
 					.chartXScale(domain: xDomain(for: window))
 					.chartXAxis {
@@ -61,10 +51,10 @@ struct MoodTrendSection: View {
 										Text(date, format: .dateTime.weekday(.abbreviated))
 											.font(.caption2)
 									case 30, 90:
-										Text(date, format: .dateTime.day())
+										Text(date, format: .dateTime.day().month(.abbreviated))
 											.font(.caption2)
 									default:
-										Text(date, format: .dateTime.day())
+										Text(date, format: .dateTime.day().month(.abbreviated))
 											.font(.caption2)
 									}
 								}
@@ -120,8 +110,8 @@ struct MoodTrendSection: View {
 	}
 
 	// MARK: - 动态平均值计算
-	private func moodAverages(windowDays: Int) -> [MoodTrendPoint] {
-		guard !appModel.moodEntries.isEmpty else { return [] }
+	private func dailyAdded(windowDays: Int) -> [EnergyTrendPoint] {
+		guard !appModel.energyHistory.isEmpty else { return [] }
 
 		let calendar = TimeZoneManager.shared.calendar
 		let now = Date()
@@ -129,33 +119,32 @@ struct MoodTrendSection: View {
 
 		if windowDays == 1 {
 			// 「日」模式：按小时聚合
-				let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
+				let todayEntries = appModel.energyHistory.filter { calendar.isDate($0.date, inSameDayAs: now) }
 				guard !todayEntries.isEmpty else { return [] }
 
 				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
 						calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
 				}
 
-				var averaged: [MoodTrendPoint] = []
+				var averagedTotal: [EnergyTrendPoint] = []
 				for (hour, group) in groupedByHour {
-						let total = group.reduce(0.0) { $0 + Double($1.value) }
-						let avg = total / Double(max(1, group.count))
-						averaged.append(MoodTrendPoint(date: hour, average: avg))
+						let total = group.reduce(0.0) { $0 + Double($1.totalEnergy) }
+						averagedTotal.append(EnergyTrendPoint(date: hour, averageTotal: total))
 				}
 
-				return averaged.sorted { $0.date < $1.date }
+				return averagedTotal.sorted { $0.date < $1.date }
                 }
 
 		// 其他窗口（周、月、季）
 		let start = calendar.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
-		let entries = appModel.moodEntries.filter { $0.date >= start }
-		guard !entries.isEmpty else { return [] }
+		let longEntries = appModel.energyHistory.filter { $0.date >= start }
+		guard !longEntries.isEmpty else { return [] }
 
 		var daily: [Date: (sum: Int, count: Int)] = [:]
-		for entry in entries {
+		for entry in longEntries {
 			let day = calendar.startOfDay(for: entry.date)
 			var item = daily[day] ?? (0, 0)
-			item.sum += entry.value
+			item.sum += entry.totalEnergy
 			item.count += 1
 			daily[day] = item
 		}
@@ -171,20 +160,20 @@ struct MoodTrendSection: View {
 			}
 
 			return weekly.map { (key, value) in
-				MoodTrendPoint(date: key, average: Double(value.sum) / Double(max(1, value.count)))
+				EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
 			}
 			.sorted(by: { $0.date < $1.date })
 		}
 
 		return daily.map { (key, value) in
-			MoodTrendPoint(date: key, average: Double(value.sum) / Double(max(1, value.count)))
+			EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
 		}
 		.sorted(by: { $0.date < $1.date })
 	}
 }
 
-private struct MoodTrendPoint: Identifiable {
+private struct EnergyTrendPoint: Identifiable {
 	let date: Date
-	let average: Double
+	let averageTotal: Double
 	var id: Date { date }
 }

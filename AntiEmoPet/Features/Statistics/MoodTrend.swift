@@ -7,66 +7,77 @@ struct MoodTrendSection: View {
 
 	var body: some View {
 		DashboardCard(title: "Mood Trend", icon: "chart.line.uptrend.xyaxis") {
-			VStack(alignment: .leading, spacing: 12) {
-				Picker("window", selection: $window) {
-					Text("Day").tag(1)
-					Text("Week").tag(7)
-					Text("Month").tag(30)
-					Text("3M").tag(90)
-				}
-				.pickerStyle(.segmented)
-
-				let data = moodAverages(windowDays: window)
-
-				if data.isEmpty {
-					ContentUnavailableView(
-						"No Data",
-						systemImage: "chart.line.uptrend.xyaxis",
-						description: Text("Unlock when you record more moods")
-					)
-					.frame(height: 200)
-					.frame(maxWidth: .infinity)
-				} else {
-					Chart(data.sorted(by: { $0.date < $1.date })) { point in
-						LineMark(
-							x: .value("time", point.date),
-							y: .value("Avg Mood", point.average)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(.blue)
-
-						PointMark(
-							x: .value("time", point.date),
-							y: .value("Avg Mood", point.average)
-						)
-						.foregroundStyle(.blue)
+			VStack(alignment: .leading, spacing: 24) {
+				VStack(alignment: .leading, spacing: 24) {
+					Picker("window", selection: $window) {
+						Text("Day").tag(1)
+						Text("Week").tag(7)
+						Text("Month").tag(30)
+						Text("3M").tag(90)
 					}
-					.chartXScale(domain: xDomain(for: window))
-					.chartXAxis {
-						AxisMarks(values: xAxisValues(for: window)) { value in
-							AxisValueLabel {
-								if let date = value.as(Date.self) {
-									if window == 1 {
-										// 小时显示
-										Text(date, format: .dateTime.hour().locale(.current))
-									} else {
-										// 按日显示
-										Text(date, format: .dateTime.month().day())
+					.pickerStyle(.segmented)
+					
+					Text(rangeDescription(for: window))
+						.font(.caption)
+						.foregroundStyle(.secondary)
+					
+					let data = moodAverages(windowDays: window)
+					
+					if data.isEmpty {
+						ContentUnavailableView(
+							"No Data",
+							systemImage: "chart.line.uptrend.xyaxis",
+							description: Text("Unlock when you record more moods")
+						)
+						.frame(height: 200)
+						.frame(maxWidth: .infinity)
+					} else {
+						Chart(data.sorted(by: { $0.date < $1.date })) { point in
+							LineMark(
+								x: .value("time", point.date),
+								y: .value("Avg Mood", point.average)
+							)
+							.interpolationMethod(.catmullRom)
+							.foregroundStyle(.blue)
+							
+							PointMark(
+								x: .value("time", point.date),
+								y: .value("Avg Mood", point.average)
+							)
+							.foregroundStyle(.blue)
+						}
+						.chartXScale(domain: xDomain(for: window))
+						.chartXAxis {
+							AxisMarks(values: xAxisValues(for: window)) { value in
+								AxisValueLabel {
+									if let date = value.as(Date.self) {
+										switch window {
+										case 1:
+											Text(date, format: .dateTime.hour())
+										case 7:
+											Text(date, format: .dateTime.weekday(.abbreviated))
+												.font(.caption2)
+										case 30, 90:
+											Text(date, format: .dateTime.day().month(.abbreviated))
+												.font(.caption2)
+										default:
+											Text(date, format: .dateTime.day().month(.abbreviated))
+												.font(.caption2)
+										}
 									}
 								}
 							}
 						}
+						.chartYAxis {
+							AxisMarks(position: .leading)
+						}
+						.frame(height: 200)
+						.frame(maxWidth: .infinity)
 					}
-					.chartYAxis {
-						AxisMarks(position: .leading)
-					}
-					.frame(height: 200)
-					.frame(maxWidth: .infinity)
 				}
 			}
 		}
 	}
-
 	// MARK: - 动态步进
 	private func strideStep(for window: Int) -> Int {
 		switch window {
@@ -109,27 +120,27 @@ struct MoodTrendSection: View {
 	private func moodAverages(windowDays: Int) -> [MoodTrendPoint] {
 		guard !appModel.moodEntries.isEmpty else { return [] }
 
-                let calendar = TimeZoneManager.shared.calendar
-                let now = Date()
-                let startOfDay = calendar.startOfDay(for: now)
+		let calendar = TimeZoneManager.shared.calendar
+		let now = Date()
+		let startOfDay = calendar.startOfDay(for: now)
 
 		if windowDays == 1 {
 			// 「日」模式：按小时聚合
-                        let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
-                        guard !todayEntries.isEmpty else { return [] }
+				let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
+				guard !todayEntries.isEmpty else { return [] }
 
-                        let groupedByHour = Dictionary(grouping: todayEntries) { entry in
-                                calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
-                        }
+				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
+						calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
+				}
 
-                        var averaged: [MoodTrendPoint] = []
-                        for (hour, group) in groupedByHour {
-                                let total = group.reduce(0.0) { $0 + Double($1.value) }
-                                let avg = total / Double(max(1, group.count))
-                                averaged.append(MoodTrendPoint(date: hour, average: avg))
-                        }
+				var averaged: [MoodTrendPoint] = []
+				for (hour, group) in groupedByHour {
+						let total = group.reduce(0.0) { $0 + Double($1.value) }
+						let avg = total / Double(max(1, group.count))
+						averaged.append(MoodTrendPoint(date: hour, average: avg))
+				}
 
-                        return averaged.sorted { $0.date < $1.date }
+				return averaged.sorted { $0.date < $1.date }
                 }
 
 		// 其他窗口（周、月、季）

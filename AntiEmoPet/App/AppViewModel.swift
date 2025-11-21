@@ -66,6 +66,7 @@ final class AppViewModel: ObservableObject {
 	return formatter
 	}()
 
+	// MARK: - Initialization
 	init(modelContext: ModelContext) {
 		storage = StorageService(context: modelContext)
 		taskGenerator = TaskGeneratorService(storage: storage)
@@ -80,40 +81,26 @@ final class AppViewModel: ObservableObject {
 		pettingNoticeTask?.cancel()
 	}
 
+	// MARK: - Core Properties
 	var totalEnergy: Int {
 		userStats?.totalEnergy ?? 0
 	}
-
-	private func observeWeather() {
-		weatherService.$currentWeatherReport
-			.receive(on: RunLoop.main)
-			.sink { [weak self] report in
-				guard let report else { return }
-				self?.weatherReport = report
-			}
-	}
 	
+	// MARK: - Lifecycle
+	func load() async {
+		print("[AppViewModel] Loading app data...")
+		storage.bootstrapIfNeeded()
+		pet = storage.fetchPet()
+		userStats = storage.fetchStats()
 
-	/// Update app language and persist to UserDefaults.
-	func setLanguage(_ code: String) {
-		currentLanguage = code
-		UserDefaults.standard.set(code, forKey: "selectedLanguage")
-	}
-
-        func load() async {
-                storage.bootstrapIfNeeded()
-                pet = storage.fetchPet()
-                userStats = storage.fetchStats()
-
-                // 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
-			let cachedCity = locationService.lastKnownCity
-			if !cachedCity.isEmpty, userStats?.region.isEmpty == true {
-				userStats?.region = cachedCity
-			}
-			
-		// Ensure initial defaults per MVP PRD
+		// 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
+		let cachedCity = locationService.lastKnownCity
+		if !cachedCity.isEmpty, userStats?.region.isEmpty == true {
+			userStats?.region = cachedCity
+		}
+		
 		if let stats = userStats, stats.totalEnergy <= 0 {
-			stats.totalEnergy = 100
+			stats.totalEnergy = 0
 		}
 
 		// Load stored energy history (for daily totalEnergy snapshots)
@@ -121,7 +108,6 @@ final class AppViewModel: ObservableObject {
 		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
 			energyHistory = decoded
 		}
-		// Removed fallback else block that initialized today's snapshot
 
 		if let pet = pet {
 			// XP baseline should start at 0 if negative
@@ -129,51 +115,66 @@ final class AppViewModel: ObservableObject {
 		}
 
 		shopItems = storage.fetchShopItems()
+		moodEntries = storage.fetchMoodEntries()
+		refreshMoodLoggingState()
+		sunEvents = storage.fetchSunEvents()
+		inventory = storage.fetchInventory()
+		todayTasks = storage.fetchTasks(for: .now)
+		
+		applyDailyBondingDecayIfNeeded()
+		
+		// Fetch weather logic
+		await fetchInitialWeather()
 
-                moodEntries = storage.fetchMoodEntries()
-                refreshMoodLoggingState()
-                sunEvents = storage.fetchSunEvents()
-                inventory = storage.fetchInventory()
-
-                todayTasks = storage.fetchTasks(for: .now)
-                applyDailyBondingDecayIfNeeded()
-
-                // Always fetch weather on app open (even if location sharing is off, use cached location)
-                if let stats = userStats, stats.shareLocationAndWeather {
-                        beginLocationUpdates()
-                        _ = await requestWeatherAccess()
-                        locationService.requestLocationOnce()
-                } else {
-                        // Still try to fetch weather using last known location for mood/task recording
-                        locationService.requestLocationOnce()
-                }
-
-                await refreshWeather(using: locationService.lastKnownLocation)
-                if todayTasks.isEmpty {
-                        let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
-                        storage.save(tasks: generated)
-                        todayTasks = generated
-                } else {
-			// No-op: weather is derived from weatherReport; no assignment needed here.
+		if todayTasks.isEmpty {
+			let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
+			storage.save(tasks: generated)
+			todayTasks = generated
+			print("[AppViewModel] Generated initial daily tasks: \(generated.count)")
 		}
 
-                scheduleTaskNotifications()
-                prepareSlotGenerationSchedule(for: Date())
-                checkSlotGenerationTrigger()
-                startSlotMonitor()
+		scheduleTaskNotifications()
+		prepareSlotGenerationSchedule(for: Date())
+		checkSlotGenerationTrigger()
+		startSlotMonitor()
 
-                showOnboarding = !(userStats?.Onboard ?? false)
+		showOnboarding = !(userStats?.Onboard ?? false)
 
-                // 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
-                if !showOnboarding && !showSleepReminder {
-                        checkAndShowMoodCapture()
-                }
+		// 检查是否需要显示情绪记录弹窗（在 onboarding 和 sleep reminder 之后）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
 
-                isLoading = false
+		isLoading = false
+		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+		recordMoodOnLaunch()
+		
+		print("[AppViewModel] Load complete. Onboarded: \(!showOnboarding)")
+	}
+	
+	private func fetchInitialWeather() async {
+		// Always fetch weather on app open (even if location sharing is off, use cached location)
+		if let stats = userStats, stats.shareLocationAndWeather {
+			beginLocationUpdates()
+			_ = await requestWeatherAccess()
+			locationService.requestLocationOnce()
+		} else {
+			// Still try to fetch weather using last known location for mood/task recording
+			locationService.requestLocationOnce()
+		}
+		await refreshWeather(using: locationService.lastKnownLocation)
+	}
 
-                dailyMetricsCache = makeDailyActivityMetrics(days: 7)
-                recordMoodOnLaunch()
-        }
+	func refreshIfNeeded() async {
+		print("[AppViewModel] Refreshing if needed...")
+		await load()
+		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
+		if !showOnboarding && !showSleepReminder {
+			checkAndShowMoodCapture()
+		}
+	}
+	
+	// MARK: - Task Management
 
         /// 检查今天是否已记录情绪，如果没有则显示弹窗
         func checkAndShowMoodCapture() {
@@ -334,7 +335,7 @@ final class AppViewModel: ObservableObject {
 		analytics.log(event: "pet_pat", metadata: ["count": "\(count + 1)"])
 		dailyMetricsCache = makeDailyActivityMetrics()
 		let remaining = max(0, maxcount - (count + 1))
-		showPettingNotice(remaining > 0 ? "Played with Lumio, \(remaining)/\(maxcount) left" : "You've played with Lumio today")
+		showPettingNotice(remaining >= 0 ? "Played with Lumio, \(remaining)/\(maxcount) left" : "You've played with Lumio today")
 		return true
 	}
 
@@ -375,6 +376,11 @@ final class AppViewModel: ObservableObject {
 		userStats?.birthday = birthday
 		userStats?.accountEmail = accountEmail
 		userStats?.Onboard = true
+		
+		// Generate tutorial tasks once upon finishing onboarding
+		let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather)
+		storage.save(tasks: onboardingTasks)
+		
 		storage.persist()
 		showOnboarding = false
 		if shareLocation {
@@ -655,11 +661,15 @@ final class AppViewModel: ObservableObject {
 			let triggerDate = Date(timeIntervalSince1970: epoch)
 			guard date >= triggerDate else { continue }
 			guard !hasGeneratedSlotTasks(slot, on: date) else { continue }
-			generateTasksForSlot(slot, reference: date)
+			
+			// Only notify if we are within 90 minutes of the trigger time
+			// This prevents spamming notifications if the user opens the app late at night
+			let isLate = date.timeIntervalSince(triggerDate) > 5400
+			generateTasksForSlot(slot, reference: date, notify: !isLate)
 		}
 	}
 
-	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date()) {
+	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
 		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
 		guard !generated.isEmpty else { return }
 		storage.deleteTasks(in: slot, on: date)
@@ -668,7 +678,7 @@ final class AppViewModel: ObservableObject {
 		scheduleTaskNotifications()
 		markSlotTasksGenerated(slot, on: date)
 		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
-		if userStats?.notificationsEnabled == true {
+		if notify, userStats?.notificationsEnabled == true {
 			notificationService.notifyTasksUnlocked(for: slot)
 		}
 	}
