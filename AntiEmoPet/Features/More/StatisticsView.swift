@@ -19,21 +19,26 @@ struct StatisticsView: View {
 
 					// 能量统计区
 					EnergyStatsSection(energy: energySummary)
-					EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
+					EnergyTrendSection().environmentObject(appModel)
 					}
                 }
-                .navigationTitle("Statistics")
-                .onAppear(perform: refreshSummaries)
-                .onReceive(appModel.$moodEntries) { _ in refreshSummaries() }
-                .onReceive(appModel.$energyHistory) { _ in refreshSummaries() }
-                .onReceive(appModel.$dailyMetricsCache) { _ in refreshSummaries() }
-        }
+		.navigationTitle("Statistics")
+		.task {
+			refreshSummaries()
+		}
+		.onChange(of: appModel.moodEntries.count) { _, _ in refreshSummaries() }
+		.onChange(of: appModel.energyHistory.count) { _, _ in refreshSummaries() }
+		.onChange(of: appModel.dailyMetricsCache.count) { _, _ in refreshSummaries() }
+	}
 
-    private func refreshSummaries() {
-        moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-        energySummary = energyViewModel.energySummary(
-            metrics: appModel.dailyMetricsCache,
-            tasks: appModel.tasksSince(days: 30)
-        ) ?? .empty
-    }
+	private func refreshSummaries() {
+		// Avoid redundant calculation during loading
+		guard !appModel.isLoading else { return }
+		
+		moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+		energySummary = energyViewModel.energySummary(
+			metrics: appModel.dailyMetricsCache,
+			tasks: appModel.tasksSince(days: 30)
+		) ?? .empty
+	}
 }

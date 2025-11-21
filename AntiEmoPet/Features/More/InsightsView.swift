@@ -21,17 +21,23 @@ struct InsightsView: View {
 			.padding()
 		}
 		.navigationTitle("Insights")
-		.onAppear(perform: refreshSummaries)
-		.onReceive(appModel.$moodEntries) { _ in refreshSummaries() }
-		.onReceive(appModel.$energyHistory) { _ in refreshSummaries() }
-		.onReceive(appModel.$dailyMetricsCache) { _ in refreshSummaries() }
+		.task {
+			refreshSummaries()
+		}
+		.onChange(of: appModel.moodEntries.count) { _, _ in refreshSummaries() }
+		.onChange(of: appModel.energyHistory.count) { _, _ in refreshSummaries() }
+		.onChange(of: appModel.dailyMetricsCache.count) { _, _ in refreshSummaries() }
+		.onChange(of: appModel.todayTasks) { _, _ in refreshSummaries() }
 	}
 
-    private func refreshSummaries() {
-        moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-        energySummary = energyViewModel.energySummary(
-            metrics: appModel.dailyMetricsCache,
-            tasks: appModel.todayTasks
-        ) ?? .empty
-    }
+	private func refreshSummaries() {
+		// Avoid redundant calculation during loading
+		guard !appModel.isLoading else { return }
+
+		moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+		energySummary = energyViewModel.energySummary(
+			metrics: appModel.dailyMetricsCache,
+			tasks: appModel.todayTasks
+		) ?? .empty
+	}
 }

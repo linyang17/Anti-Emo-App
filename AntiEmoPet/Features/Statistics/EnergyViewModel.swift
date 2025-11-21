@@ -88,7 +88,7 @@ print("Calendar:", calendar.timeZone)
 print("Today key:", calendar.startOfDay(for: now))
 #endif
 
-		return EnergySummary(
+	return EnergySummary(
 			todayAdd: todayAdd,
 			averageDailyAddPastWeek: averageAddWeek,
 			todayTaskCount: todayTaskCount,
@@ -103,7 +103,7 @@ print("Today key:", calendar.startOfDay(for: now))
 	// MARK: - Subfunctions
 
 	/// 每日任务能量 (sum by day)
-	private func calculateDailyEnergy(from tasks: [UserTask], since startDate: Date, days: Int) -> [Date: Int] {
+	func calculateDailyEnergy(from tasks: [UserTask], since startDate: Date, days: Int) -> [Date: Int] {
 		let calendar = TimeZoneManager.shared.calendar
 		var energyPerDay: [Date: Int] = [:]
 
@@ -122,7 +122,7 @@ print("Today key:", calendar.startOfDay(for: now))
 	}
 
 	/// 任务指标：今日任务数 + 平均任务数
-	private func calculateTaskMetrics(_ metrics: [DailyActivityMetrics], since startDate: Date, days: Int) -> (today: Int, average: Double) {
+	func calculateTaskMetrics(_ metrics: [DailyActivityMetrics], since startDate: Date, days: Int) -> (today: Int, average: Double) {
 		let calendar = TimeZoneManager.shared.calendar
 		let now = Date()
 
@@ -137,7 +137,7 @@ print("Today key:", calendar.startOfDay(for: now))
 	}
 
 	/// 趋势计算
-	private func calculateTrend(from metrics: [DailyActivityMetrics]?, and taskEnergyPerDay: [Date: Int]) -> TrendDirection {
+	func calculateTrend(from metrics: [DailyActivityMetrics]?, and taskEnergyPerDay: [Date: Int]) -> TrendDirection {
 		guard let metrics else { return .flat }
 		let calendar = TimeZoneManager.shared.calendar
 		let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { (calendar.startOfDay(for: $0.date), $0) })

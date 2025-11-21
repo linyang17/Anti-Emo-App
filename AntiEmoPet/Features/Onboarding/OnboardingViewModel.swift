@@ -4,10 +4,13 @@ import CoreLocation
 import GoogleSignIn
 import AuthenticationServices
 import UIKit
+import OSLog
 
 
 @MainActor
 final class OnboardingViewModel: NSObject, ObservableObject {
+	private let log = Logger(subsystem: "com.selena.AntiEmoPet", category: "Onboarding")
+	
 	enum GenderOption: String, CaseIterable, Identifiable {
 		case male
 		case female
@@ -160,6 +163,6 @@ extension OnboardingViewModel: ASAuthorizationControllerDelegate, ASAuthorizatio
 	}
 
 	func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-		print("Apple sign in failed: \(error.localizedDescription)")
+		log.error("Apple sign in failed: \(error.localizedDescription)")
 	}
 }

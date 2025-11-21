@@ -123,10 +123,16 @@ final class StorageService {
         let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
 
         do {
-            let predicate = #Predicate<UserTask> { task in
-                if task.date < start { return false }
-                if excludingCompleted && task.status == .completed { return false }
-                return true
+            let predicate: Predicate<UserTask>
+            if excludingCompleted {
+                let completed = TaskStatus.completed
+                predicate = #Predicate<UserTask> { task in
+                    task.date >= start && task.status != completed
+                }
+            } else {
+                predicate = #Predicate<UserTask> { task in
+                    task.date >= start
+                }
             }
 
             let descriptor = FetchDescriptor<UserTask>(
@@ -152,10 +158,11 @@ final class StorageService {
             let start = calendar.startOfDay(for: date)
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
             let predicate = #Predicate<UserTask> {
-                $0.date >= start && $0.date < end && !ids.contains($0.id)
+                $0.date >= start && $0.date < end
             }
             let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
-            let targets = try context.fetch(descriptor)
+            let fetched = try context.fetch(descriptor)
+            let targets = fetched.filter { !ids.contains($0.id) }
             let filtered = includeCompleted ? targets : targets.filter { $0.status != .completed }
             filtered.forEach { context.delete($0) }
             guard !filtered.isEmpty else { return }
@@ -577,3 +584,4 @@ enum DefaultSeeds {
                 }
         }
 }
+

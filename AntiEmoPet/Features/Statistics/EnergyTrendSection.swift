@@ -1,0 +1,179 @@
+import SwiftUI
+import Charts
+
+struct EnergyTrendSection: View {
+	@EnvironmentObject private var appModel: AppViewModel
+	@State private var window: Int = 7
+
+	var body: some View {
+		DashboardCard(title: "Energy Trend", icon: "chart.bar.fill") {
+			VStack(alignment: .leading, spacing: 12) {
+				Picker("window", selection: $window) {
+					Text("Day").tag(1)
+					Text("Week").tag(7)
+					Text("Month").tag(30)
+					Text("3M").tag(90)
+				}
+				.pickerStyle(.segmented)
+				
+				Text(rangeDescription(for: window))
+					.font(.caption)
+					.foregroundStyle(.secondary)
+
+				let data = dailyAdded(windowDays: window)
+
+				if data.isEmpty {
+					ContentUnavailableView(
+						"No Data",
+						systemImage: "chart.bar.fill",
+						description: Text("Unlock when you complete tasks")
+					)
+					.frame(height: 200)
+					.frame(maxWidth: .infinity)
+				} else {
+					Chart(data.sorted(by: { $0.date < $1.date })) { point in
+						BarMark(
+							x: .value("time", point.date),
+							y: .value("Energy Added", point.averageTotal)
+						)
+						.foregroundStyle(.blue)
+
+					}
+					.chartXScale(domain: xDomain(for: window))
+					.chartXAxis {
+						AxisMarks(values: xAxisValues(for: window)) { value in
+							AxisValueLabel {
+								if let date = value.as(Date.self) {
+									switch window {
+									case 1:
+										Text(date, format: .dateTime.hour())
+									case 7:
+										Text(date, format: .dateTime.weekday(.abbreviated))
+											.font(.caption2)
+									case 30, 90:
+										Text(date, format: .dateTime.day().month(.abbreviated))
+											.font(.caption2)
+									default:
+										Text(date, format: .dateTime.day().month(.abbreviated))
+											.font(.caption2)
+									}
+								}
+							}
+						}
+					}
+					.chartYAxis {
+						AxisMarks(position: .leading)
+					}
+					.frame(height: 200)
+					.frame(maxWidth: .infinity)
+				}
+			}
+		}
+	}
+
+	// MARK: - 动态步进
+	private func strideStep(for window: Int) -> Int {
+		switch window {
+		case 90: return 15
+		case 30: return 7
+		case 7: return 1
+		default: return 3 // 日视图中每3小时显示一个刻度
+		}
+	}
+
+	// MARK: - X轴范围
+	private func xDomain(for window: Int) -> ClosedRange<Date> {
+		let cal = TimeZoneManager.shared.calendar
+		let now = Date()
+		if window == 1 {
+			// 今日00:00到23:59
+			let start = cal.startOfDay(for: now)
+			let end = cal.date(byAdding: .hour, value: 23, to: start)!
+			return start...end
+		} else {
+			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
+			return start...now
+		}
+	}
+
+	// MARK: - X轴刻度
+	private func xAxisValues(for window: Int) -> [Date] {
+		let cal = TimeZoneManager.shared.calendar
+		let now = Date()
+		if window == 1 {
+			let start = cal.startOfDay(for: now)
+			return stride(from: 0, through: 24, by: strideStep(for: window))
+				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+		} else {
+			return Array(stride(from: xDomain(for: window).lowerBound, through: now, by: Double(86400 * strideStep(for: window))))
+		}
+	}
+
+	// MARK: - 动态平均值计算
+	private func dailyAdded(windowDays: Int) -> [EnergyTrendPoint] {
+		guard !appModel.energyHistory.isEmpty else { return [] }
+
+		let calendar = TimeZoneManager.shared.calendar
+		let now = Date()
+		let startOfDay = calendar.startOfDay(for: now)
+
+		if windowDays == 1 {
+			// 「日」模式：按小时聚合
+				let todayEntries = appModel.energyHistory.filter { calendar.isDate($0.date, inSameDayAs: now) }
+				guard !todayEntries.isEmpty else { return [] }
+
+				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
+						calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
+				}
+
+				var averagedTotal: [EnergyTrendPoint] = []
+				for (hour, group) in groupedByHour {
+						let total = group.reduce(0.0) { $0 + Double($1.totalEnergy) }
+						averagedTotal.append(EnergyTrendPoint(date: hour, averageTotal: total))
+				}
+
+				return averagedTotal.sorted { $0.date < $1.date }
+                }
+
+		// 其他窗口（周、月、季）
+		let start = calendar.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
+		let longEntries = appModel.energyHistory.filter { $0.date >= start }
+		guard !longEntries.isEmpty else { return [] }
+
+		var daily: [Date: (sum: Int, count: Int)] = [:]
+		for entry in longEntries {
+			let day = calendar.startOfDay(for: entry.date)
+			var item = daily[day] ?? (0, 0)
+			item.sum += entry.totalEnergy
+			item.count += 1
+			daily[day] = item
+		}
+
+		// 聚合逻辑
+		if windowDays >= 30 {
+			var weekly: [Date: (sum: Int, count: Int)] = [:]
+			for (day, value) in daily {
+				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {
+					weekly[weekStart, default: (0, 0)].sum += value.sum / max(1, value.count)
+					weekly[weekStart]!.count += 1
+				}
+			}
+
+			return weekly.map { (key, value) in
+				EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
+			}
+			.sorted(by: { $0.date < $1.date })
+		}
+
+		return daily.map { (key, value) in
+			EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
+		}
+		.sorted(by: { $0.date < $1.date })
+	}
+}
+
+private struct EnergyTrendPoint: Identifiable {
+	let date: Date
+	let averageTotal: Double
+	var id: Date { date }
+}

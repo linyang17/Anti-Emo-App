@@ -55,7 +55,7 @@ struct EnergyStatsSection: View {
 						}
 					}
 				}
-				.frame(maxWidth: 280)
+				.frame(maxWidth: 350)
 				.padding(.bottom, 12)
 				
                 // Comment

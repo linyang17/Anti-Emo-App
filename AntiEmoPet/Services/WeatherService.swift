@@ -136,23 +136,23 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 				sunEvents: sunEvents
 			)
 
-                        currentWeatherReport = report
-                        lastFetchAt = Date()
-                        lastFetchedCoordinate = location.coordinate
-                        lastFailureAt = nil
-                        persistToDisk(report)
+				currentWeatherReport = report
+				lastFetchAt = Date()
+				lastFetchedCoordinate = location.coordinate
+				lastFailureAt = nil
+				persistToDisk(report)
 
-                        log.info("✅ WeatherKit fetch succeeded: \(current.rawValue)")
-                        return report
+				log.info("✅ WeatherKit fetch succeeded: \(current.rawValue)")
+				return report
 
-                } catch {
-                        log.error("❌ WeatherKit fetch failed: \(error.localizedDescription, privacy: .public)")
-                        lastFailureAt = Date()
+				} catch {
+				log.error("❌ WeatherKit fetch failed: \(error.localizedDescription, privacy: .public)")
+				lastFailureAt = Date()
 
-                        if let snapshot = restoreFromDisk(), Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
-                                currentWeatherReport = snapshot
-                                return snapshot
-                        }
+				if let snapshot = restoreFromDisk(), Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
+						currentWeatherReport = snapshot
+						return snapshot
+				}
 
 			let fb = fallbackReport(locality: locality)
 			currentWeatherReport = fb
