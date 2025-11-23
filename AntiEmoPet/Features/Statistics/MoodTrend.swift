@@ -32,37 +32,37 @@ struct MoodTrendSection: View {
 						.frame(height: 200)
 						.frame(maxWidth: .infinity)
 					} else {
+						let yMin = max(0, (data.map(\.average).min() ?? 0) - 10)
+						let yMax = min(100, (data.map(\.average).max() ?? 100) + 10)
+						
 						Chart(data.sorted(by: { $0.date < $1.date })) { point in
 							LineMark(
-								x: .value("time", point.date),
+								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
 								y: .value("Avg Mood", point.average)
 							)
 							.interpolationMethod(.catmullRom)
 							.foregroundStyle(.blue)
 							
 							PointMark(
-								x: .value("time", point.date),
+								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
 								y: .value("Avg Mood", point.average)
 							)
 							.foregroundStyle(.blue)
 						}
 						.chartXScale(domain: xDomain(for: window))
+						.chartYScale(domain: yMin...yMax)
 						.chartXAxis {
 							AxisMarks(values: xAxisValues(for: window)) { value in
-								AxisValueLabel {
+								AxisGridLine()
+								AxisTick()
+								AxisValueLabel() {
 									if let date = value.as(Date.self) {
-										switch window {
-										case 1:
+										if window == 1 {
 											Text(date, format: .dateTime.hour())
-										case 7:
+										} else if window == 7 {
 											Text(date, format: .dateTime.weekday(.abbreviated))
-												.font(.caption2)
-										case 30, 91:
-											Text(date, format: .dateTime.day().month(.abbreviated))
-												.font(.caption2)
-										default:
-											Text(date, format: .dateTime.day().month(.abbreviated))
-												.font(.caption2)
+										} else {
+											Text(date, format: .dateTime.month(.abbreviated).day())
 										}
 									}
 								}
@@ -100,7 +100,7 @@ struct MoodTrendSection: View {
 			return start...end
 		} else {
 			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-			let paddedEnd = cal.startOfDay(for: cal.date(byAdding: .day, value: window / 7, to: now)!
+			let paddedEnd = cal.startOfDay(for: cal.date(byAdding: .day, value: (window + 3) / 7, to: now)!
 			)
 			return start...paddedEnd
 		}
@@ -110,12 +110,19 @@ struct MoodTrendSection: View {
 	private func xAxisValues(for window: Int) -> [Date] {
 		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
+		let domain = xDomain(for: window)
 		if window == 1 {
 			let start = cal.startOfDay(for: now)
-			return stride(from: 0, through: 24, by: strideStep(for: window))
+			return stride(from: 0, through: 26, by: strideStep(for: window))
 				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
 		} else {
-			return Array(stride(from: xDomain(for: window).lowerBound, through: now, by: Double(86400 * strideStep(for: window))))
+			return Array(
+				stride(
+					from: domain.lowerBound,
+					through: domain.upperBound,
+					by: Double(86400 * strideStep(for: window))
+				)
+			)
 		}
 	}
 
@@ -125,7 +132,6 @@ struct MoodTrendSection: View {
 
 		let calendar = TimeZoneManager.shared.calendar
 		let now = Date()
-		let startOfDay = calendar.startOfDay(for: now)
 
 		if windowDays == 1 {
 			// 「日」模式：按小时聚合
@@ -133,7 +139,7 @@ struct MoodTrendSection: View {
 				guard !todayEntries.isEmpty else { return [] }
 
 				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
-						calendar.date(bySettingHour: calendar.component(.hour, from: entry.date), minute: 0, second: 0, of: startOfDay)!
+						calendar.date(bySetting: .minute, value: 0, of: entry.date)!
 				}
 
 				var averaged: [MoodTrendPoint] = []
@@ -165,8 +171,9 @@ struct MoodTrendSection: View {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
 			for (day, value) in daily {
 				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {
-					weekly[weekStart, default: (0, 0)].sum += value.sum / max(1, value.count)
-					weekly[weekStart]!.count += 1
+					let midpoint = calendar.date(byAdding: .day, value: 3, to: weekStart)!
+								weekly[midpoint, default: (0, 0)].sum += value.sum / max(1, value.count)
+								weekly[midpoint]!.count += 1
 				}
 			}
 

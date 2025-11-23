@@ -31,7 +31,7 @@ struct PetView: View {
 				.scaledToFill()
 				.ignoresSafeArea()
 
-			content
+			content()
 		}
                 .overlay(alignment: .topTrailing) {
                         VStack(alignment: .trailing, spacing: 120) {
@@ -47,7 +47,18 @@ struct PetView: View {
                                 .padding(.bottom, 130)
                 }
                 .overlay { overlayStack }
-                .sheet(item: $activeSheet, content: presentSheet(for:))
+                .sheet(item: $activeSheet) { sheet in
+			switch sheet {
+			case .tasks:
+				TasksView(lastMood: mood.lastMood)
+					.presentationDetents([.fraction(0.7), .large])
+					.presentationDragIndicator(.visible)
+			case .shop:
+				ShopView()
+					.presentationDetents([.fraction(0.7), .large])
+					.presentationDragIndicator(.visible)
+			}
+		}
                 .toolbar(.hidden, for: .navigationBar)
                 .onAppear {
                         viewModel.sync(with: appModel)
@@ -106,15 +117,18 @@ struct PetView: View {
         }
 
 	@ViewBuilder
-	private var content: some View {
+	private func content() -> some View {
 		if let pet = appModel.pet {
 			VStack(alignment: .leading, spacing: 24) {
 				topBar
 					.padding(.vertical, 24)
 					.padding(.horizontal, 44)
-				Spacer(minLength: 24)
+				
+				Spacer(minLength: 0) // Remove fixed spacer
+				
 				petStage(for: pet)
 					.padding(24)
+					.offset(y: -100) // Move fox up
 			}
 			.overlay(alignment: .top) {
 				pettingNoticeOverlay()
@@ -369,7 +383,7 @@ struct PetView: View {
                         TasksView(lastMood: mood.lastMood)
                         .environmentObject(appModel)
                         .presentationDetents([.fraction(0.55)])
-                        .presentationBackground(.thickMaterial.opacity(0.7))
+                        .presentationBackground(.ultraThinMaterial)
                         .presentationDragIndicator(.hidden)
                 case .shop:
                         ShopView()

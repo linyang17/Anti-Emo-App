@@ -12,7 +12,7 @@ struct MoodHeatmapView: View {
     private let timeSlots: [TimeSlot] = [.morning, .afternoon, .evening, .night]
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 4) {
             // Header (Weekdays)
             HStack(spacing: 4) {
                 Text("") // Spacer for Y axis labels
@@ -23,7 +23,8 @@ struct MoodHeatmapView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-            }
+			}
+			.padding(.vertical, 20)
             
             // Grid
             ForEach(timeSlots, id: \.self) { slot in

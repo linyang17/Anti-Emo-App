@@ -45,15 +45,17 @@ final class AnalysisViewModel: ObservableObject {
         let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: sunEvents)
         let text = daylightCorrelationText(slotAverages: slot)
         let heatmap = timeSlotAndWeekdayMoodAverages(entries: entries)
+        
+        // 强制使用 AnalysisViewModel 自己的 daylightLengthData 属性发布更新，确保 StatsRhythmSection 监听到变化
         let daylightLen = daylightLengthMoodAverages(entries: entries, sunEvents: sunEvents)
+        daylightLengthData = daylightLen
 
         timeSlotAverages = slot
         weatherAverages = weather
         dayPeriodAverages = daylightBuckets
         daylightHint = text
         heatmapData = heatmap
-        daylightLengthData = daylightLen
-
+        
         return (slot, weather, text, daylightBuckets)
     }
 
@@ -98,7 +100,7 @@ final class AnalysisViewModel: ObservableObject {
         }
     }
 
-	// 3) TODO: 情绪与日照时长关联度分析：
+	//TODO: 情绪与日照时长关联度分析：
     private func daylightCorrelationText(slotAverages: [TimeSlot: Double]) -> String {
         guard !slotAverages.isEmpty else { return "Not enough data for analysis. Try to enter some moods and complete more tasks!" }
 
