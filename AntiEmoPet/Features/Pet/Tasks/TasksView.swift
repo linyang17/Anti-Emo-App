@@ -25,9 +25,11 @@ struct TasksView: View {
 
     var body: some View {
         ZStack {
+            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            
             VStack(spacing: 0) {
                 header
-					.background(Color(UIColor.systemGroupedBackground))
+                    .background(Color(uiColor: .systemGroupedBackground))
                 
                 ZStack(alignment: .top) {
                     List {
@@ -252,6 +254,7 @@ private struct TaskRow: View {
                         remainingTime = max(0, canComplete.timeIntervalSinceNow)
                         if remainingTime <= 0 {
                                 stopTimer()
+							task.status = .ready
                         }
                 }
         }

@@ -24,7 +24,7 @@ final class Pet: Identifiable {
 	var bondingScore: Int
     var level: Int
     var xp: Int
-    var decorations: [String]
+    @Attribute(.externalStorage) var decorations: [String] = []
 
     init(
         id: UUID = UUID(),

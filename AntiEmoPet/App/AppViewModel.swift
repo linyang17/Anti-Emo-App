@@ -176,6 +176,7 @@ final class AppViewModel: ObservableObject {
 
         /// 检查今天是否已记录情绪，如果没有则显示弹窗
         func checkAndShowMoodCapture() {
+			refreshMoodLoggingState()
 			guard !hasLoggedMoodToday else {
                         showMoodCapture = false
                         shouldForceMoodCapture = false
@@ -647,28 +648,36 @@ final class AppViewModel: ObservableObject {
 		let schedule = loadSlotSchedule()
 		let dkey = dayKey(for: date)
 		guard let slotMap = schedule[dkey] else { return }
-		for slot in activeTaskSlots {
-			guard let epoch = slotMap[slot.rawValue] else { continue }
-			let triggerDate = Date(timeIntervalSince1970: epoch)
-			guard date >= triggerDate else { continue }
-			guard !hasGeneratedSlotTasks(slot, on: date) else { continue }
-			
-			// Only notify if we are within 90 minutes of the trigger time
-			// This prevents spamming notifications if the user opens the app late at night
-			let isLate = date.timeIntervalSince(triggerDate) > 5400
-			generateTasksForSlot(slot, reference: date, notify: !isLate)
-		}
+		let currentSlot = TimeSlot.from(date: date, using: TimeZoneManager.shared.calendar)
+		
+		// Only check current slot, not past slots
+		guard let epoch = slotMap[currentSlot.rawValue] else { return }
+		let triggerDate = Date(timeIntervalSince1970: epoch)
+		guard date >= triggerDate else { return }
+		guard !hasGeneratedSlotTasks(currentSlot, on: date) else { return }
+		
+		let isLate = date.timeIntervalSince(triggerDate) > 5400
+		generateTasksForSlot(currentSlot, reference: date, notify: !isLate)
 	}
 
 	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
 		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
 		guard !generated.isEmpty else { return }
+		
+		// Only delete tasks for the specific slot being generated
 		storage.deleteTasks(in: slot, on: date)
+		
 		storage.save(tasks: generated)
 		todayTasks = storage.fetchTasks(for: .now)
 		scheduleTaskNotifications()
 		markSlotTasksGenerated(slot, on: date)
 		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
+		
+		// Only show mood capture once per day, not every slot generation
+		if !hasLoggedMoodToday && !showOnboarding {
+			checkAndShowMoodCapture()
+		}
+		
 		if notify, userStats?.notificationsEnabled == true {
 			notificationService.notifyTasksUnlocked(for: slot)
 		}

@@ -34,29 +34,25 @@ struct EnergyTrendSection: View {
 				} else {
 					Chart(data.sorted(by: { $0.date < $1.date })) { point in
 							BarMark(
-								x: .value(window == 1 ? "hour" : "day", point.date),
+								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
 								y: .value("Energy Added", point.averageTotal)
-								)
-						.foregroundStyle(.blue)
+							)
+							.foregroundStyle(.blue)
 
 					}
 					.chartXScale(domain: xDomain(for: window))
 					.chartXAxis {
 						AxisMarks(values: xAxisValues(for: window)) { value in
-							AxisValueLabel {
+							AxisGridLine()
+							AxisTick()
+							AxisValueLabel(centered: true) {
 								if let date = value.as(Date.self) {
-									switch window {
-									case 1:
+									if window == 1 {
 										Text(date, format: .dateTime.hour())
-									case 7:
+									} else if window == 7 {
 										Text(date, format: .dateTime.weekday(.abbreviated))
-											.font(.caption2)
-									case 30, 91:
-										Text(date, format: .dateTime.day().month(.abbreviated))
-											.font(.caption2)
-									default:
-										Text(date, format: .dateTime.day().month(.abbreviated))
-											.font(.caption2)
+									} else {
+										Text(date, format: .dateTime.month(.abbreviated).day())
 									}
 								}
 							}
@@ -153,14 +149,14 @@ struct EnergyTrendSection: View {
 		}
 
 		// 其他窗口（周、月、季）
-		let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
-		let longEntries = energy.dailyEnergyAdds.filter { $0.key >= start }
+		let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now)!)
+		let longEntries = energy.dailyEnergyAdds.filter { cal.startOfDay(for: $0.key) >= start }
 		guard !longEntries.isEmpty else { return [] }
 
 		// 聚合逻辑
 		if windowDays >= 30 {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
-			for (day, value) in energy.dailyEnergyAdds {
+			for (day, value) in longEntries {
 				if let weekStart = cal.dateInterval(of: .weekOfYear, for: day)?.start {
 					weekly[weekStart, default: (0, 0)].sum += value
 					weekly[weekStart]!.count += 1
@@ -173,8 +169,8 @@ struct EnergyTrendSection: View {
 			.sorted(by: { $0.date < $1.date })
 		}
 
-		return energy.dailyEnergyAdds.map { (key, value) in
-			EnergyTrendPoint(date: key, averageTotal: Double(value))
+		return longEntries.map { (key, value) in
+			EnergyTrendPoint(date: cal.startOfDay(for: key), averageTotal: Double(value))
 		}
 		.sorted(by: { $0.date < $1.date })
 	}

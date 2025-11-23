@@ -62,7 +62,11 @@ struct StatsRhythmSection: View {
 				.foregroundStyle(theme.gradient(for: item.type))
 				.cornerRadius(6)
 			}
-			.chartXAxis { AxisMarks(position: .bottom) }
+			.chartXAxis { AxisMarks(position: .bottom, values: .automatic) { _ in
+				AxisGridLine()
+				AxisTick()
+				AxisValueLabel(centered: true)
+			} }
 			.chartYAxis { AxisMarks(position: .leading) }
 			.frame(height: 200)
 			.task(id: data) {
@@ -81,7 +85,7 @@ struct StatsRhythmSection: View {
 			let hoursValues = data.keys.sorted()
 			// 自动范围 + buffer（左右各留 1 小时）
 			let minX = max(0, (hoursValues.min() ?? 0) - 1)
-			let maxX = min(25, (hoursValues.max() ?? 0) + 2)
+			let maxX = min(25, (hoursValues.max() ?? 0) + 1)
 			
 			Chart(daylightLineAnimator.displayData) { item in
 				LineMark(
@@ -94,9 +98,11 @@ struct StatsRhythmSection: View {
 			}
 			.chartXScale(domain: minX...maxX)
 			.chartXAxis {
-				AxisMarks(position: .bottom) { value in
+				AxisMarks(position: .bottom, values: .automatic) { value in
 					if let intValue = value.as(Int.self) {
-						AxisValueLabel("\(intValue)h")
+						AxisGridLine()
+						AxisTick()
+						AxisValueLabel("\(intValue)h", centered: true)
 					}
 				}
 			}
@@ -147,8 +153,11 @@ struct StatsRhythmSection: View {
 		let computed = data.keys.sorted().map { hours -> DaylightDurationAverage in
 			DaylightDurationAverage(hours: hours, value: data[hours] ?? 0)
 		}
+		// Force refresh by assigning a new array even if content is similar, to trigger chart update
+		cachedDaylightLineData = [] 
+		try? await Task.sleep(nanoseconds: 10_000_000)
 		cachedDaylightLineData = computed
-		daylightLineAnimator.update(with: cachedDaylightLineData)
+		daylightLineAnimator.update(with: computed)
 	}
 
 	// MARK: - Placeholder

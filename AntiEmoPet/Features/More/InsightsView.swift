@@ -4,7 +4,6 @@ struct InsightsView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var analysis = AnalysisViewModel()
 	@StateObject private var moodViewModel = MoodStatisticsViewModel()
-	@StateObject private var energyViewModel = EnergyStatisticsViewModel()
 
 	@State private var moodSummary: MoodStatisticsViewModel.MoodSummary = .empty
 	@State private var energySummary: EnergyStatisticsViewModel.EnergySummary = .empty
@@ -17,6 +16,16 @@ struct InsightsView: View {
 
 				StatsInsightsSection(mood: moodSummary, energy: energySummary)
 					.environmentObject(appModel)
+				
+				NavigationLink {
+					AdvancedInsightsView()
+				} label: {
+					DashboardCard(title: "Advanced Insights", icon: "chart.xyaxis.line") {
+						Text("View detailed analysis and correlations")
+							.foregroundStyle(.secondary)
+							.padding()
+					}
+				}
 			}
 			.padding()
 		}
@@ -35,9 +44,5 @@ struct InsightsView: View {
 		guard !appModel.isLoading else { return }
 
 		moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-		energySummary = energyViewModel.energySummary(
-			metrics: appModel.dailyMetricsCache,
-			tasks: appModel.todayTasks
-		) ?? .empty
 	}
 }
