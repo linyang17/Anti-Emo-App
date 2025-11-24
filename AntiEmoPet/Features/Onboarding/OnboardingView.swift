@@ -52,14 +52,12 @@ struct OnboardingView: View {
                                                 isLoading: isProcessingFinalStep,
                                                 action: handleAdvance
                                         )
-                                        .gesture(backSwipeGesture)
 
                                         FoxCharacterLayer()
                                 }
                                 .padding(.bottom, 50)
                         }
                 }
-                .background(NavigationGestureDisabler(isDisabled: true))
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
 			Button("Go to settings") {
 				if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -203,31 +201,4 @@ extension OnboardingView {
 		hasCompletedOnboarding = true
 	}
 
-	var backSwipeGesture: some Gesture {
-		DragGesture(minimumDistance: 20)
-			.onChanged { v in
-				guard v.translation.width > 0 else {
-					dragOffset = 0; hasTriggeredHapticPreview = false; return
-				}
-				dragOffset = min(v.translation.width, 160)
-				if !hasTriggeredHapticPreview, dragOffset > 40, step.previous != nil {
-					UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-					hasTriggeredHapticPreview = true
-				}
-			}
-			.onEnded { v in
-				defer {
-					withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { dragOffset = 0 }
-					hasTriggeredHapticPreview = false
-				}
-				if v.translation.width > 90 { handleRetreat() }
-			}
-	}
-
-	func handleRetreat() {
-		guard let previous = step.previous else { return }
-		UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-		withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { step = previous }
-		isProcessingFinalStep = false
-	}
 }

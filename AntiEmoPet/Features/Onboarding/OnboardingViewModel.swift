@@ -150,19 +150,55 @@ extension OnboardingViewModel: ASAuthorizationControllerDelegate, ASAuthorizatio
 	}
 
 	func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-		if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-			// New sign-in may include email (first time)
-			if let email = appleIDCredential.email {
-				self.accountEmail = email
-			} else if let email = appleIDCredential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) {
-				// Fallback: try to decode email from the identity token if available
-				self.accountEmail = email
-			}
-			self.selectedAccountProvider = .icloud
+		guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+
+		// 用户第一次授权时才会有 email
+		if let email = appleIDCredential.email {
+			self.accountEmail = email
+			log.info("📧 Received Apple ID email: \(email)")
+		} else {
+			// 第二次及之后授权不会再返回 email
+			log.info("ℹ️ Apple sign-in: email not returned (already authorized before)")
 		}
+
+		// 保存用户唯一标识符，用于后续登录
+		let userID = appleIDCredential.user
+		log.info("🆔 Apple ID user ID: \(userID)")
+
+		// 如果你想进一步尝试从 identityToken 解码邮箱，可以安全解析 JWT：
+		if let identityToken = appleIDCredential.identityToken,
+		   let jwtString = String(data: identityToken, encoding: .utf8) {
+			if let decodedEmail = decodeEmailFromIdentityToken(jwtString) {
+				self.accountEmail = decodedEmail
+				log.info("📨 Extracted email from JWT: \(decodedEmail)")
+			}
+		}
+
+		self.selectedAccountProvider = .icloud
 	}
 
 	func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
 		log.error("Apple sign in failed: \(error.localizedDescription)")
 	}
+	
+	private func decodeEmailFromIdentityToken(_ jwt: String) -> String? {
+		// JWT 分成三段：header.payload.signature
+		let segments = jwt.split(separator: ".")
+		guard segments.count > 1 else { return nil }
+
+		let payloadSegment = segments[1]
+		var base64 = String(payloadSegment)
+		// 补齐 base64 padding
+		let requiredLength = 4 * ((base64.count + 3) / 4)
+		base64 = base64.padding(toLength: requiredLength, withPad: "=", startingAt: 0)
+		base64 = base64.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+
+		guard let data = Data(base64Encoded: base64),
+			  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+			return nil
+		}
+
+		return json["email"] as? String
+	}
+	
 }

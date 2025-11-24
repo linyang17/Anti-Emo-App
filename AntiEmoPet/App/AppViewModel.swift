@@ -124,9 +124,14 @@ final class AppViewModel: ObservableObject {
 		
 		// Fetch weather logic
 		await fetchInitialWeather()
+		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 
 		if todayTasks.isEmpty {
-			let generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport)
+			let generated = taskGenerator.generateTasks(
+				for: slot,
+				date: Date(),
+				report: weatherReport
+			)
 			storage.save(tasks: generated)
 			todayTasks = generated
 			print("[AppViewModel] Generated initial daily tasks: \(generated.count)")
@@ -207,7 +212,7 @@ final class AppViewModel: ObservableObject {
 				return
 			}
 			
-			var task = todayTasks[index]
+			let task = todayTasks[index]
 			let now = Date()
 			
 			switch newStatus {
@@ -735,7 +740,7 @@ final class AppViewModel: ObservableObject {
 		markSlotTasksGenerated(slot, on: date)
 		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
 		
-		// Only show mood capture once per day, not every slot generation
+		// Only show mood capture once per slot
 		if !hasLoggedMoodThisSlot && !showOnboarding {
 			checkAndShowMoodCapture()
 		}
@@ -968,12 +973,25 @@ final class AppViewModel: ObservableObject {
 		
 		// Ensure templates are loaded
 		storage.bootstrapIfNeeded()
+		let now = Date()
+		let slot = TimeSlot.from(date: now, using: .current)
 		
-		var generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+		var generated = taskGenerator.generateTasks(
+			for: slot,
+			date: now,
+			report: weatherReport,
+			reservedTitles: reservedTitles
+		)
 		if generated.isEmpty {
 			// Retry with fresh bootstrap
 			storage.bootstrapIfNeeded()
-			generated = taskGenerator.generateDailyTasks(for: Date(), report: weatherReport, reservedTitles: reservedTitles)
+			generated = taskGenerator
+				.generateTasks(
+					for: slot,
+					date: now,
+					report: weatherReport,
+					reservedTitles: reservedTitles
+				)
 		}
 		storage.save(tasks: generated)
 		todayTasks = storage.fetchTasks(for: .now)
@@ -1045,7 +1063,6 @@ final class AppViewModel: ObservableObject {
 	private func refreshMoodLoggingState(reference date: Date = Date()) {
 		let calendar = TimeZoneManager.shared.calendar
 		let startOfDay = calendar.startOfDay(for: date)
-		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
 		
 		// 当前时段
 		let currentSlot = TimeSlot.from(date: date, using: calendar)

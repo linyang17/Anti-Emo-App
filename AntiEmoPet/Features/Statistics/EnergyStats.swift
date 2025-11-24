@@ -82,13 +82,12 @@ struct EnergyStatsSection: View {
 						.foregroundStyle(by: .value("Category", item.key.title))
                         .cornerRadius(4)
                     }
-					.padding(8)
 					.chartForegroundStyleScale(
 						domain: sortedCategories.map { $0.title },
 						range: sortedCategories.map { theme.gradient(for: $0) }
 					)
                     .frame(height: 200)
-                    .chartLegend(position: .bottom, alignment: .center)
+					.chartLegend(position: .bottom, alignment: .center, spacing: 24)
                 }
 			}
             .padding(.vertical, 6)

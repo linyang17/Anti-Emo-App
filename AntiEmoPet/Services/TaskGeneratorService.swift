@@ -11,40 +11,6 @@ final class TaskGeneratorService {
 
 	private let slotOrder: [TimeSlot] = [.morning, .afternoon, .evening]
 
-	func generateDailyTasks(for date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
-		let templates = storage.fetchAllTaskTemplates()
-		guard !templates.isEmpty else { return [] }
-
-		let intervals = scheduleIntervals(for: date)
-		var usedTitles = reservedTitles
-		var tasks: [UserTask] = []
-
-		for slot in slotOrder {
-			guard let interval = intervals[slot] else { continue }
-			print("current slot: \(slot)")
-			let windows = overlappingWindows(interval: interval, report: report)
-			// Always generate exactly 3 tasks per slot
-			let count = 3
-
-			for _ in 0..<count {
-				guard let template = pickTemplate(from: templates, used: &usedTitles, windows: windows, defaultWeather: report?.currentWeather ?? .sunny) else {
-					continue
-				}
-				let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
-				let task = UserTask(
-					title: template.title,
-					weatherType: scheduled.weather,
-					category: template.category,
-					energyReward: template.energyReward,
-					date: scheduled.date
-				)
-				tasks.append(task)
-			}
-		}
-
-		return tasks.sorted { $0.date < $1.date }
-	}
-
 	func generateTasks(for slot: TimeSlot, date: Date, report: WeatherReport?, reservedTitles: Set<String> = []) -> [UserTask] {
 		let templates = storage.fetchAllTaskTemplates()
 		guard !templates.isEmpty else { return [] }
