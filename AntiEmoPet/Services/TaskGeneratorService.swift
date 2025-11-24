@@ -23,8 +23,7 @@ final class TaskGeneratorService {
 			guard let interval = intervals[slot] else { continue }
 			print("current slot: \(slot)")
 			let windows = overlappingWindows(interval: interval, report: report)
-			//let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
-			//guard count > 0 else { continue }
+			// Always generate exactly 3 tasks per slot
 			let count = 3
 
 			for _ in 0..<count {
@@ -53,8 +52,8 @@ final class TaskGeneratorService {
 		guard let interval = intervals[slot] else { return [] }
 
 		let windows = overlappingWindows(interval: interval, report: report)
-		let count = taskCount(for: windows, defaultWeather: report?.currentWeather ?? .sunny)
-		guard count > 0 else { return [] }
+		// Always generate exactly 3 tasks
+		let count = 3
 
 		var usedTitles = reservedTitles
 		var tasks: [UserTask] = []

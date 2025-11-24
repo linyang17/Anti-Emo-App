@@ -123,9 +123,9 @@ final class StorageService {
         let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
 
         do {
+            let completed = TaskStatus.completed
             let predicate: Predicate<UserTask>
             if excludingCompleted {
-                let completed = TaskStatus.completed
                 predicate = #Predicate<UserTask> { task in
                     task.date >= start && task.status != completed
                 }
@@ -272,11 +272,37 @@ final class StorageService {
 		}
 	}
 
-	func deleteTasks(in slot: TimeSlot, on date: Date) {
+    func deleteUncompletedTasks(before slot: TimeSlot, on date: Date) {
+        guard let currentSlotInterval = slotInterval(for: slot, on: date) else { return }
+        let startOfDay = TimeZoneManager.shared.calendar.startOfDay(for: date)
+        
+        let start = startOfDay
+        let end = currentSlotInterval.start
+        do {
+            let completedStatus = TaskStatus.completed
+            let predicate = #Predicate<UserTask> { task in
+                task.date >= start && task.date < end && task.status != completedStatus
+            }
+            
+            let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+            let tasksToDelete = try context.fetch(descriptor)
+            
+            guard !tasksToDelete.isEmpty else { return }
+            tasksToDelete.forEach { context.delete($0) }
+            saveContext(reason: "delete uncompleted tasks before slot \(slot.rawValue)")
+            logger.info("Deleted \(tasksToDelete.count) uncompleted tasks before slot \(slot.rawValue)")
+        } catch {
+            logger.error("Failed to delete uncompleted tasks: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func deleteTasks(in slot: TimeSlot, on date: Date) {
 		guard let interval = slotInterval(for: slot, on: date) else { return }
+		let start = interval.start
+		let end = interval.end
 		do {
-			let predicate = #Predicate<UserTask> {
-				$0.date >= interval.start && $0.date < interval.end
+			let predicate = #Predicate<UserTask> { task in
+				task.date >= start && task.date < end
 			}
 			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
 			let targets = try context.fetch(descriptor)

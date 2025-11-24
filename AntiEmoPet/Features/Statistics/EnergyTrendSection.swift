@@ -34,10 +34,15 @@ struct EnergyTrendSection: View {
 				} else {
 					Chart(data.sorted(by: { $0.date < $1.date })) { point in
 							BarMark(
-								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
-								y: .value("Energy Added", point.averageTotal)
+								x: .value(
+										"time",
+										point.date,
+										unit: window == 1 ? .hour : window == 91 ? .weekOfYear : .day
+									),
+								y: .value("Energy Added", point.averageTotal),
+								width: .ratio(0.5)
 							)
-							.foregroundStyle(.blue)
+							.foregroundStyle(LinearGradient(colors: ChartTheme.shared.grad_orange, startPoint: .top, endPoint: .bottom))
 
 					}
 					.chartXScale(domain: xDomain(for: window))
@@ -45,7 +50,7 @@ struct EnergyTrendSection: View {
 						AxisMarks(values: xAxisValues(for: window)) { value in
 							AxisGridLine()
 							AxisTick()
-							AxisValueLabel(centered: true) {
+							AxisValueLabel() {
 								if let date = value.as(Date.self) {
 									if window == 1 {
 										Text(date, format: .dateTime.hour())
@@ -63,6 +68,7 @@ struct EnergyTrendSection: View {
 					}
 					.frame(height: 200)
 					.frame(maxWidth: .infinity)
+					.chartPlotStyle { plotArea in plotArea.padding(.trailing, 12) }
 				}
 			}
 		}
@@ -71,7 +77,7 @@ struct EnergyTrendSection: View {
 	// MARK: - 动态步进
 	private func strideStep(for window: Int) -> Int {
 		switch window {
-		case 91: return 15
+		case 91: return 15 // 季视图中每2周显示一个刻度
 		case 30: return 7
 		case 7: return 1
 		default: return 3 // 日视图中每3小时显示一个刻度
@@ -87,9 +93,17 @@ struct EnergyTrendSection: View {
 			let start = cal.startOfDay(for: now)
 			let end = cal.date(byAdding: .hour, value: 26, to: start)!
 			return start...end
-		} else {
+		}
+		else if window >= 45 {
+				// 对于月或3M窗口，改为以“周”为单位的domain
+			let start = cal.date(byAdding: .weekOfYear, value: -13, to: now)! // 3M约12周
+			let end = cal.date(byAdding: .weekOfYear, value: 2, to: now)!
+			return start...end
+		}
+		else {
 			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
-			let paddedEnd = cal.date(byAdding: .day, value: window / 7, to: now)!
+			let paddedEnd = cal.startOfDay(for: cal.date(byAdding: .day, value: (window + 3) / 7, to: now)!
+			)
 			return start...paddedEnd
 		}
 	}
@@ -98,12 +112,30 @@ struct EnergyTrendSection: View {
 	private func xAxisValues(for window: Int) -> [Date] {
 		let cal = TimeZoneManager.shared.calendar
 		let now = Date()
+		let domain = xDomain(for: window)
 		if window == 1 {
 			let start = cal.startOfDay(for: now)
-			return stride(from: 0, through: 24, by: strideStep(for: window))
+			return stride(from: 0, through: 26, by: strideStep(for: window))
 				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
-		} else {
-			return Array(stride(from: xDomain(for: window).lowerBound, through: now, by: Double(86400 * strideStep(for: window))))
+		}
+		else if window >= 45 {
+			// 对于3M模式，使用按周为步长的刻度
+			return Array(
+				stride(
+					from: domain.lowerBound,
+					through: domain.upperBound,
+					by: Double(86400 * strideStep(for: window)) 
+				)
+			)
+		}
+		else {
+			return Array(
+				stride(
+					from: domain.lowerBound,
+					through: domain.upperBound,
+					by: Double(86400 * strideStep(for: window))
+				)
+			)
 		}
 	}
 
@@ -149,17 +181,27 @@ struct EnergyTrendSection: View {
 		}
 
 		// 其他窗口（周、月、季）
-		let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now)!)
-		let longEntries = energy.dailyEnergyAdds.filter { cal.startOfDay(for: $0.key) >= start }
-		guard !longEntries.isEmpty else { return [] }
+		let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
+		let entries = energy.dailyEnergyAdds.filter { $0.key >= start }
+		guard !entries.isEmpty else { return [] }
 
+		var daily: [Date: (sum: Int, count: Int)] = [:]
+		for entry in entries {
+			let day = cal.startOfDay(for: entry.key)
+			var item = daily[day] ?? (0, 0)
+			item.sum += entry.value
+			item.count += 1
+			daily[day] = item
+		}
+		
 		// 聚合逻辑
-		if windowDays >= 30 {
+		if windowDays >= 45 {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
-			for (day, value) in longEntries {
+			for (day, value) in daily {
 				if let weekStart = cal.dateInterval(of: .weekOfYear, for: day)?.start {
-					weekly[weekStart, default: (0, 0)].sum += value
-					weekly[weekStart]!.count += 1
+					let midpoint = cal.date(byAdding: .day, value: 3, to: weekStart)!
+					weekly[midpoint, default: (0, 0)].sum += value.sum / max(1, value.count)
+					weekly[midpoint]!.count += 1
 				}
 			}
 
@@ -169,8 +211,8 @@ struct EnergyTrendSection: View {
 			.sorted(by: { $0.date < $1.date })
 		}
 
-		return longEntries.map { (key, value) in
-			EnergyTrendPoint(date: cal.startOfDay(for: key), averageTotal: Double(value))
+		return entries.map { (key, value) in
+			EnergyTrendPoint(date: key, averageTotal: Double(value))
 		}
 		.sorted(by: { $0.date < $1.date })
 	}

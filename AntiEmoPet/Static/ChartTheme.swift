@@ -5,23 +5,65 @@ struct ChartTheme {
 	static let shared = ChartTheme()
 
 	// MARK: - Core Color Palette
-	let sunny  = [Color(hex: "#FFD166"), Color(hex: "#F77F00")]
-	let cloudy = [Color(hex: "#9FA8DA"), Color(hex: "#5C6BC0")]
-	let rainy  = [Color(hex: "#4FC3F7"), Color(hex: "#0288D1")]
-	let snowy  = [Color(hex: "#E0F7FA"), Color(hex: "#80DEEA")]
-	let windy  = [Color(hex: "#A7FFEB"), Color(hex: "#26A69A")]
+	let grad_orange = [Color(hex: "#FFD166"), Color(hex: "#F77F00")]
+	let grad_gray   = [Color(hex: "#D2D2D2"), Color(hex: "#848484")]
+	let grad_cyan   = [Color(hex: "#90DDFF"), Color(hex: "#0288D1")]
+	let grad_white  = [Color(hex: "#EFF3F6"), Color(hex: "#E0F7FA")]
+	let grad_mint   = [Color(hex: "#A7FFEB"), Color(hex: "#26A69A")]
+	let grad_purple = [Color(hex: "#DBB0E2"), Color(hex: "#8E24AA")]
+	let grad_red    = [Color(hex: "#FF8A80"), Color(hex: "#E53935")]
+	let grad_green  = [Color(hex: "#A5D6A7"), Color(hex: "#388E3C")]
+	let grad_pink   = [Color(hex: "#FFD3EF"), Color(hex: "#FF98DA")]
 
-	// MARK: - Gradient Factory
+	// MARK: - Universal Gradient Factory
+	func gradient<T>(for type: T) -> LinearGradient {
+		switch type {
+		case let weather as WeatherType:
+			return gradient(for: weather)
+		case let task as TaskCategory:
+			return gradient(for: task)
+		default:
+			return LinearGradient(colors: grad_gray, startPoint: .top, endPoint: .bottom)
+		}
+	}
+
+	// MARK: - WeatherType Gradients
 	func gradient(for type: WeatherType) -> LinearGradient {
 		let colors: [Color]
 		switch type {
-		case .sunny:  colors = sunny
-		case .cloudy: colors = cloudy
-		case .rainy:  colors = rainy
-		case .snowy:  colors = snowy
-		case .windy:  colors = windy
+		case .sunny:  colors = grad_orange
+		case .cloudy: colors = grad_gray
+		case .rainy:  colors = grad_cyan
+		case .snowy:  colors = grad_white
+		case .windy:  colors = grad_mint
 		}
 		return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+	}
+
+	// MARK: - TaskCategory Gradients
+	func gradient(for type: TaskCategory) -> LinearGradient {
+		let colors: [Color]
+		switch type {
+		case .indoorActivity: colors = grad_green
+		case .indoorDigital: colors = grad_gray
+		case .socials: colors = grad_pink
+		case .outdoor: colors = grad_orange
+		case .physical: colors = grad_red
+		case .petCare: colors = grad_cyan
+		}
+		return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+	}
+
+	// MARK: - Universal Glow
+	func glow<T>(for type: T) -> Color {
+		switch type {
+		case let weather as WeatherType:
+			return glow(for: weather)
+		case let task as TaskCategory:
+			return glow(for: task)
+		default:
+			return .gray
+		}
 	}
 
 	func glow(for type: WeatherType) -> Color {
@@ -31,6 +73,17 @@ struct ChartTheme {
 		case .rainy:  return .cyan
 		case .snowy:  return .white
 		case .windy:  return .mint
+		}
+	}
+
+	func glow(for type: TaskCategory) -> Color {
+		switch type {
+		case .indoorActivity: return .green
+		case .indoorDigital: return .gray
+		case .socials: return .pink
+		case .outdoor: return .orange
+		case .physical: return .red
+		case .petCare: return .cyan
 		}
 	}
 }

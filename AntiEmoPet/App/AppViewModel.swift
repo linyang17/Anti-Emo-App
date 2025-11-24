@@ -29,7 +29,7 @@ final class AppViewModel: ObservableObject {
 	@Published var rewardBanner: RewardEvent?
 	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
 	@Published var shouldShowNotificationSettingsPrompt = false
-	@Published private(set) var hasLoggedMoodToday = false
+	@Published private(set) var hasLoggedMoodThisSlot = false
 	@Published var showMoodCapture = false
 	@Published var shouldForceMoodCapture = false
 	@Published var pendingMoodFeedbackTask: UserTask?
@@ -174,17 +174,17 @@ final class AppViewModel: ObservableObject {
 	
 	// MARK: - Task Management
 
-        /// 检查今天是否已记录情绪，如果没有则显示弹窗
-        func checkAndShowMoodCapture() {
+		/// 检查当前时段是否已记录情绪，如果没有则显示弹窗
+		func checkAndShowMoodCapture() {
 			refreshMoodLoggingState()
-			guard !hasLoggedMoodToday else {
-                        showMoodCapture = false
-                        shouldForceMoodCapture = false
-                        return
-                }
-                shouldForceMoodCapture = true
-                showMoodCapture = true
-        }
+			guard !hasLoggedMoodThisSlot else {
+				showMoodCapture = false
+				shouldForceMoodCapture = false
+				return
+			}
+			shouldForceMoodCapture = true
+			showMoodCapture = true
+		}
 	
         /// 记录情绪并关闭弹窗
         func recordMoodOnLaunch(value: Int? = nil) {
@@ -196,8 +196,61 @@ final class AppViewModel: ObservableObject {
                 addMoodEntry(value: value, source: .appOpen)
                 showMoodCapture = false
                 shouldForceMoodCapture = false
+				hasLoggedMoodThisSlot = true
         }
 
+		// MARK: - Task Status Update
+		@MainActor
+		func updateTaskStatus(_ id: UUID, to newStatus: TaskStatus) {
+			guard let index = todayTasks.firstIndex(where: { $0.id == id }) else {
+				print("[AppViewModel] ⚠️ updateTaskStatus: Task not found for id \(id)")
+				return
+			}
+			
+			var task = todayTasks[index]
+			let now = Date()
+			
+			switch newStatus {
+			case .started:
+				guard task.status == .pending else { return }
+				task.status = .started
+				task.startedAt = now
+				task.canCompleteAfter = now.addingTimeInterval(task.category.bufferDuration)
+				
+				// 延迟异步检查可完成状态
+				Task { @MainActor in
+					try? await Task.sleep(nanoseconds: UInt64(task.category.bufferDuration * 1_000_000_000))
+					if task.status == .started, let canComplete = task.canCompleteAfter, Date() >= canComplete {
+						updateTaskStatus(id, to: .ready)
+					}
+				}
+				
+			case .ready:
+				guard task.status == .started else { return }
+				task.status = .ready
+				task.canCompleteAfter = nil
+				
+			case .completed:
+				guard task.status.isCompletable else { return }
+				task.status = .completed
+				task.completedAt = now
+				completeTask(task)
+				return  // completeTask 会自动处理持久化和刷新
+
+			case .pending:
+				task.status = .pending
+				task.startedAt = nil
+				task.completedAt = nil
+				task.canCompleteAfter = nil
+
+			}
+
+			// 更新数组并持久化
+			todayTasks[index] = task
+			storage.persist()
+			todayTasks = storage.fetchTasks(for: .now)
+			objectWillChange.send()
+		}
 
 	func refreshCurrentSlotTasks(retaining retained: UserTask? = nil) async {
 		guard canRefreshCurrentSlot else { return }
@@ -299,6 +352,12 @@ final class AppViewModel: ObservableObject {
                 )
 		storage.saveMoodEntry(entry)
 		moodEntries = storage.fetchMoodEntries()
+		
+		// Link mood entry to the task if available
+		if let pendingTask = pendingMoodFeedbackTask {
+			pendingTask.moodEntryId = entry.id
+			storage.persist()
+		}
 		
 		analytics.log(event: "mood_feedback_after_task", metadata: [
 			"delta": "\(delta)",
@@ -664,6 +723,9 @@ final class AppViewModel: ObservableObject {
 		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
 		guard !generated.isEmpty else { return }
 		
+		// Clear uncompleted tasks from previous slots on the same day
+		storage.deleteUncompletedTasks(before: slot, on: date)
+		
 		// Only delete tasks for the specific slot being generated
 		storage.deleteTasks(in: slot, on: date)
 		
@@ -674,7 +736,7 @@ final class AppViewModel: ObservableObject {
 		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
 		
 		// Only show mood capture once per day, not every slot generation
-		if !hasLoggedMoodToday && !showOnboarding {
+		if !hasLoggedMoodThisSlot && !showOnboarding {
 			checkAndShowMoodCapture()
 		}
 		
@@ -980,16 +1042,29 @@ final class AppViewModel: ObservableObject {
                 }
         }
 
-        private func refreshMoodLoggingState(reference date: Date = Date()) {
-                let calendar = TimeZoneManager.shared.calendar
-                let startOfDay = calendar.startOfDay(for: date)
-                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-                let loggedToday = moodEntries.contains { entry in
-                        entry.date >= startOfDay && entry.date < endOfDay
-                }
-                hasLoggedMoodToday = loggedToday
-                shouldForceMoodCapture = !loggedToday
-        }
+	private func refreshMoodLoggingState(reference date: Date = Date()) {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		
+		// 当前时段
+		let currentSlot = TimeSlot.from(date: date, using: calendar)
+		let slotIntervals = TaskGeneratorService(storage: storage).scheduleIntervals(for: date)
+		guard let interval = slotIntervals[currentSlot] else {
+			hasLoggedMoodThisSlot = false
+			shouldForceMoodCapture = true
+			hasLoggedMoodThisSlot = false
+			return
+		}
+		
+		// 检查该时段是否已有记录
+		let loggedThisSlot = moodEntries.contains { entry in
+			entry.date >= interval.start && entry.date < interval.end
+		}
+		
+		hasLoggedMoodThisSlot = loggedThisSlot
+		shouldForceMoodCapture = !loggedThisSlot
+	}
 
         private func snackDisplayName(for item: Item) -> String {
                 if !item.assetName.isEmpty {

@@ -8,18 +8,12 @@ struct AdvancedInsightsView: View {
 		ScrollView {
 			VStack(spacing: 20) {
 				// Mood vs Energy Correlation
-				DashboardCard(title: "Mood & Energy Correlation", icon: "arrow.triangle.2.circlepath") {
-					MoodEnergyCorrelationChart()
-				}
-				
-				// Mood Delta by Task Category
-				DashboardCard(title: "Task Impact on Mood", icon: "chart.bar.xaxis") {
-					TaskMoodImpactChart()
-				}
+				// DashboardCard(title: "Mood & Energy Correlation", icon: "arrow.triangle.2.circlepath") {
+				//	MoodEnergyCorrelationChart() }
 				
 				// Weather Impact
 				DashboardCard(title: "Weather & Activity Pattern", icon: "cloud.sun") {
-					//WeatherActivityChart()
+					WeatherActivityChart()
 				}
 			}
 			.padding()
@@ -30,85 +24,104 @@ struct AdvancedInsightsView: View {
 
 private struct MoodEnergyCorrelationChart: View {
 	@EnvironmentObject private var appModel: AppViewModel
+	@State private var selectedWeather: WeatherType?
 	
 	var body: some View {
-		let data = correlationData()
-		if data.isEmpty {
-			Text("Need more data for correlation analysis").foregroundStyle(.secondary)
-		} else {
-			Chart(data) { point in
-				PointMark(x: .value("Energy", point.energy), y: .value("Mood", point.mood))
-					.foregroundStyle(.blue.opacity(0.6))
+		VStack {
+			// Weather Filter
+			ScrollView(.horizontal, showsIndicators: false) {
+				HStack {
+					FilterChip(title: "All", isSelected: selectedWeather == nil) {
+						selectedWeather = nil
+					}
+					ForEach(WeatherType.allCases) { weather in
+						FilterChip(title: weather.rawValue.capitalized, isSelected: selectedWeather == weather) {
+							selectedWeather = weather
+						}
+					}
+				}
+				.padding(.bottom, 8)
 			}
-			.frame(height: 200)
+			
+			let data = correlationData()
+			if data.isEmpty {
+				Text("Need more data for correlation analysis").foregroundStyle(.secondary)
+			} else {
+				Chart(data) { point in
+					PointMark(x: .value("Energy", point.energy), y: .value("Mood", point.mood))
+						.foregroundStyle(point.category.color)
+						.symbol(by: .value("Category", point.category.title))
+				}
+				.chartForegroundStyleScale([
+					"Outdoor Activities": .green,
+					"Digital": .purple,
+					"Indoor Activities": .orange,
+					"Physical Exercises": .red,
+					"Social Interactions": .blue,
+					"Pet Care": .brown
+				])
+				.frame(height: 220)
+			}
 		}
 	}
 	
 	private func correlationData() -> [CorrelationPoint] {
-		let cal = TimeZoneManager.shared.calendar
-		var daily: [Date: (mood: [Int], energy: Int)] = [:]
-		
-		for entry in appModel.moodEntries {
-			let day = cal.startOfDay(for: entry.date)
-			daily[day, default: ([], 0)].mood.append(entry.delta ?? 0)
+		// Only tasks that have a linked mood entry
+		let tasksWithMood = appModel.tasksSince(days: 90).filter { 
+			$0.status == .completed && $0.moodEntryId != nil && (selectedWeather == nil || $0.weatherType == selectedWeather)
 		}
 		
-		for task in appModel.tasksSince(days: 90) where task.status == .completed {
-			guard let completed = task.completedAt else { continue }
-			let day = cal.startOfDay(for: completed)
-			daily[day]?.energy += task.energyReward
-		}
-		
-		return daily.compactMap { key, value in
-			guard !value.mood.isEmpty else { return nil }
-			let avgMood = Double(value.mood.reduce(0, +)) / Double(value.mood.count)
-			return CorrelationPoint(mood: avgMood, energy: value.energy)
+		return tasksWithMood.compactMap { task in
+			guard let moodId = task.moodEntryId,
+				  let moodEntry = appModel.moodEntries.first(where: { $0.id == moodId }) else { return nil }
+			
+			return CorrelationPoint(
+				mood: Double(moodEntry.value),
+				energy: task.energyReward,
+				category: task.category
+			)
 		}
 	}
 }
 
-private struct TaskMoodImpactChart: View {
-	@EnvironmentObject private var appModel: AppViewModel
+private struct FilterChip: View {
+	let title: String
+	let isSelected: Bool
+	let action: () -> Void
 	
 	var body: some View {
-		let data = taskImpactData()
-		if data.isEmpty {
-			Text("Complete tasks and log mood after to see impact").foregroundStyle(.secondary)
-		} else {
-			Chart(data) { point in
-				BarMark(x: .value("Category", point.category.rawValue), y: .value("Avg Delta", point.avgDelta))
-					.foregroundStyle(point.avgDelta > 0 ? .green : .red)
-			}
-			.frame(height: 200)
+		Button(action: action) {
+			Text(title)
+				.font(.caption.weight(.medium))
+				.padding(.horizontal, 12)
+				.padding(.vertical, 6)
+				.background(isSelected ? Color.blue : Color.gray.opacity(0.1), in: Capsule())
+				.foregroundStyle(isSelected ? .white : .primary)
 		}
-	}
-	
-	private func taskImpactData() -> [TaskImpact] {
-		// Provide explicit type to resolve '.afterTask' without contextual type error
-		let entryStatus: MoodEntry.MoodSource = .afterTask
-		let afterTaskEntries = appModel.moodEntries.filter {
-			$0.source == entryStatus.rawValue
-		}
-		var categoryDeltas: [TaskCategory: [Int]] = [:]
-		
-		for entry in afterTaskEntries {
-			if let category = entry.relatedTaskCategory, let delta = entry.delta {
-				categoryDeltas[
-					TaskCategory(rawValue: category)!,
-					default: []
-				]
-					.append(delta)
-			}
-		}
-		
-		return categoryDeltas.compactMap { key, values in
-			guard !values.isEmpty else { return nil }
-			let avg = Double(values.reduce(0, +)) / Double(values.count)
-			return TaskImpact(category: key, avgDelta: avg)
-		}.sorted { $0.avgDelta > $1.avgDelta }
 	}
 }
 
+private struct CorrelationPoint: Identifiable {
+	let mood: Double
+	let energy: Int
+	let category: TaskCategory
+	var id: String { "\(mood)-\(energy)-\(category.rawValue)" }
+}
+
+extension TaskCategory {
+	var color: Color {
+		switch self {
+		case .outdoor: return .green
+		case .indoorDigital: return .purple
+		case .indoorActivity: return .orange
+		case .physical: return .red
+		case .socials: return .blue
+		case .petCare: return .brown
+		}
+	}
+}
+
+	
 private struct WeatherActivityChart: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	
@@ -127,39 +140,24 @@ private struct WeatherActivityChart: View {
 	
 	private func weatherActivityData() -> [WeatherTaskActivity] {
 		var weatherCounts: [WeatherType: [String: Int]] = [:]
-		
+
 		for task in appModel.tasksSince(days: 365) where task.status == .completed {
 			weatherCounts[task.weatherType, default: [:]][task.category.rawValue, default: 0] += 1
 		}
-		
+
 		return weatherCounts
-			.map {
-				WeatherTaskActivity(
-					weather: $0.self.key,
-					category: TaskCategory(rawValue: $0.key.rawValue)!,
-					taskCount: $0.value.values.reduce(0, +)
-				)
+			.map { (weather, categoryCounts) in
+				let total = categoryCounts.values.reduce(0, +)
+				return WeatherTaskActivity(weather: weather, taskCount: total)
 			}
 			.sorted { $0.taskCount > $1.taskCount }
 	}
 }
 
-private struct CorrelationPoint: Identifiable {
-	let mood: Double
-	let energy: Int
-	var id: String { "\(mood)-\(energy)" }
-}
 
-private struct TaskImpact: Identifiable {
-	let category: TaskCategory
-	let avgDelta: Double
-	var id: String { category.rawValue }
-}
 
 private struct WeatherTaskActivity: Identifiable {
 	let weather: WeatherType
-	let category: TaskCategory
 	let taskCount: Int
 	var id: String { weather.rawValue }
 }
-

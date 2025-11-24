@@ -7,7 +7,6 @@ struct MoodTrendSection: View {
 
 	var body: some View {
 		DashboardCard(title: "Mood Trend", icon: "chart.line.uptrend.xyaxis") {
-			VStack(alignment: .leading, spacing: 24) {
 				VStack(alignment: .leading, spacing: 24) {
 					Picker("window", selection: $window) {
 						Text("Day").tag(1)
@@ -37,17 +36,17 @@ struct MoodTrendSection: View {
 						
 						Chart(data.sorted(by: { $0.date < $1.date })) { point in
 							LineMark(
-								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
+								x: .value("time", point.date, unit: window == 1 ? .hour : window == 91 ? .weekOfYear : .day),
 								y: .value("Avg Mood", point.average)
 							)
 							.interpolationMethod(.catmullRom)
-							.foregroundStyle(.blue)
+							.foregroundStyle(LinearGradient(colors: ChartTheme.shared.grad_purple, startPoint: .leading, endPoint: .trailing))
 							
 							PointMark(
-								x: .value("time", point.date, unit: window == 1 ? .hour : .day),
+								x: .value("time", point.date, unit: window == 1 ? .hour : window == 91 ? .weekOfYear : .day),
 								y: .value("Avg Mood", point.average)
 							)
-							.foregroundStyle(.blue)
+							.foregroundStyle(.purple)
 						}
 						.chartXScale(domain: xDomain(for: window))
 						.chartYScale(domain: yMin...yMax)
@@ -78,7 +77,6 @@ struct MoodTrendSection: View {
 				}
 			}
 		}
-	}
 	// MARK: - 动态步进
 	private func strideStep(for window: Int) -> Int {
 		switch window {
@@ -98,7 +96,14 @@ struct MoodTrendSection: View {
 			let start = cal.startOfDay(for: now)
 			let end = cal.date(byAdding: .hour, value: 26, to: start)!
 			return start...end
-		} else {
+		}
+		else if window >= 45 {
+				// 对于月或3M窗口，改为以“周”为单位的domain
+			let start = cal.date(byAdding: .weekOfYear, value: -13, to: now)!
+			let end = cal.date(byAdding: .weekOfYear, value: 2, to: now)!
+			return start...end
+		}
+		else {
 			let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(window - 1), to: now)!)
 			let paddedEnd = cal.startOfDay(for: cal.date(byAdding: .day, value: (window + 3) / 7, to: now)!
 			)
@@ -115,7 +120,18 @@ struct MoodTrendSection: View {
 			let start = cal.startOfDay(for: now)
 			return stride(from: 0, through: 26, by: strideStep(for: window))
 				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
-		} else {
+		}
+		else if window >= 45 {
+			// 对于3M模式，使用按周为步长的刻度
+			return Array(
+				stride(
+					from: domain.lowerBound,
+					through: domain.upperBound,
+					by: Double(86400 * strideStep(for: window))
+				)
+			)
+		}
+		else {
 			return Array(
 				stride(
 					from: domain.lowerBound,
@@ -167,7 +183,7 @@ struct MoodTrendSection: View {
 		}
 
 		// 聚合逻辑
-		if windowDays > 30 {
+		if windowDays >= 45 {
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
 			for (day, value) in daily {
 				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {

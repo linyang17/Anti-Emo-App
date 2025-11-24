@@ -28,38 +28,40 @@ final class AnalysisViewModel: ObservableObject {
     // MARK: - Published Outputs (optional for UI binding)
     @Published var timeSlotAverages: [TimeSlot: Double] = [:]
     @Published var weatherAverages: [WeatherType: Double] = [:]
+	@Published var taskImpactAverages: [TaskCategory: Double] = [:]
     @Published var daylightHint: String = ""
     @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
     @Published var heatmapData: [TimeSlot: [Int: Double]] = [:]
     @Published var daylightLengthData: [Int: Double] = [:]
 
     // MARK: - Unified Wrapper Function
-    func rhythmAnalysis(for entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> (
+    func rhythmAnalysis(for entries: [MoodEntry], dayLength: [Date: SunTimes]) -> (
         timeSlot: [TimeSlot: Double],
         weather: [WeatherType: Double],
+		taskImpact: [TaskCategory: Double],
         daylight: String,
         dayPeriod: [DayPeriod: Double]
     ) {
         let slot = timeSlotMoodAverages(entries: entries)
         let weather = weatherMoodAverages(entries: entries)
-        let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: sunEvents)
+        let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: dayLength)
         let text = daylightCorrelationText(slotAverages: slot)
         let heatmap = timeSlotAndWeekdayMoodAverages(entries: entries)
-        
-        // 强制使用 AnalysisViewModel 自己的 daylightLengthData 属性发布更新，确保 StatsRhythmSection 监听到变化
-        let daylightLen = daylightLengthMoodAverages(entries: entries, sunEvents: sunEvents)
-        daylightLengthData = daylightLen
+        let daylightLen = daylightLengthMoodAverages(entries: entries, dayLength: dayLength)
+		let taskImpact = taskImpactData(entries: entries)
 
         timeSlotAverages = slot
         weatherAverages = weather
         dayPeriodAverages = daylightBuckets
+		daylightLengthData = daylightLen
         daylightHint = text
         heatmapData = heatmap
+		taskImpactAverages = taskImpact
         
-        return (slot, weather, text, daylightBuckets)
+        return (slot, weather, taskImpact, text, daylightBuckets)
     }
 
-    // 1) 时段分析：上午 vs 下午 vs 晚上平均情绪
+    // MARK: 1) 时段分析：上午 vs 下午 vs 晚上平均情绪
     func timeSlotMoodAverages(entries: [MoodEntry]) -> [TimeSlot: Double] {
         guard !entries.isEmpty else { return [:] }
 
@@ -79,7 +81,7 @@ final class AnalysisViewModel: ObservableObject {
         }
     }
 
-	// 2) 情绪与天气关联度分析：
+	// MARK: 2) 情绪与天气关联度分析：
     private func weatherMoodAverages(entries: [MoodEntry]) -> [WeatherType: Double] {
         guard !entries.isEmpty else { return [:] }
 
@@ -99,8 +101,38 @@ final class AnalysisViewModel: ObservableObject {
             result[weather] = Double(bucket.sum) / Double(bucket.count)
         }
     }
+	
+	
+	// MARK: 完成不同类型任务对情绪影响
+	private func taskImpactData(entries: [MoodEntry]) -> [TaskCategory: Double] {
+		guard !entries.isEmpty else { return [:] }
 
-	//TODO: 情绪与日照时长关联度分析：
+		// 只保留任务完成后的情绪记录
+		let afterTaskEntries = entries.filter { $0.source == MoodEntry.MoodSource.afterTask.rawValue }
+
+		var accumulator: [TaskCategory: (sum: Int, count: Int)] = [:]
+
+		for entry in afterTaskEntries {
+			guard
+				let categoryRaw = entry.relatedTaskCategory,
+				let category = TaskCategory(rawValue: categoryRaw),
+				let delta = entry.delta
+			else { continue }
+
+			var bucket = accumulator[category] ?? (0, 0)
+			bucket.sum += delta
+			bucket.count += 1
+			accumulator[category] = bucket
+		}
+
+		return accumulator.reduce(into: [:]) { result, element in
+			let (category, bucket) = element
+			guard bucket.count > 0 else { return }
+			result[category] = Double(bucket.sum) / Double(bucket.count)
+		}
+	}
+
+	//MARK: TODO: 情绪与日照时长关联度分析：
     private func daylightCorrelationText(slotAverages: [TimeSlot: Double]) -> String {
         guard !slotAverages.isEmpty else { return "Not enough data for analysis. Try to enter some moods and complete more tasks!" }
 
@@ -156,7 +188,7 @@ final class AnalysisViewModel: ObservableObject {
         }
     }
 
-    // 4.2 Heatmap Data: TimeSlot + Weekday -> Mood
+    // MARK: Heatmap Data: TimeSlot + Weekday -> Mood
 	func timeSlotAndWeekdayMoodAverages(entries: [MoodEntry]) -> [TimeSlot: [Int: Double]] {
 		guard !entries.isEmpty else { return [:] }
 
@@ -193,33 +225,26 @@ final class AnalysisViewModel: ObservableObject {
 		return result
 	}
 
-    // 4.5 Daylight Duration Line Chart Data
-    func daylightLengthMoodAverages(entries: [MoodEntry], sunEvents: [Date: SunTimes]) -> [Int: Double] {
+    // MARK: Daylight correlation Chart Data - NO aggregation by hour bucket
+    func daylightLengthMoodAverages(entries: [MoodEntry], dayLength: [Date: SunTimes]) -> [Int: Double] {
         guard !entries.isEmpty else { return [:] }
-        // Group by day -> calculate avg mood for day -> correlate with daylight duration of that day
         
         let dayGroups = Dictionary(grouping: entries) { cal.startOfDay(for: $0.date) }
-        var durationAccumulator: [Int: (sum: Double, count: Int)] = [:] // Duration (hours) -> sum of daily avg mood
+        var dailyData: [Int: Double] = [:] // daylength (min) : avg mood
 
         for (day, dailyEntries) in dayGroups {
-            guard let sun = sunEvents[day] else { continue }
+            guard let sun = dayLength[day] else { continue }
             let duration = sun.sunset.timeIntervalSince(sun.sunrise)
-            let hours = Int(round(duration / 3600.0))
-            guard hours > 0 else { continue }
-
+            
+            let minutes = Int(duration / 60)
             let dailySum = dailyEntries.reduce(0) { $0 + $1.value }
             let dailyAvg = Double(dailySum) / Double(dailyEntries.count)
-
-            var bucket = durationAccumulator[hours] ?? (0.0, 0)
-            bucket.sum += dailyAvg
-            bucket.count += 1
-            durationAccumulator[hours] = bucket
+            
+            // If multiple days have exact same minute duration, we average them (correct for correlation)
+            // Otherwise they are distinct points.
+            dailyData[minutes] = dailyAvg
         }
-
-        var result: [Int: Double] = [:]
-        for (hours, bucket) in durationAccumulator {
-            result[hours] = bucket.sum / Double(bucket.count)
-        }
-        return result
+        
+        return dailyData
     }
 }

@@ -9,26 +9,32 @@ struct StatsRhythmSection: View {
 	@StateObject private var weatherAnimator = AnimatedChartData<WeatherAverage>()
 	@StateObject private var daylightAnimator = AnimatedChartData<DaylightAverage>()
 	@StateObject private var daylightLineAnimator = AnimatedChartData<DaylightDurationAverage>()
+	@StateObject private var taskImpactAnimator = AnimatedChartData<TaskImpact>()
 
 	// 缓存数据，避免重复计算
 	@State private var cachedSlotData: [SlotAverage] = []
 	@State private var cachedWeatherData: [WeatherAverage] = []
 	@State private var cachedDaylightData: [DaylightAverage] = []
 	@State private var cachedDaylightLineData: [DaylightDurationAverage] = []
+	@State private var cachedTaskImpactData: [TaskImpact] = []
 
 	var body: some View {
 		VStack(spacing: 16) {
 
-            DashboardCard(title: "Mood Heatmap", icon: "deskclock") {
+            DashboardCard(title: "Mood vs Timeslot", icon: "deskclock") {
                 MoodHeatmapView(data: analysis.heatmapData)
             }
 
-			DashboardCard(title: "Weather Correlation", icon: "cloud.sun") {
+			DashboardCard(title: "Mood vs Weather", icon: "cloud.sun") {
 				rhythmWeatherChart(data: analysis.weatherAverages)
 			}
 
-			DashboardCard(title: "Daylight Correlation", icon: "sun.max") {
+			DashboardCard(title: "Mood vs Daylight", icon: "sun.max") {
 				rhythmDaylightLineChart(data: analysis.daylightLengthData)
+			}
+			
+			DashboardCard(title: "Task Impact", icon: "chart.bar.xaxis") {
+				TaskMoodImpactChart(data: analysis.taskImpactAverages)
 			}
 		}
 		.onAppear {
@@ -42,7 +48,7 @@ struct StatsRhythmSection: View {
 		guard !appModel.isLoading else { return }
 		
 		Task(priority: .userInitiated) {
-			await analysis.rhythmAnalysis(for: appModel.moodEntries, sunEvents: appModel.sunEvents)
+			await analysis.rhythmAnalysis(for: appModel.moodEntries, dayLength: appModel.sunEvents)
 		}
 	}
 
@@ -82,14 +88,14 @@ struct StatsRhythmSection: View {
 		if data.isEmpty {
 			rhythmPlaceholder(systemImage: "sun.max")
 		} else {
-			let hoursValues = data.keys.sorted()
+			let hoursValues = data.keys.sorted()  // currently in minutes
 			// 自动范围 + buffer（左右各留 1 小时）
-			let minX = max(0, (hoursValues.min() ?? 0) - 1)
-			let maxX = min(25, (hoursValues.max() ?? 0) + 1)
+			let minX = max(0, (hoursValues.min() ?? 0) - 60)
+			let maxX = min(1500, (hoursValues.max() ?? 0) + 60)
 			
 			Chart(daylightLineAnimator.displayData) { item in
 				LineMark(
-					x: .value("Hours", item.hours),
+					x: .value("Day Length", item.hours),
 					y: .value("Mood", item.value)
 				)
 				.interpolationMethod(.catmullRom)
@@ -98,18 +104,80 @@ struct StatsRhythmSection: View {
 			}
 			.chartXScale(domain: minX...maxX)
 			.chartXAxis {
-				AxisMarks(position: .bottom, values: .automatic) { value in
-					if let intValue = value.as(Int.self) {
+				AxisMarks(position: .bottom, values: .stride(by: 30)) { value in
+					if let minutes = value.as(Int.self) {
+						let h = minutes / 60
+						let m = minutes % 60
+						let label = m == 0 ? "\(h)h" : "\(h)h\(m)m"
 						AxisGridLine()
 						AxisTick()
-						AxisValueLabel("\(intValue)h", centered: true)
+						AxisValueLabel {
+							Text(label)
+								.font(.caption)
+								.frame(maxWidth: .infinity, alignment: .center) // 水平居中
+						}
 					}
 				}
 			}
-			.chartYAxis { AxisMarks(position: .leading) }
+			.chartYAxis {
+				AxisMarks(position: .leading) { value in
+					if let mood = value.as(Double.self) {
+						AxisGridLine()
+						AxisTick()
+						AxisValueLabel(String(format: "%.0f", mood))
+					}
+				}
+			}
 			.frame(height: 200)
 			.task(id: data) {
 				await updateDaylightLineData(data)
+			}
+		}
+	}
+	
+	// MARK: - 任务效果图
+	@ViewBuilder
+	private func TaskMoodImpactChart(data: [TaskCategory: Double]) -> some View {
+		if data.isEmpty {
+			rhythmPlaceholder(systemImage: "checkmark.circle")
+		} else {
+			let theme = ChartTheme.shared
+			Chart(taskImpactAnimator.displayData) { item in
+				BarMark(
+					x: .value("Task Category", item.category.title),
+					y: .value("Avg Mood Change", item.avgDelta)
+				)
+				.foregroundStyle(theme.gradient(for: item.category))
+				.cornerRadius(6)
+			}
+			.chartXAxis {
+				AxisMarks(position: .bottom, values: .automatic) { value in
+					AxisGridLine()
+					AxisTick()
+					AxisValueLabel {
+						if let label = value.as(String.self) {
+							Text(label)
+								.font(.caption2)
+								.multilineTextAlignment(.center)
+								.lineLimit(nil)
+								.fixedSize(horizontal: false, vertical: true)
+								.frame(width: 55)
+						}
+					}
+				}
+			}
+			.chartYAxis {
+				AxisMarks(position: .leading) { value in
+					if let delta = value.as(Double.self) {
+						AxisGridLine()
+						AxisTick()
+						AxisValueLabel(String(format: "%.0f", delta))
+					}
+				}
+			}
+			.frame(height: 200)
+			.task(id: data) {
+				await updateTaskImpactData(data)
 			}
 		}
 	}
@@ -159,6 +227,16 @@ struct StatsRhythmSection: View {
 		cachedDaylightLineData = computed
 		daylightLineAnimator.update(with: computed)
 	}
+	
+	@MainActor
+	private func updateTaskImpactData(_ data: [TaskCategory: Double]) async {
+		let computed = TaskCategory.allCases.lazy.compactMap { category -> TaskImpact? in
+			guard let value = data[category] else { return nil }
+			return TaskImpact(category: category, avgDelta: value)
+		}
+		cachedTaskImpactData = Array(computed)
+		taskImpactAnimator.update(with: cachedTaskImpactData)
+	}
 
 	// MARK: - Placeholder
 	@ViewBuilder
@@ -203,3 +281,9 @@ private struct DaylightDurationAverage: Identifiable, Equatable {
 	let value: Double
 	var id: Int { hours }
 }
+
+private struct TaskImpact: Identifiable, Equatable {
+	   let category: TaskCategory
+	   let avgDelta: Double
+	   var id: String { category.rawValue }
+   }
