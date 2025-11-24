@@ -17,7 +17,7 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
         case .outdoor: return "Outdoor Activities"
         case .indoorDigital: return "Digital"
         case .indoorActivity: return "Indoor Activities"
-        case .socials: return "Social Interactions"
+        case .socials: return "Social"
         case .petCare: return "Pet Care"
 		case .physical: return "Physical Exercises"
 		}
@@ -89,6 +89,7 @@ final class UserTask: Identifiable {
     var startedAt: Date?  // 任务开始时间
     var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?
+    var moodEntryId: UUID? // 关联完成后的情绪记录
 
     init(
         id: UUID = UUID(),
@@ -100,7 +101,8 @@ final class UserTask: Identifiable {
         status: TaskStatus = .pending,
         startedAt: Date? = nil,
         canCompleteAfter: Date? = nil,
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        moodEntryId: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -112,5 +114,6 @@ final class UserTask: Identifiable {
         self.startedAt = startedAt
         self.canCompleteAfter = canCompleteAfter
         self.completedAt = completedAt
+        self.moodEntryId = moodEntryId
     }
 }

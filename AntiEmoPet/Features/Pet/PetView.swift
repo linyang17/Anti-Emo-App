@@ -51,12 +51,12 @@ struct PetView: View {
 			switch sheet {
 			case .tasks:
 				TasksView(lastMood: mood.lastMood)
-					.presentationDetents([.fraction(0.7), .large])
-					.presentationDragIndicator(.visible)
+					.presentationDetents([.medium])
+					.presentationDragIndicator(.hidden)
 			case .shop:
 				ShopView()
-					.presentationDetents([.fraction(0.7), .large])
-					.presentationDragIndicator(.visible)
+					.presentationDetents([.medium])
+					.presentationDragIndicator(.hidden)
 			}
 		}
                 .toolbar(.hidden, for: .navigationBar)
@@ -128,7 +128,6 @@ struct PetView: View {
 				
 				petStage(for: pet)
 					.padding(24)
-					.offset(y: -100) // Move fox up
 			}
 			.overlay(alignment: .top) {
 				pettingNoticeOverlay()
@@ -383,7 +382,7 @@ struct PetView: View {
                         TasksView(lastMood: mood.lastMood)
                         .environmentObject(appModel)
                         .presentationDetents([.fraction(0.55)])
-                        .presentationBackground(.ultraThinMaterial)
+                        .presentationBackground(.ultraThickMaterial.opacity(0.7))
                         .presentationDragIndicator(.hidden)
                 case .shop:
                         ShopView()

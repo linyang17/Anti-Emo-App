@@ -27,6 +27,10 @@ func rangeDescription(for window: Int, calendar cal: Calendar = TimeZoneManager.
 		end = cal.startOfDay(for: now)
 		let monthAgoSameDay = cal.date(byAdding: .month, value: -1, to: end) ?? end
 		start = cal.date(byAdding: .day, value: 1, to: monthAgoSameDay) ?? monthAgoSameDay
+	case 91:
+		end = cal.startOfDay(for: now)
+		let quarterAgoSameDay = cal.date(byAdding: .month, value: -3, to: end) ?? end
+		start = cal.date(byAdding: .day, value: 1, to: quarterAgoSameDay) ?? quarterAgoSameDay
 	default:
 		end = cal.startOfDay(for: now)
 		start = cal.date(byAdding: .day, value: -6, to: end) ?? end

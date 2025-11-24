@@ -40,7 +40,12 @@ struct AntiEmoPetTests {
         storage.bootstrapIfNeeded()
 
         let generator = TaskGeneratorService(storage: storage)
-		let tasks = generator.generateDailyTasks(for: Date.now, report: <#WeatherReport?#>)
+		let slot = TimeSlot.from(date: Date.now, using: <#T##Calendar#>)
+		let tasks = generator.generateTasks(
+			for: slot,
+			date: Date.now,
+			report: <#WeatherReport?#>
+		)
 
         #expect((3...6).contains(tasks.count))
         #expect(tasks.allSatisfy { $0.weatherType == WeatherType.sunny })
@@ -51,7 +56,6 @@ struct AntiEmoPetTests {
         let task = UserTask(
 						title: "Test",
 						weatherType: WeatherType.sunny,
-						difficulty: .medium,
 						category: .outdoor,
 						energyReward: 10,
 						date: Date.now,
@@ -76,8 +80,8 @@ struct AntiEmoPetTests {
             bondingBoost: 4
         )
 
-        let engine = PetEngine()
-        engine.handleAction(.feed(item: accessory), pet: pet)
+		let engine = PetEngine(pet: <#Pet?#>)
+        engine.handleAction(.feed(item: accessory))
 
         #expect(pet.level == 2) // XP should carry to the next level
         #expect(pet.xp == 1)
@@ -86,9 +90,9 @@ struct AntiEmoPetTests {
 
     @Test("Purchase reward applies PRD bonding and XP gains") func purchaseRewardMatchesPRD() {
         let pet = Pet(name: "Lumio", bondingScore: 50, level: 1, xp: 0)
-        let engine = PetEngine()
+		let engine = PetEngine(pet: <#Pet?#>)
 
-        engine.applyPurchaseReward(pet: pet)
+		engine.applyPurchaseReward(xpGain: 20, bondingBoost: 10)
 
         #expect(pet.bondingScore == 60)
         #expect(pet.level == 2)
@@ -97,9 +101,9 @@ struct AntiEmoPetTests {
 
     @Test("XP progression uses PRD curve and carries surplus") func xpCurveCarriesSurplus() {
         let pet = Pet(name: "Lumio", bondingScore: 50, level: 2, xp: 24)
-        let engine = PetEngine()
+		let engine = PetEngine(pet: <#Pet?#>)
 
-        engine.applyPurchaseReward(pet: pet, xpGain: 70, bondingBoost: 0)
+        engine.applyPurchaseReward(xpGain: 70, bondingBoost: 0)
 
         #expect(pet.level == 4)
         #expect(pet.xp == 9)
@@ -107,10 +111,6 @@ struct AntiEmoPetTests {
         #expect(XPProgression.requirement(for: 6) == 100)
     }
 
-    @Test("ChatService stub responds with bonding line") func chatServiceResponds() {
-        let reply = ChatService().reply(to: "tired", weather: .rainy, bonding: .happy)
-        #expect(reply.contains("I'm here for you"))
-    }
 
     @Test("Default seeds create fresh model instances") func defaultSeedsAreCopyable() {
         let firstBatch = DefaultSeeds.makeItems()
@@ -149,12 +149,12 @@ struct AntiEmoPetTests {
         let evening = calendar.date(byAdding: .hour, value: 20, to: baseDate) ?? baseDate
 
         storage.save(tasks: [
-            UserTask(title: "Evening", weatherType: .cloudy, difficulty: .medium,
+            UserTask(title: "Evening", weatherType: .cloudy,
 						category: .socials,
 						energyReward: 10,
 						date: evening,
 						status: .completed),
-            UserTask(title: "Morning", weatherType: .sunny, difficulty: .easy,
+            UserTask(title: "Morning", weatherType: .sunny, 
 						category: .indoorDigital,
 						energyReward: 10,
 						date: evening,

@@ -70,21 +70,28 @@ struct EnergyStatsSection: View {
                     Text("Completed Tasks by Type")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+					
+					let theme = ChartTheme.shared
+					let sortedCategories = energy.taskTypeCounts.keys.sorted { $0.title < $1.title }
                     Chart(energy.taskTypeCounts.sorted(by: { $0.value > $1.value }), id: \.key) { item in
                         SectorMark(
                             angle: .value("Count", item.value),
                             innerRadius: .ratio(0.5),
-                            angularInset: 1.5
+                            angularInset: 1
                         )
-                        .foregroundStyle(by: .value("Category", item.key.title))
+						.foregroundStyle(by: .value("Category", item.key.title))
                         .cornerRadius(4)
                     }
+					.chartForegroundStyleScale(
+						domain: sortedCategories.map { $0.title },
+						range: sortedCategories.map { theme.gradient(for: $0) }
+					)
                     .frame(height: 200)
-                    .chartLegend(position: .bottom, alignment: .center)
+					.chartLegend(position: .bottom, alignment: .center, spacing: 24)
                 }
 			}
             .padding(.vertical, 6)
 		}
 	}
 }
+

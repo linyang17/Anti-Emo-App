@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 
 struct RewardEvent: Identifiable, Equatable {
@@ -25,7 +26,7 @@ struct TasksView: View {
 
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            Color(uiColor: .systemGroupedBackground)
             
             VStack(spacing: 0) {
                 header
@@ -147,44 +148,45 @@ private struct TaskRow: View {
         let task: UserTask
         let appModel: AppViewModel
         let viewModel: TasksViewModel
-        @State private var remainingTime: TimeInterval = 0
-        @State private var timer: Timer?
-	
+		@State private var remainingTime: TimeInterval = 0
+		@State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
 	var body: some View {
-		HStack {
-			VStack(alignment: .leading, spacing: 6) {
-				Text(task.title)
-					.appFont(FontTheme.headline)
-				HStack{
-					Text(task.category.title)
-						.appFont(FontTheme.caption)
-						.foregroundStyle(.secondary)
-					Text(viewModel.badge(for: task))
-						.appFont(FontTheme.caption)
-						.foregroundStyle(.secondary)
+			HStack {
+				VStack(alignment: .leading, spacing: 6) {
+					Text(task.title)
+						.appFont(FontTheme.headline)
+					HStack {
+						Text(task.category.title)
+							.appFont(FontTheme.caption)
+							.foregroundStyle(.secondary)
+						Text(viewModel.badge(for: task))
+							.appFont(FontTheme.caption)
+							.foregroundStyle(.secondary)
+					}
 				}
-                        }
-                        Spacer()
-			VStack {
-					// 显示倒计时
-				if task.status == .started, let canComplete = task.canCompleteAfter {
-					Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
-					.appFont(FontTheme.caption)
-					.foregroundStyle(.orange)
-	}
-					// 根据状态显示不同按钮
-				taskActionButton
+				Spacer()
+				VStack {
+					if task.status == .started, let canComplete = task.canCompleteAfter {
+						Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
+							.appFont(FontTheme.caption)
+							.foregroundStyle(.orange)
+					}
+					taskActionButton
+				}
 			}
-                }
-                .padding(.vertical, 6)
-                .onAppear {
-                        remainingTime = max(0, task.canCompleteAfter?.timeIntervalSinceNow ?? 0)
-                        startTimerIfNeeded()
-                }
-                .onDisappear {
-                        stopTimer()
-                }
-        }
+			.padding(.vertical, 6)
+			.onAppear {
+				remainingTime = max(0, task.canCompleteAfter?.timeIntervalSinceNow ?? 0)
+			}
+			.onReceive(timer) { _ in
+				guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
+				remainingTime = max(0, canComplete.timeIntervalSinceNow)
+				if remainingTime <= 0 {
+					appModel.updateTaskStatus(task.id, to: .ready)
+				}
+			}
+		}
 	
 	@ViewBuilder
 	private var taskActionButton: some View {
@@ -247,22 +249,6 @@ private struct TaskRow: View {
 		}
 	}
 	
-        private func startTimerIfNeeded() {
-                guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
-
-                timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-                        remainingTime = max(0, canComplete.timeIntervalSinceNow)
-                        if remainingTime <= 0 {
-                                stopTimer()
-							task.status = .ready
-                        }
-                }
-        }
-	
-	private func stopTimer() {
-		timer?.invalidate()
-		timer = nil
-	}
 }
 
 struct RewardToastView: View {

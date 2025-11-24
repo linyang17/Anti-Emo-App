@@ -45,15 +45,6 @@ final class EnergyStatisticsViewModel: ObservableObject {
                         for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
                 )
 
-#if DEBUG
-                let completed = tasks.filter { $0.status == .completed }
-                let missingTimestamps = completed.filter { $0.completedAt == nil }
-                if !missingTimestamps.isEmpty {
-                        print("⚠️ Completed tasks missing timestamps: \(missingTimestamps.map { $0.id })")
-                }
-                print("[EnergySummary] tasks=\(tasks.count), completed=\(completed.count), windowDays=\(days)")
-#endif
-
                 let dailyEnergyAdds = calculateDailyEnergy(from: tasks, since: startDate, days: days)
                 let todayAdd = dailyEnergyAdds[calendar.startOfDay(for: now)] ?? 0
 
@@ -78,13 +69,12 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		
 #if DEBUG
 for task in tasks {
-	print("TASK:", task.id, task.status, task.completedAt ?? "nil", task.energyReward)
+	print("TASK:", task.status, task.completedAt ?? "nil", task.energyReward, task.moodEntryId ?? "nil")
 }
 print("Daily Energy Adds:", dailyEnergyAdds)
 print("Today Add:", todayAdd)
 print("Avg Week:", averageAddWeek)
 print("StartDate:", startDate)
-print("Calendar:", calendar.timeZone)
 print("Today key:", calendar.startOfDay(for: now))
 #endif
 
