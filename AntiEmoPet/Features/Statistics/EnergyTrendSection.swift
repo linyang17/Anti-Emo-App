@@ -50,7 +50,7 @@ struct EnergyTrendSection: View {
 						AxisMarks(values: xAxisValues(for: window)) { value in
 							AxisGridLine()
 							AxisTick()
-							AxisValueLabel() {
+							AxisValueLabel(collisionResolution: .greedy) {
 								if let date = value.as(Date.self) {
 									if window == 1 {
 										Text(date, format: .dateTime.hour())
@@ -114,9 +114,13 @@ struct EnergyTrendSection: View {
 		let now = Date()
 		let domain = xDomain(for: window)
 		if window == 1 {
-			let start = cal.startOfDay(for: now)
-			return stride(from: 0, through: 26, by: strideStep(for: window))
-				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+			return Array(
+				stride(
+					from: domain.lowerBound,
+					through: domain.upperBound,
+					by: Double(3600 * strideStep(for: window))
+				)
+			)
 		}
 		else if window >= 45 {
 			// 对于3M模式，使用按周为步长的刻度
@@ -160,7 +164,7 @@ struct EnergyTrendSection: View {
 			var prev: EnergyHistoryEntry? = previousSnapshot
 			
 			for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
-				let hour = cal.date(bySetting: .minute, value: 0, of: entry.date)!
+				let hour = cal.dateInterval(of: .hour, for: entry.date)!.start
 				if let p = prev {
 					let diff = entry.totalEnergy - p.totalEnergy
 					if diff > 0 {

@@ -314,6 +314,25 @@ final class StorageService {
 		}
 	}
 
+	func fetchTasks(in slot: TimeSlot, on date: Date) -> [UserTask] {
+		guard let interval = slotInterval(for: slot, on: date) else { return [] }
+		do {
+			let start = interval.start
+			let end = interval.end
+			let predicate = #Predicate<UserTask> { task in
+				task.date >= start && task.date < end
+			}
+			let descriptor = FetchDescriptor<UserTask>(
+				predicate: predicate,
+				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+			)
+			return try context.fetch(descriptor)
+		} catch {
+			logger.error("Failed to fetch tasks for slot \(slot.rawValue): \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
+
 	private func slotInterval(for slot: TimeSlot, on date: Date) -> DateInterval? {
 		let calendar = TimeZoneManager.shared.calendar
 		let startOfDay = calendar.startOfDay(for: date)

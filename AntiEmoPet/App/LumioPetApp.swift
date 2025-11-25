@@ -31,7 +31,8 @@ struct LumioPetApp: App {
 
 	init() {
 		let container = LumioPetApp.sharedModelContainer
-		let context = ModelContext(container)
+		// Use the main context from the container to avoid repetitive initialization/errors
+		let context = container.mainContext
 		_appModel = StateObject(wrappedValue: AppViewModel(modelContext: context))
 	}
 
