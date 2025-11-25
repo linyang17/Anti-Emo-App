@@ -65,8 +65,17 @@ struct OnboardingView: View {
 		} message: {
 			Text("You'll not be able to access personalised tasks without permission.")
 		}
-		.task { await prepareInitialData() }
 		.onChange(of: locationService.authorizationStatus, handleAuthorization)
+		.onChange(of: locationService.lastKnownCity) { _, newCity in
+			// Update region when city is updated
+			if !newCity.isEmpty && viewModel.region.isEmpty {
+				viewModel.region = newCity
+				Task {
+					await OnboardingCache.shared.setCity(newCity)
+				}
+			}
+		}
+		.task { await prepareInitialData() }
 		.onChange(of: step) { _, newStep in
 			if newStep == .access {
 				viewModel.updateLocationStatus(locationService.authorizationStatus)
@@ -118,6 +127,18 @@ extension OnboardingView {
 		case .authorizedAlways, .authorizedWhenInUse:
 			viewModel.enableLocationAndWeather = true
 			locationService.requestLocationOnce()
+			// Wait a bit for location to update, then update region
+			Task {
+				try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+				await MainActor.run {
+					if !locationService.lastKnownCity.isEmpty {
+						viewModel.region = locationService.lastKnownCity
+					}
+				}
+				if !locationService.lastKnownCity.isEmpty {
+					await OnboardingCache.shared.setCity(locationService.lastKnownCity)
+				}
+			}
 			requestWeatherAndNotifications()
 			
 		case .denied, .restricted:
@@ -130,7 +151,7 @@ extension OnboardingView {
 		}
 	}
 
-        func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
+	func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
                 viewModel.updateLocationStatus(new)
                 guard step == .access else { return }
                 switch new {
@@ -138,6 +159,16 @@ extension OnboardingView {
                         viewModel.enableLocationAndWeather = true
                         isProcessingFinalStep = false
                         locationService.requestLocationOnce()
+                        // Wait a bit for location to update, then update region
+                        Task {
+                                try? await Task.sleep(nanoseconds: 3_000_000_000) // 1 second
+                                await MainActor.run {
+                                        if !locationService.lastKnownCity.isEmpty {
+                                                viewModel.region = locationService.lastKnownCity
+                                        }
+                                }
+                                await OnboardingCache.shared.setCity(locationService.lastKnownCity)
+                        }
                         requestWeatherAndNotifications()
                 case .denied, .restricted:
                         viewModel.enableLocationAndWeather = false
@@ -155,6 +186,10 @@ extension OnboardingView {
 			await MainActor.run {
 				viewModel.setWeatherPermission(granted)
 				if granted {
+					// Ensure we have the latest city before proceeding
+					if viewModel.region.isEmpty && !locationService.lastKnownCity.isEmpty {
+						viewModel.region = locationService.lastKnownCity
+					}
 					if viewModel.notificationsOptIn { appModel.requestNotifications() }
 					withAnimation(.easeInOut) { step = .celebration }
 				} else {
@@ -188,10 +223,13 @@ extension OnboardingView {
 		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
 
 		viewModel.enableLocationAndWeather = shareLocation
+		
+		// Use the latest city from location service if viewModel.region is empty
+		let region = viewModel.region.isEmpty ? locationService.lastKnownCity : viewModel.region
 
 		appModel.updateProfile(
 			nickname: trimmedName,
-			region: viewModel.region,
+			region: region,
 			shareLocation: shareLocation,
 			gender: genderRaw,
 			birthday: viewModel.birthday,
