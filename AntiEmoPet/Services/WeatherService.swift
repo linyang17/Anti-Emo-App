@@ -348,6 +348,13 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 	}
 }
 
+enum WeatherType: String, Codable, CaseIterable, Identifiable {
+	case sunny, cloudy, rainy, snowy, windy
+
+	var id: String { rawValue.capitalized }
+
+}
+
 // MARK: - WeatherType Conversion
 private extension WeatherType {
 	init(from current: CurrentWeather) {

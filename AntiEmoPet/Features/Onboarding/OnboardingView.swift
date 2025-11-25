@@ -4,239 +4,288 @@ import UIKit
 
 @MainActor
 struct OnboardingView: View {
+	// MARK: - Dependencies
 	@StateObject private var viewModel = OnboardingViewModel()
 	@EnvironmentObject private var appModel: AppViewModel
 	@ObservedObject private var locationService: LocationService
 	@Environment(\.openURL) private var openURL
 
+	// MARK: - View States
 	@State private var step: Step = .intro
-	@State private var isProcessingFinalStep = false
+	@State private var accessTBD = false
 	@State private var showLocationDeniedAlert = false
 	@State private var hasCompletedOnboarding = false
-	@State private var dragOffset: CGFloat = .zero
-	@State private var hasTriggeredHapticPreview = false
 
+	// MARK: - Initialization
 	init(locationService: LocationService? = nil) {
 		_locationService = ObservedObject(wrappedValue: locationService ?? LocationService())
 	}
 
-        var body: some View {
-                ZStack {
-                        GPUCachedBackground("bg-main")
+	// MARK: - Body
+	var body: some View {
+		ZStack {
+			GPUCachedBackground("bg-main")
 
-                        if step == .celebration {
-                                WelcomeView(onTap: handleAdvance)
-                                        .id(step.rawValue)
-                                        .transition(.opacity)
-                        } else {
-                                VStack {
-                                        Spacer(minLength: 30)
+			if step == .celebration {
+				WelcomeView(onTap: handleAdvance)
+					.id(step.rawValue)
+					.transition(.opacity)
+			} else {
+				VStack {
+					Spacer(minLength: 30)
+					StepFactory(step: step, viewModel: viewModel, onAdvance: handleAdvance)
+						.padding(.bottom, 24)
+						.id(step.rawValue)
+						.animation(.easeInOut(duration: 0.3), value: step)
+					Spacer(minLength: 520)
+				}
 
-                                        StepFactory(
-                                                step: step,
-                                                viewModel: viewModel,
-                                                onAdvance: handleAdvance
-                                        )
-										.padding(.bottom, 24)
-                                        .id(step.rawValue)
-                                        .animation(.easeInOut(duration: 0.3), value: step)
-
-                                        Spacer(minLength: 520)
-                                }
-
-                                VStack (spacing: 24) {
-                                        Spacer(minLength: 300)
-
-                                        OnboardingArrowButton(
-                                                isEnabled: canAdvance,
-                                                isLoading: isProcessingFinalStep,
-                                                action: handleAdvance
-                                        )
-
-                                        FoxCharacterLayer()
-                                }
-                                .padding(.bottom, 50)
-                        }
-                }
+				VStack(spacing: 24) {
+					Spacer(minLength: 300)
+					OnboardingArrowButton(
+						isEnabled: canAdvance,
+						isLoading: accessTBD,
+						action: handleAdvance
+					)
+					FoxCharacterLayer()
+				}
+				.padding(.bottom, 50)
+			}
+		}
+		// MARK: - Alerts
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
 			Button("Go to settings") {
-				if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+				if let url = URL(string: UIApplication.openSettingsURLString) {
+					openURL(url)
+				}
 			}
 		} message: {
 			Text("You'll not be able to access personalised tasks without permission.")
 		}
-		.onChange(of: locationService.authorizationStatus, handleAuthorization)
-		.onChange(of: locationService.lastKnownCity) { _, newCity in
-			// Update region when city is updated
-			if !newCity.isEmpty && viewModel.region.isEmpty {
-				viewModel.region = newCity
-				Task {
-					await OnboardingCache.shared.setCity(newCity)
-				}
-			}
-		}
-		.task { await prepareInitialData() }
+		// MARK: - Listeners
+		.onChange(of: locationService.authorizationStatus, handleAuthorizationChange)
+		.onChange(of: locationService.lastKnownCity, updateCity)
 		.onChange(of: step) { _, newStep in
 			if newStep == .access {
 				viewModel.updateLocationStatus(locationService.authorizationStatus)
 			}
 		}
+		.task { await prepareInitialData() }
 	}
 }
 
-
+// MARK: - Sub Logic
 extension OnboardingView {
-	
 	enum Step: Int, CaseIterable {
 		case intro, registration, name, gender, birthday, access, celebration
 		var next: Step? { Step(rawValue: rawValue + 1) }
-		var previous: Step? { Step(rawValue: rawValue - 1) }
 	}
-	
+
 	var canAdvance: Bool {
 		switch step {
 		case .intro: return true
 		case .registration: return !viewModel.accountEmail.isEmpty
 		case .name: return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 		case .gender: return viewModel.selectedGender != nil
-		case .birthday: return viewModel.birthday <= Date()
-		case .access: return !isProcessingFinalStep
+		case .birthday: return viewModel.birthday < Date()
+		case .access: return !accessTBD
 		case .celebration: return true
 		}
 	}
 
+	// MARK: - Step Handling
 	func handleAdvance() {
 		guard canAdvance else { return }
+
 		switch step {
-		case .access: handleAccessFlow()
+		case .access:
+			handleAccessFlow()
 		case .celebration:
 			finishOnboarding(shareLocation: true)
-			
 		default:
 			if let next = step.next {
-				withAnimation(.snappy(duration: 0.32)) { step = next }
-				if next == .name {
-					DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {}
+				withAnimation(.snappy(duration: 0.32)) {
+					step = next
 				}
 			}
 		}
 	}
 
+	// MARK: - Access & Authorization
 	func handleAccessFlow() {
 		switch locationService.authorizationStatus {
 		case .authorizedAlways, .authorizedWhenInUse:
 			viewModel.enableLocationAndWeather = true
-			locationService.requestLocationOnce()
-			// Wait a bit for location to update, then update region
-			Task {
-				try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-				await MainActor.run {
-					if !locationService.lastKnownCity.isEmpty {
-						viewModel.region = locationService.lastKnownCity
-					}
-				}
-				if !locationService.lastKnownCity.isEmpty {
-					await OnboardingCache.shared.setCity(locationService.lastKnownCity)
-				}
-			}
+			updateRegionAndCache()
 			requestWeatherAndNotifications()
-			
+			withAnimation(.easeInOut) {step = .celebration}
+
 		case .denied, .restricted:
+			accessTBD = true
 			viewModel.enableLocationAndWeather = false
 			showLocationDeniedAlert = true
+
 		case .notDetermined:
-			isProcessingFinalStep = true
 			locationService.requestLocAuthorization()
+			
 		@unknown default: break
 		}
 	}
 
-	func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
-                viewModel.updateLocationStatus(new)
-                guard step == .access else { return }
-                switch new {
-                case .authorizedAlways, .authorizedWhenInUse:
-                        viewModel.enableLocationAndWeather = true
-                        isProcessingFinalStep = false
-                        locationService.requestLocationOnce()
-                        // Wait a bit for location to update, then update region
-                        Task {
-                                try? await Task.sleep(nanoseconds: 3_000_000_000) // 1 second
-                                await MainActor.run {
-                                        if !locationService.lastKnownCity.isEmpty {
-                                                viewModel.region = locationService.lastKnownCity
-                                        }
-                                }
-                                await OnboardingCache.shared.setCity(locationService.lastKnownCity)
-                        }
-                        requestWeatherAndNotifications()
-                case .denied, .restricted:
-                        viewModel.enableLocationAndWeather = false
-                        isProcessingFinalStep = false
-                        showLocationDeniedAlert = true
-                default: break
+	func handleAuthorizationChange(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
+		viewModel.updateLocationStatus(new)
+		guard step == .access else { return }
+
+		switch new {
+		case .authorizedAlways, .authorizedWhenInUse:
+			viewModel.enableLocationAndWeather = true
+			updateRegionAndCache(delay: 1.0)
+			requestWeatherAndNotifications()
+
+		case .denied, .restricted:
+			viewModel.enableLocationAndWeather = false
+			accessTBD = true
+			showLocationDeniedAlert = true
+
+		default:
+			break
 		}
 	}
 
+	// MARK: - Region & Caching
+	func updateRegionAndCache(delay: Double = 0.5) {
+		Task {
+			// Use isOnboarding=true to ensure fresh resolution without cache
+			let city = await locationService.requestLocationOnce(isOnboarding: true)
+			if !city.isEmpty {
+				viewModel.region = city
+				await OnboardingCache.shared.setCity(city)
+			}
+		}
+	}
+
+	func updateCity(_ oldCity: String, _ newCity: String) {
+		guard !newCity.isEmpty, viewModel.region.isEmpty else { return }
+		viewModel.region = newCity
+		Task { await OnboardingCache.shared.setCity(newCity) }
+	}
+
+	// MARK: - Weather & Notifications
 	func requestWeatherAndNotifications() {
 		guard !hasCompletedOnboarding else { return }
-		Task.detached(priority: .background) {
-			let granted = await appModel.requestWeatherAccess()
-			await OnboardingCache.shared.setWeatherGranted(granted)
-			await MainActor.run {
+
+		Task {
+			do {
+				// Use isOnboarding=true to ensure fresh resolution without cache
+				let city = await locationService.requestLocationOnce(isOnboarding: true)
+				if !city.isEmpty {
+					viewModel.region = city
+					await OnboardingCache.shared.setCity(city)
+				}
+				
+				print(
+					viewModel.region,
+					locationService.lastKnownCity,
+					locationService.lastKnownLocation
+				)
+				
+				let granted = await appModel.requestWeatherAccess()
+				await OnboardingCache.shared.setWeatherGranted(granted)
 				viewModel.setWeatherPermission(granted)
-				if granted {
-					// Ensure we have the latest city before proceeding
-					if viewModel.region.isEmpty && !locationService.lastKnownCity.isEmpty {
-						viewModel.region = locationService.lastKnownCity
-					}
-					if viewModel.notificationsOptIn { appModel.requestNotifications() }
-					withAnimation(.easeInOut) { step = .celebration }
-				} else {
+				
+				guard granted else {
 					viewModel.enableLocationAndWeather = false
 					showLocationDeniedAlert = true
+					return
+				}
+				
+				// Request notifications
+				if viewModel.notificationsOptIn {
+					appModel.requestNotifications()
 				}
 			}
 		}
 	}
 
+	// MARK: - Initial Setup
 	func prepareInitialData() async {
 		viewModel.updateLocationStatus(locationService.authorizationStatus)
-		if let cachedCity = await OnboardingCache.shared.getCity() {
-			viewModel.region = cachedCity
-		} else if !locationService.lastKnownCity.isEmpty {
-			viewModel.region = locationService.lastKnownCity
-			await OnboardingCache.shared.setCity(locationService.lastKnownCity)
-		}
-		if let granted = await OnboardingCache.shared.getWeatherGranted() {
-			viewModel.setWeatherPermission(granted)
-		} else {
+
+		async let cachedCityTask = OnboardingCache.shared.getCity()
+		async let weatherGrantedTask = OnboardingCache.shared.getWeatherGranted()
+
+		do {
+			let cachedCity = try await cachedCityTask
+			let weatherGranted = try await weatherGrantedTask
+
+			if let city = cachedCity, !city.isEmpty {
+				viewModel.region = city
+			} else if !locationService.lastKnownCity.isEmpty {
+				let city = locationService.lastKnownCity
+				viewModel.region = city
+				await OnboardingCache.shared.setCity(city)
+			}
+
+			if let granted = weatherGranted {
+				viewModel.setWeatherPermission(granted)
+			} else {
+				viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
+			}
+		} catch {
+			// Fallback: gracefully recover
+			if !locationService.lastKnownCity.isEmpty {
+				viewModel.region = locationService.lastKnownCity
+			}
 			viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
 		}
 	}
 
+	// MARK: - Completion
 	func finishOnboarding(shareLocation: Bool) {
 		guard !hasCompletedOnboarding else { return }
-		isProcessingFinalStep = false
 		
 		let trimmedName = viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
 		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
 
 		viewModel.enableLocationAndWeather = shareLocation
 		
-		// Use the latest city from location service if viewModel.region is empty
-		let region = viewModel.region.isEmpty ? locationService.lastKnownCity : viewModel.region
-
-		appModel.updateProfile(
-			nickname: trimmedName,
-			region: region,
-			shareLocation: shareLocation,
-			gender: genderRaw,
-			birthday: viewModel.birthday,
-			accountEmail: viewModel.accountEmail,
-			Onboard: true
-		)
-		hasCompletedOnboarding = true
+		Task {
+			// Ensure we have a valid region before finishing onboarding
+			var region = viewModel.region
+			if region.isEmpty {
+				// Wait for location service to resolve city during onboarding
+				// Use isOnboarding=true to ensure no cache is used
+				print("[Onboarding] Waiting for city resolution (no cache)...")
+				region = await locationService.requestLocationOnce(maxRetries: 10, retryDelay: 2.0, isOnboarding: true)
+				if !region.isEmpty {
+					viewModel.region = region
+					await OnboardingCache.shared.setCity(region)
+					print("[Onboarding] City resolved: \(region)")
+				} else {
+					// Last resort: try one more time with extended wait
+					print("[Onboarding] Retrying with extended wait...")
+					try? await Task.sleep(for: .seconds(3))
+					region = await locationService.requestLocationOnce(maxRetries: 5, retryDelay: 3.0, isOnboarding: true)
+					if region.isEmpty {
+						region = locationService.lastKnownCity
+						print("[Onboarding] Using fallback city: \(region)")
+					}
+				}
+			}
+			
+			await appModel.updateProfile(
+				nickname: trimmedName,
+				region: region,
+				shareLocation: shareLocation,
+				gender: genderRaw,
+				birthday: viewModel.birthday,
+				accountEmail: viewModel.accountEmail,
+				Onboard: true
+			)
+			
+			await MainActor.run {
+				hasCompletedOnboarding = true
+			}
+		}
 	}
-
 }

@@ -51,9 +51,4 @@ struct WeatherReport: Sendable {
     }
 }
 
-enum WeatherType: String, Codable, CaseIterable, Identifiable {
-	case sunny, cloudy, rainy, snowy, windy
 
-	var id: String { rawValue }
-
-}
