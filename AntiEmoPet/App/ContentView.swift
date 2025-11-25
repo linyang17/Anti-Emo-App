@@ -13,14 +13,9 @@ struct ContentView: View {
 				MainTabView()
 			}
 		}
-		.onChange(of: appModel.isLoading) { _, isLoading in
-			if !isLoading {
-				checkShowWelcome()
-			}
-		}
-		.onAppear {
+		.task {
 			if !appModel.isLoading {
-				checkShowWelcome()
+				evaluateWelcomeDisplay()
 			}
 		}
 		.fullScreenCover(isPresented: $showWelcome) {
@@ -30,43 +25,48 @@ struct ContentView: View {
 		}
 	}
 
-	private func checkShowWelcome() {
-		if appModel.userStats?.Onboard == true {
-			showWelcome = true
-		}
+	private func evaluateWelcomeDisplay() {
+		guard let onboarded = appModel.userStats?.Onboard else { return }
+		showWelcome = onboarded
 	}
 }
 
 struct MainTabView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 
-	var body: some View {
-		NavigationStack { PetView() }
-			.fullScreenCover(isPresented: Binding(
-				get: { appModel.showOnboarding },
-				set: { appModel.showOnboarding = $0 }
-			)) {
-				OnboardingView(locationService: appModel.locationService)
-			}
-			.interactiveDismissDisabled(true)
-			.alert(
-				"Time for bed...",
-				isPresented: Binding(
-					get: { appModel.showSleepReminder && !appModel.showOnboarding },
-					set: { newValue in
-						if !newValue {
-							appModel.dismissSleepReminder()
-						}
-					}
-				)
-			) {
-				Button("Okay", role: .cancel) {
+	private var onboardingBinding: Binding<Bool> {
+		Binding(
+			get: { appModel.showOnboarding },
+			set: { appModel.showOnboarding = $0 }
+		)
+	}
+
+	private var sleepAlertBinding: Binding<Bool> {
+		Binding(
+			get: { appModel.showSleepReminder && !appModel.showOnboarding },
+			set: { newValue in
+				if !newValue {
 					appModel.dismissSleepReminder()
 				}
-			} message: {
-				Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
 			}
+		)
+	}
+
+	var body: some View {
+		NavigationStack {
+			PetView()
+		}
+		.fullScreenCover(isPresented: onboardingBinding) {
+			OnboardingView(locationService: appModel.locationService)
+		}
+		.interactiveDismissDisabled(true)
+		.alert("Time for bed...",
+			   isPresented: sleepAlertBinding) {
+			Button("Okay", role: .cancel) {
+				appModel.dismissSleepReminder()
+			}
+		} message: {
+			Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
+		}
 	}
 }
-
-

@@ -300,9 +300,14 @@ final class StorageService {
 		guard let interval = slotInterval(for: slot, on: date) else { return }
 		let start = interval.start
 		let end = interval.end
+		let onboardingTitles = [
+			"Say hello to Lumio, drag up and down to play together",
+			"Check out shop panel by clicking the gift box",
+			"Try to refresh after all tasks are done (mark this as done first before trying)"
+		]
 		do {
 			let predicate = #Predicate<UserTask> { task in
-				task.date >= start && task.date < end
+				task.date >= start && task.date < end && !onboardingTitles.contains(task.title)
 			}
 			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
 			let targets = try context.fetch(descriptor)
@@ -314,19 +319,55 @@ final class StorageService {
 		}
 	}
 
-	func fetchTasks(in slot: TimeSlot, on date: Date) -> [UserTask] {
-		guard let interval = slotInterval(for: slot, on: date) else { return [] }
+	func fetchTasks(in slot: TimeSlot, on date: Date, includeOnboarding: Bool = true) -> [UserTask] {
+		let calendar = TimeZoneManager.shared.calendar
+		let startOfDay = calendar.startOfDay(for: date)
+		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+		
 		do {
-			let start = interval.start
-			let end = interval.end
-			let predicate = #Predicate<UserTask> { task in
-				task.date >= start && task.date < end
+			// Fetch slot tasks
+			var slotTasks: [UserTask] = []
+			if let interval = slotInterval(for: slot, on: date) {
+				let start = interval.start
+				let end = interval.end
+				let predicate = #Predicate<UserTask> { task in
+					task.date >= start && task.date < end
+				}
+				let descriptor = FetchDescriptor<UserTask>(
+					predicate: predicate,
+					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+				)
+				slotTasks = try context.fetch(descriptor)
 			}
-			let descriptor = FetchDescriptor<UserTask>(
-				predicate: predicate,
-				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
-			)
-			return try context.fetch(descriptor)
+			
+			// If includeOnboarding is true, also fetch onboarding tasks for the day
+			if includeOnboarding {
+				let onboardingTitles = [
+					"Say hello to Lumio, drag up and down to play together",
+					"Check out shop panel by clicking the gift box",
+					"Try to refresh after all tasks are done (mark this as done first before trying)"
+				]
+				let onboardingPredicate = #Predicate<UserTask> { task in
+					task.date >= startOfDay && task.date < endOfDay && 
+					onboardingTitles.contains(task.title)
+				}
+				let onboardingDescriptor = FetchDescriptor<UserTask>(
+					predicate: onboardingPredicate,
+					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+				)
+				let onboardingTasks = try context.fetch(onboardingDescriptor)
+				
+				// Merge and deduplicate by ID
+				var allTasks = slotTasks
+				for onboardingTask in onboardingTasks {
+					if !allTasks.contains(where: { $0.id == onboardingTask.id }) {
+						allTasks.append(onboardingTask)
+					}
+				}
+				return allTasks.sorted { $0.date < $1.date }
+			}
+			
+			return slotTasks
 		} catch {
 			logger.error("Failed to fetch tasks for slot \(slot.rawValue): \(error.localizedDescription, privacy: .public)")
 			return []

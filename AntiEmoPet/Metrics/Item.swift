@@ -131,9 +131,6 @@ final class ItemLoader: ObservableObject, Sendable {
 			} else {
 				print("✅ Items up to date (version \(jsonVersion)).")
 			}
-
-		} catch {
-			print("⚠️ ItemLoader init failed: \(error.localizedDescription)")
 		}
 	}
 

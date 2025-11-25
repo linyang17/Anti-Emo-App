@@ -68,6 +68,19 @@ struct TasksView: View {
                     .zIndex(10)
 					.interactiveDismissDisabled(true)
                 }
+                
+                if appModel.showOnboardingCelebration {
+                    ZStack {
+                        OnboardingCelebrationView {
+                            appModel.dismissOnboardingCelebration()
+                        }
+                        .frame(maxWidth: 320)
+                        .padding()
+                    }
+                    .transition(.opacity)
+                    .zIndex(20)
+                    .interactiveDismissDisabled(true)
+                }
             }
         }
         .onChange(of: appModel.rewardBanner) { _, newValue in
@@ -99,6 +112,8 @@ struct TasksView: View {
                 withAnimation {
                     showMoodFeedback = false
                 }
+                // Check if we should show onboarding celebration after mood feedback
+                appModel.checkAndShowOnboardingCelebration()
             }
         }
         .onDisappear {
@@ -108,34 +123,49 @@ struct TasksView: View {
 }
 
     private var header: some View {
-        HStack {
-            Spacer()
-            if viewModel.isRefreshing {
-                ProgressView()
-            } else if appModel.canRefreshCurrentSlot {
-                Button {
-                    Task(priority: .userInitiated) {
-                        await viewModel.forceRefresh(appModel: appModel)
+        VStack(spacing: 8) {
+            // Weather info at top
+            let report = appModel.weatherReport
+			let location = report?.location
+            
+            // Refresh button row
+            HStack {
+				Text(report!.currentWeather.rawValue.capitalized)
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
+                // Temperature would need to be fetched from WeatherKit
+                // For now, just show weather type
+                Text("")
+                    .foregroundStyle(.secondary)
+                    .appFont(FontTheme.caption)
+                    
+                Spacer()
+                if viewModel.isRefreshing {
+                    ProgressView()
+                } else if appModel.canRefreshCurrentSlot {
+                    Button {
+                        Task(priority: .userInitiated) {
+                            await viewModel.forceRefresh(appModel: appModel)
+                        }
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+                            .padding(12)
                     }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
-						.padding(12)
+                    .appFont(FontTheme.caption)
+                } else if allTasksCompleted {
+                    Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
+                        .appFont(FontTheme.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Refresh")
+                        .appFont(FontTheme.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(12)
                 }
-                .appFont(FontTheme.caption)
-            } else if allTasksCompleted {
-                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
-                    .appFont(FontTheme.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Refresh")
-                    .appFont(FontTheme.caption)
-                    .foregroundStyle(.secondary)
-					.padding(12)
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
     }
     
     private var allTasksCompleted: Bool {

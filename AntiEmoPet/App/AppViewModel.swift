@@ -21,6 +21,7 @@ final class AppViewModel: ObservableObject {
 	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = false
+	@Published var showOnboardingCelebration = false
 	@Published var moodEntries: [MoodEntry] = []
 	@Published var energyHistory: [EnergyHistoryEntry] = []
 	@Published var inventory: [InventoryEntry] = []
@@ -108,11 +109,6 @@ final class AppViewModel: ObservableObject {
 			energyHistory = decoded
 		}
 
-		if let pet = pet {
-			// XP baseline should start at 0 if negative
-			if pet.xp < 0 { pet.xp = 0 }
-		}
-
 		shopItems = storage.fetchShopItems()
 		moodEntries = storage.fetchMoodEntries()
 		refreshMoodLoggingState()
@@ -130,8 +126,8 @@ final class AppViewModel: ObservableObject {
 		showOnboarding = !(userStats?.Onboard ?? false)
 
 		if !showOnboarding {
-			// Only load/generate tasks if onboarding is finished
-			todayTasks = storage.fetchTasks(in: slot, on: Date())
+			// Only load/generate tasks if onboarding is finished, but include onboarding tasks
+			todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 
 			if todayTasks.isEmpty {
 				let generated = taskGenerator.generateTasks(
@@ -173,7 +169,7 @@ final class AppViewModel: ObservableObject {
 		// Wait a bit for location to be available
 		try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
 		print(
-			"[AppViewModel] fetchInitialWeather: \(locationService.lastKnownCity ?? nil), \(locationService.lastKnownLocation?.coordinate.latitude ?? nil), \(locationService.lastKnownLocation?.coordinate.longitude ?? nil)"
+			"[AppViewModel] fetchInitialWeather: \(locationService.lastKnownCity), \(locationService.lastKnownLocation?.coordinate.latitude ?? nil), \(locationService.lastKnownLocation?.coordinate.longitude ?? nil)"
 		)
 		await refreshWeather(using: locationService.lastKnownLocation)
 		print("[AppViewModel] fetchInitialWeather: \(weatherReport?.currentWeather.rawValue ?? "nil")")
@@ -271,9 +267,9 @@ final class AppViewModel: ObservableObject {
 			// 更新数组并持久化
 			todayTasks[index] = task
 			storage.persist()
-			// Only fetch tasks for the current slot to keep view clean
+			// Only fetch tasks for the current slot to keep view clean, but include onboarding tasks
 			let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-			todayTasks = storage.fetchTasks(in: slot, on: Date())
+			todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 			objectWillChange.send()
 		}
 
@@ -293,6 +289,12 @@ final class AppViewModel: ObservableObject {
 	func startTask(_ task: UserTask) {
 		guard task.status == .pending else { return }
 		
+		// Check if another task is already started (unless DEBUG)
+		#if !DEBUG
+		let hasActiveTask = todayTasks.contains { $0.status == .started }
+		guard !hasActiveTask else { return }
+		#endif
+		
 		let now = Date()
 		task.status = .started
 		task.startedAt = now
@@ -300,7 +302,7 @@ final class AppViewModel: ObservableObject {
 		
 		storage.persist()
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		todayTasks = storage.fetchTasks(in: slot, on: Date())
+		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 		
 		analytics.log(event: "task_started", metadata: [
 			"title": task.title,
@@ -315,7 +317,7 @@ final class AppViewModel: ObservableObject {
 				task.status = .ready
 				storage.persist()
 				let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-				todayTasks = storage.fetchTasks(in: slot, on: Date())
+				todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 				objectWillChange.send()
 			}
 		}
@@ -354,7 +356,10 @@ final class AppViewModel: ObservableObject {
 		logTodayEnergySnapshot()
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
-		todayTasks = storage.fetchTasks(in: slot, on: Date())
+		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+		
+		// Check if all onboarding tasks are completed
+		checkOnboardingCompletion()
 		
 		// 触发强制情绪反馈弹窗
 		pendingMoodFeedbackTask = task
@@ -394,6 +399,9 @@ final class AppViewModel: ObservableObject {
 		
 		// 清除待处理的反馈任务
 		pendingMoodFeedbackTask = nil
+		
+		// Check if we should show onboarding celebration
+		checkAndShowOnboardingCelebration()
 	}
 	
 
@@ -448,9 +456,7 @@ final class AppViewModel: ObservableObject {
 		Onboard: Bool
 	) {
 		userStats?.nickname = nickname
-		// If region is empty, try to get city from location service
-		let finalRegion = region.isEmpty ? locationService.lastKnownCity : region
-		userStats?.region = finalRegion
+		userStats?.region = region
 		userStats?.shareLocationAndWeather = shareLocation
 		userStats?.gender = gender
 		userStats?.birthday = birthday
@@ -770,11 +776,11 @@ final class AppViewModel: ObservableObject {
 		// Clear uncompleted tasks from previous slots on the same day
 		storage.deleteUncompletedTasks(before: slot, on: date)
 		
-		// Only delete tasks for the specific slot being generated
+		// Only delete tasks for the specific slot being generated (but not onboarding tasks)
 		storage.deleteTasks(in: slot, on: date)
 		
 		storage.save(tasks: generated)
-		todayTasks = storage.fetchTasks(in: slot, on: date)
+		todayTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
 		scheduleTaskNotifications()
 		markSlotTasksGenerated(slot, on: date)
 		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
@@ -1029,7 +1035,7 @@ final class AppViewModel: ObservableObject {
 				)
 		}
 		storage.save(tasks: generated)
-		todayTasks = storage.fetchTasks(in: slot, on: now)
+		todayTasks = storage.fetchTasks(in: slot, on: now, includeOnboarding: true)
 		scheduleTaskNotifications()
 	}
 
@@ -1136,6 +1142,47 @@ final class AppViewModel: ObservableObject {
                         return item.assetName
                 }
                 return item.sku
+	}
+	
+	// MARK: - Onboarding Completion Check
+	private func checkOnboardingCompletion() {
+		let onboardingTitles = [
+			"Say hello to Lumio, drag up and down to play together",
+			"Check out shop panel by clicking the gift box",
+			"Try to refresh after all tasks are done (mark this as done first before trying)"
+		]
+		
+		let onboardingTasks = todayTasks.filter { onboardingTitles.contains($0.title) }
+		guard !onboardingTasks.isEmpty else { return }
+		
+		let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
+		if allCompleted && !showOnboardingCelebration {
+			// Only show celebration after mood feedback is submitted
+			// This will be triggered when user returns to TasksView after mood feedback
+		}
+	}
+	
+	func checkAndShowOnboardingCelebration() {
+		let onboardingTitles = [
+			"Say hello to Lumio, drag up and down to play together",
+			"Check out shop panel by clicking the gift box",
+			"Try to refresh after all tasks are done (mark this as done first before trying)"
+		]
+		
+		let onboardingTasks = todayTasks.filter { onboardingTitles.contains($0.title) }
+		guard !onboardingTasks.isEmpty else { return }
+		
+		let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
+		if allCompleted && !showOnboardingCelebration && pendingMoodFeedbackTask == nil {
+			showOnboardingCelebration = true
+		}
+	}
+	
+	func dismissOnboardingCelebration() {
+		showOnboardingCelebration = false
+		// After celebration, replace onboarding tasks with current slot tasks
+		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
 	}
 }
 

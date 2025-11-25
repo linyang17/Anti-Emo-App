@@ -147,6 +147,7 @@ struct NameStepView: View, Equatable {
 				.submitLabel(.done)
 				.onSubmit(onSubmit)
 		}
+		.ignoresSafeArea(.keyboard, edges: .bottom)
 	}
 }
 

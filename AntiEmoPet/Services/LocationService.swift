@@ -47,7 +47,7 @@ final class LocationService: NSObject, ObservableObject {
 	private func configureManager() {
 		manager.delegate = self
 		manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-		manager.distanceFilter = 1_000
+		manager.distanceFilter = 10_000
 		manager.activityType = .other
 		authorizationStatus = manager.authorizationStatus
 	}

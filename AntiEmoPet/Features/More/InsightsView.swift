@@ -39,10 +39,10 @@ struct InsightsView: View {
 		.onChange(of: appModel.todayTasks) { _, _ in refreshSummaries() }
 	}
 
-	private func refreshSummaries() {
+    private func refreshSummaries() {
 		// Avoid redundant calculation during loading
 		guard !appModel.isLoading else { return }
 
-		moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-	}
+        moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+    }
 }
