@@ -60,8 +60,13 @@ struct MainTabView: View {
 			OnboardingView(locationService: appModel.locationService)
 		}
 		.interactiveDismissDisabled(true)
-		.sleepReminder(isPresented: sleepAlertBinding) {
-			appModel.dismissSleepReminder()
+		.alert("Time for bed...",
+			   isPresented: sleepAlertBinding) {
+			Button("Okay", role: .cancel) {
+				appModel.dismissSleepReminder()
+			}
+		} message: {
+			Text("It seems quite late for you, Lumio is also going to take some rest - we shall catch up tomorrow!")
 		}
 	}
 }

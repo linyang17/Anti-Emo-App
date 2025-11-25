@@ -71,11 +71,6 @@ struct TasksView: View {
                 
                 if appModel.showOnboardingCelebration {
                     ZStack {
-                        Color.black.opacity(0.45)
-                            .ignoresSafeArea()
-                            .onTapGesture {
-                                appModel.dismissOnboardingCelebration()
-                            }
                         OnboardingCelebrationView {
                             appModel.dismissOnboardingCelebration()
                         }
@@ -131,6 +126,7 @@ struct TasksView: View {
         VStack(spacing: 8) {
             // Weather info at top
             let report = appModel.weatherReport
+			let location = report?.location
             
             // Refresh button row
             HStack {

@@ -30,7 +30,7 @@ struct WelcomeView: View {
 			weather: weather,
 			lastMood: lastMood
 		)
-
+		
 		return GreetingEngine.makeGreeting(from: context)
 	}
 	
