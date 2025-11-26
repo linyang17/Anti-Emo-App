@@ -48,7 +48,7 @@ struct StatsRhythmSection: View {
 		guard !appModel.isLoading else { return }
 		
 		Task(priority: .userInitiated) {
-			await analysis.rhythmAnalysis(for: appModel.moodEntries, dayLength: appModel.sunEvents)
+			analysis.rhythmAnalysis(for: appModel.moodEntries, dayLength: appModel.sunEvents)
 		}
 	}
 

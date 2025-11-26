@@ -12,7 +12,7 @@ struct OnboardingView: View {
 
 	// MARK: - View States
 	@State private var step: Step = .intro
-	@State private var isProcessingFinalStep = false
+	@State private var accessTBD = false
 	@State private var showLocationDeniedAlert = false
 	@State private var hasCompletedOnboarding = false
 
@@ -44,7 +44,7 @@ struct OnboardingView: View {
 					Spacer(minLength: 300)
 					OnboardingArrowButton(
 						isEnabled: canAdvance,
-						isLoading: isProcessingFinalStep,
+						isLoading: accessTBD,
 						action: handleAdvance
 					)
 					FoxCharacterLayer()
@@ -52,7 +52,6 @@ struct OnboardingView: View {
 				.padding(.bottom, 50)
 			}
 		}
-		.ignoresSafeArea(.keyboard, edges: .bottom)
 		// MARK: - Alerts
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
 			Button("Go to settings") {
@@ -64,7 +63,7 @@ struct OnboardingView: View {
 			Text("You'll not be able to access personalised tasks without permission.")
 		}
 		// MARK: - Listeners
-		.onChange(of: locationService.authorizationStatus, handleAuthorization)
+		.onChange(of: locationService.authorizationStatus, handleAuthorizationChange)
 		.onChange(of: locationService.lastKnownCity, updateCity)
 		.onChange(of: step) { _, newStep in
 			if newStep == .access {
@@ -88,8 +87,8 @@ extension OnboardingView {
 		case .registration: return !viewModel.accountEmail.isEmpty
 		case .name: return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 		case .gender: return viewModel.selectedGender != nil
-		case .birthday: return viewModel.birthday <= Date()
-		case .access: return !isProcessingFinalStep
+		case .birthday: return viewModel.birthday < Date()
+		case .access: return !accessTBD
 		case .celebration: return true
 		}
 	}
@@ -119,32 +118,33 @@ extension OnboardingView {
 			viewModel.enableLocationAndWeather = true
 			updateRegionAndCache()
 			requestWeatherAndNotifications()
+			withAnimation(.easeInOut) {step = .celebration}
 
 		case .denied, .restricted:
+			accessTBD = true
 			viewModel.enableLocationAndWeather = false
 			showLocationDeniedAlert = true
 
 		case .notDetermined:
-			isProcessingFinalStep = true
 			locationService.requestLocAuthorization()
+			
 		@unknown default: break
 		}
 	}
 
-	func handleAuthorization(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
+	func handleAuthorizationChange(_ old: CLAuthorizationStatus, _ new: CLAuthorizationStatus) {
 		viewModel.updateLocationStatus(new)
 		guard step == .access else { return }
 
 		switch new {
 		case .authorizedAlways, .authorizedWhenInUse:
 			viewModel.enableLocationAndWeather = true
-			isProcessingFinalStep = false
 			updateRegionAndCache(delay: 1.0)
 			requestWeatherAndNotifications()
 
 		case .denied, .restricted:
 			viewModel.enableLocationAndWeather = false
-			isProcessingFinalStep = false
+			accessTBD = true
 			showLocationDeniedAlert = true
 
 		default:
@@ -155,9 +155,9 @@ extension OnboardingView {
 	// MARK: - Region & Caching
 	func updateRegionAndCache(delay: Double = 0.5) {
 		Task {
-			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-			if !locationService.lastKnownCity.isEmpty {
-				let city = locationService.lastKnownCity
+			// Use isOnboarding=true to ensure fresh resolution without cache
+			let city = await locationService.requestLocationOnce()
+			if !city.isEmpty {
 				viewModel.region = city
 				await OnboardingCache.shared.setCity(city)
 			}
@@ -176,29 +176,33 @@ extension OnboardingView {
 
 		Task {
 			do {
+				// Use isOnboarding=true to ensure fresh resolution without cache
+				let city = await locationService.requestLocationOnce()
+				if !city.isEmpty {
+					viewModel.region = city
+					await OnboardingCache.shared.setCity(city)
+				}
+				
+				print(
+					viewModel.region,
+					locationService.lastKnownCity,
+					locationService.lastKnownLocation
+				)
+				
 				let granted = await appModel.requestWeatherAccess()
 				await OnboardingCache.shared.setWeatherGranted(granted)
 				viewModel.setWeatherPermission(granted)
-
+				
 				guard granted else {
 					viewModel.enableLocationAndWeather = false
 					showLocationDeniedAlert = true
 					return
 				}
-
-				// Update region if missing
-				if viewModel.region.isEmpty, !locationService.lastKnownCity.isEmpty {
-					viewModel.region = locationService.lastKnownCity
-				}
-
-				// Request notifications if opted-in
+				
+				// Request notifications
 				if viewModel.notificationsOptIn {
 					appModel.requestNotifications()
 				}
-
-				withAnimation(.easeInOut) { step = .celebration }
-			} catch {
-				showLocationDeniedAlert = true
 			}
 		}
 	}
@@ -239,24 +243,23 @@ extension OnboardingView {
 	// MARK: - Completion
 	func finishOnboarding(shareLocation: Bool) {
 		guard !hasCompletedOnboarding else { return }
-
-		isProcessingFinalStep = false
-
+		
+		let trimmedName = viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
 		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
-		let region = viewModel.region.isEmpty ? locationService.lastKnownCity : viewModel.region
 
 		viewModel.enableLocationAndWeather = shareLocation
-
-		appModel.updateProfile(
-			nickname: viewModel.nickname,
-			region: region,
-			shareLocation: shareLocation,
-			gender: genderRaw,
-			birthday: viewModel.birthday,
-			accountEmail: viewModel.accountEmail,
-			Onboard: true
-		)
-
+		
+		Task {
+			await appModel.updateProfile(
+				nickname: trimmedName,
+				region: viewModel.region,
+				shareLocation: shareLocation,
+				gender: genderRaw,
+				birthday: viewModel.birthday,
+				accountEmail: viewModel.accountEmail,
+				Onboard: true
+			)
+		}
 		hasCompletedOnboarding = true
 	}
 }

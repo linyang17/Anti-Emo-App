@@ -35,19 +35,13 @@ final class AnalysisViewModel: ObservableObject {
     @Published var daylightLengthData: [Int: Double] = [:]
 
     // MARK: - Unified Wrapper Function
-    func rhythmAnalysis(for entries: [MoodEntry], dayLength: [Date: SunTimes]) -> (
-        timeSlot: [TimeSlot: Double],
-        weather: [WeatherType: Double],
-		taskImpact: [TaskCategory: Double],
-        daylight: String,
-        dayPeriod: [DayPeriod: Double]
-    ) {
+    func rhythmAnalysis(for entries: [MoodEntry], dayLength: [Date: SunTimes]) {
         let slot = timeSlotMoodAverages(entries: entries)
         let weather = weatherMoodAverages(entries: entries)
         let daylightBuckets = daylightMoodAverages(entries: entries, sunEvents: dayLength)
+		let daylightLen = daylightLengthMoodAverages(entries: entries, dayLength: dayLength)
         let text = daylightCorrelationText(slotAverages: slot)
         let heatmap = timeSlotAndWeekdayMoodAverages(entries: entries)
-        let daylightLen = daylightLengthMoodAverages(entries: entries, dayLength: dayLength)
 		let taskImpact = taskImpactData(entries: entries)
 
         timeSlotAverages = slot
@@ -58,7 +52,7 @@ final class AnalysisViewModel: ObservableObject {
         heatmapData = heatmap
 		taskImpactAverages = taskImpact
         
-        return (slot, weather, taskImpact, text, daylightBuckets)
+        return
     }
 
     // MARK: 1) 时段分析：上午 vs 下午 vs 晚上平均情绪

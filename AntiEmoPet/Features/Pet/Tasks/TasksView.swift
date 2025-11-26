@@ -30,7 +30,7 @@ struct TasksView: View {
             
             VStack(spacing: 0) {
                 header
-                    .background(Color(uiColor: .systemGroupedBackground))
+					.padding(12)
                 
                 ZStack(alignment: .top) {
                     List {
@@ -123,49 +123,39 @@ struct TasksView: View {
 }
 
     private var header: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 8) {
             // Weather info at top
             let report = appModel.weatherReport
-			let location = report?.location
-            
-            // Refresh button row
-            HStack {
-				Text(report!.currentWeather.rawValue.capitalized)
-                    .appFont(FontTheme.caption)
-                    .foregroundStyle(.secondary)
-                // Temperature would need to be fetched from WeatherKit
-                // For now, just show weather type
-                Text("")
-                    .foregroundStyle(.secondary)
-                    .appFont(FontTheme.caption)
-                    
-                Spacer()
-                if viewModel.isRefreshing {
-                    ProgressView()
-                } else if appModel.canRefreshCurrentSlot {
-                    Button {
-                        Task(priority: .userInitiated) {
-                            await viewModel.forceRefresh(appModel: appModel)
-                        }
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
-                            .padding(12)
-                    }
-                    .appFont(FontTheme.caption)
-                } else if allTasksCompleted {
-                    Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
-                        .appFont(FontTheme.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Refresh")
-                        .appFont(FontTheme.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(12)
+			
+			Text(report!.currentWeather.rawValue.capitalized)
+				.appFont(FontTheme.caption)
+				.foregroundStyle(.secondary)
+			// Temperature would need to be fetched from WeatherKit
+				
+			Spacer()
+			if viewModel.isRefreshing {
+				ProgressView()
+			} else if appModel.canRefreshCurrentSlot {
+				Button {
+					Task(priority: .userInitiated) {
+						await viewModel.forceRefresh(appModel: appModel)
+					}
+				} label: {
+					Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+						.padding(12)
+				}
+				.appFont(FontTheme.footnote)
+			} else if allTasksCompleted {
+				Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
+					.appFont(FontTheme.caption)
+					.foregroundStyle(.secondary)
+			} else {
+				Text("Refresh")
+					.appFont(FontTheme.footnote)
+					.foregroundStyle(.secondary)
+					.padding(12)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
     }
     
     private var allTasksCompleted: Bool {
@@ -185,7 +175,7 @@ private struct TaskRow: View {
 			HStack {
 				VStack(alignment: .leading, spacing: 6) {
 					Text(task.title)
-						.appFont(FontTheme.headline)
+						.appFont(FontTheme.body)
 					HStack {
 						Text(task.category.title)
 							.appFont(FontTheme.caption)
@@ -300,7 +290,6 @@ struct RewardToastView: View {
             .foregroundStyle(.white)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.thinMaterial, in: Capsule())
         .shadow(radius: 12)

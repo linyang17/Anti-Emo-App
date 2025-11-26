@@ -110,8 +110,6 @@ struct EnergyTrendSection: View {
 
 	// MARK: - X轴刻度
 	private func xAxisValues(for window: Int) -> [Date] {
-		let cal = TimeZoneManager.shared.calendar
-		let now = Date()
 		let domain = xDomain(for: window)
 		if window == 1 {
 			return Array(
