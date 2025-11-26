@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import Combine
 import SwiftUI
+import OSLog
 
 // MARK: - Item Type (Stable, Type-Safe Enum)
 
@@ -91,6 +92,7 @@ final class ItemLoader: ObservableObject, Sendable {
 
 	@AppStorage("ItemDataVersion") private var lastLoadedVersion: Int = 0
 	@Published private(set) var items: [Item] = []
+	private let logger = Logger(subsystem: "com.Lumio.pet", category: "ItemLoader")
 
 	private init(bundle: Bundle = .main) {
 		Task { await load(bundle: bundle) }
@@ -100,7 +102,7 @@ final class ItemLoader: ObservableObject, Sendable {
 	private func load(bundle: Bundle) async {
 		do {
 			guard let container = try? ModelContainer(for: Item.self) else {
-				print("❌ SwiftData ModelContainer not initialized.")
+				logger.error("SwiftData ModelContainer not initialized.")
 				return
 			}
 
@@ -110,26 +112,25 @@ final class ItemLoader: ObservableObject, Sendable {
 			let dbItems = loadFromDatabase(context: context)
 			if !dbItems.isEmpty {
 				self.items = dbItems
-				print("✅ Loaded \(dbItems.count) items from SwiftData cache.")
+				logger.info("Loaded \(dbItems.count) items from cache.")
 			}
 
 			// 检查 JSON 版本
 			let (jsonVersion, jsonItems) = loadItemFromJSON(bundle: bundle)
 			if jsonVersion > lastLoadedVersion {
-				print("🔄 Detected new item data version \(jsonVersion)")
+				logger.info("Detected new item data version \(jsonVersion).")
 				lastLoadedVersion = jsonVersion
 				self.items = jsonItems
 
-				// 清除旧缓存 & 写入新数据
 				clearDatabase(context)
 				saveToDatabase(jsonItems, context: context)
-				print("✅ Updated \(jsonItems.count) items in SwiftData.")
+				logger.info("Updated \(jsonItems.count) items in SwiftData.")
 			} else if dbItems.isEmpty {
 				self.items = jsonItems
 				saveToDatabase(jsonItems, context: context)
-				print("✅ Cached \(jsonItems.count) items into SwiftData.")
+				logger.info("Cached \(jsonItems.count) items into SwiftData.")
 			} else {
-				print("✅ Items up to date (version \(jsonVersion)).")
+				logger.info("Items already up to date (version \(jsonVersion)).")
 			}
 		}
 	}
@@ -140,7 +141,7 @@ final class ItemLoader: ObservableObject, Sendable {
 			let url = bundle.url(forResource: "items", withExtension: "json"),
 			let data = try? Data(contentsOf: url)
 		else {
-			print("❌ items.json not found in bundle")
+			logger.error("Items.json not found in bundle.")
 			return (version: lastLoadedVersion, [])
 		}
 
@@ -159,7 +160,7 @@ final class ItemLoader: ObservableObject, Sendable {
 			}
 			return (version, items)
 		} catch {
-			print("❌ Failed to decode items.json: \(error.localizedDescription)")
+			logger.error("Failed to decode items.json: \(error.localizedDescription, privacy: .public)")
 			return (version: lastLoadedVersion, [])
 		}
 	}
@@ -168,7 +169,7 @@ final class ItemLoader: ObservableObject, Sendable {
 	private func loadFromDatabase(context: ModelContext) -> [Item] {
 		do { return try context.fetch(FetchDescriptor<Item>()) }
 		catch {
-			print("⚠️ SwiftData fetch failed: \(error)")
+			logger.error("SwiftData fetch failed: \(error.localizedDescription, privacy: .public)")
 			return []
 		}
 	}
@@ -176,7 +177,7 @@ final class ItemLoader: ObservableObject, Sendable {
 	private func saveToDatabase(_ items: [Item], context: ModelContext) {
 		for item in items { context.insert(item) }
 		do { try context.save() }
-		catch { print("⚠️ SwiftData save failed: \(error)") }
+		catch { logger.error("SwiftData save failed: \(error.localizedDescription, privacy: .public)") }
 	}
 
 	private func clearDatabase(_ context: ModelContext) {
@@ -184,9 +185,9 @@ final class ItemLoader: ObservableObject, Sendable {
 			let all = try context.fetch(FetchDescriptor<Item>())
 			all.forEach { context.delete($0) }
 			try context.save()
-			print("🧹 Cleared old item cache.")
+			logger.info("Cleared old item cache.")
 		} catch {
-			print("⚠️ Failed to clear old items: \(error)")
+			logger.error("Failed to clear old items: \(error.localizedDescription, privacy: .public)")
 		}
 	}
 

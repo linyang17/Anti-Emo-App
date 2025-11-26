@@ -116,7 +116,7 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 			let withinTTL = Date().timeIntervalSince(lastAt) < cacheTTL
 
 			if withinDistance && withinTTL, let cached = currentWeatherReport {
-				log.debug("💾 Using in-memory cached weather report.")
+				log.debug("Using in-memory cached weather report.")
 				return cached
 			}
 		}

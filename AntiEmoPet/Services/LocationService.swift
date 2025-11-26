@@ -2,6 +2,19 @@ import Foundation
 import CoreLocation
 import MapKit
 import Combine
+import OSLog
+
+struct RegionComponents: Codable, Equatable {
+	let locality: String
+	let administrativeArea: String
+	let country: String
+	
+	var formatted: String {
+		[locality, administrativeArea, country]
+			.filter { !$0.isEmpty }
+			.joined(separator: ", ")
+	}
+}
 
 // MARK: - Codable Cache Record
 
@@ -22,6 +35,7 @@ final class LocationService: NSObject, ObservableObject {
 	@Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 	@Published private(set) var lastKnownLocation: CLLocation?
 	@Published private(set) var lastKnownCity: String = ""
+	@Published private(set) var lastRegionComponents: RegionComponents?
 	@Published private(set) var weatherPermissionGranted = false
 
 	// MARK: Private Properties
@@ -37,6 +51,7 @@ final class LocationService: NSObject, ObservableObject {
 	private let cityCacheKey = "LocationService.cityCache"
 	private var locationContinuation: CheckedContinuation<String, Never>?
 	private var isOnboardingPhase: Bool = false
+	private let logger = Logger(subsystem: "com.Lumio.pet", category: "LocationService")
 
 	// MARK: - Initialization
 
@@ -64,7 +79,9 @@ final class LocationService: NSObject, ObservableObject {
 	func requestLocAuthorization() {
 		switch authorizationStatus {
 		case .notDetermined:
-			manager.requestWhenInUseAuthorization()
+			DispatchQueue.main.async { [weak self] in
+				self?.manager.requestWhenInUseAuthorization()
+			}
 		default:
 			break
 		}
@@ -75,15 +92,38 @@ final class LocationService: NSObject, ObservableObject {
 	}
 
 	// MARK: - Location Operations
-	func requestLocationOnce() async -> String {
-        manager.requestLocation()
-        // Safely unwrap the last known location before reverse geocoding
-        if let location = lastKnownLocation {
-            let resolvedCity = await reverseGeocodeIfNeeded(for: location)
-            return resolvedCity
-        } else {
-            // No location yet; return current cached/known city (may be empty)
+	/// Request a one-time location update and await the resolved city.
+	func requestLocationOnce(
+		maxRetries: Int = 3,
+		retryDelay: TimeInterval = 2.0,
+		isOnboarding: Bool = false
+	) async -> String {
+        guard CLLocationManager.locationServicesEnabled() else {
+            logger.error("Location services disabled.")
             return lastKnownCity
+        }
+
+        // Only proceed if already authorized; do not request here to avoid blocking UI.
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            logger.error("Location authorization missing or not determined. Call requestLocAuthorization() first and wait for locationManagerDidChangeAuthorization callback.")
+            return lastKnownCity
+        }
+
+        if isOnboarding {
+            isOnboardingPhase = true
+            lastReverseAt = nil
+            cityCache = nil
+        } else {
+            ensureCacheLoaded()
+        }
+
+        locationContinuation?.resume(returning: lastKnownCity)
+        locationContinuation = nil
+
+        return await withCheckedContinuation { continuation in
+            self.locationContinuation = continuation
+            self.logger.debug("Location requested.")
+            self.manager.requestLocation()
         }
 	}
 
@@ -138,49 +178,45 @@ final class LocationService: NSObject, ObservableObject {
 
 	// MARK: - Reverse Geocoding
 
-	/// Reverse geocodes a location into a city name, using cache when possible.
-	/// - Note: In onboarding phase, cache is ignored to ensure fresh resolution
+	/// Reverse geocodes a location into a city name, using cache when permitted.
 	func reverseGeocodeIfNeeded(for location: CLLocation, ignoreCache: Bool = false) async -> String {
-		// If ignoring cache (e.g., during onboarding), skip cache check
 		if !ignoreCache {
 			if let cached = cachedCityIfValid(for: location) {
-				print("Using cached city:", cached)
+				logger.debug("Using cached city: \(cached, privacy: .public)")
 				return cached
 			}
-
+			
 			if let lastAt = lastReverseAt,
 			   Date().timeIntervalSince(lastAt) < minReverseInterval {
-				print("Skipping reverse geocode (too recent).")
+				logger.debug("Skipping reverse geocode (recent).")
 				return lastKnownCity
 			}
 		} else {
-			// Force fresh geocoding during onboarding
 			lastReverseAt = nil
 		}
-
+		
 		do {
 			let placemarks = try await geocoder.reverseGeocodeLocation(location)
 			guard let placemark = placemarks.first else {
-				print("⚠️ No placemarks found")
+				logger.error("Reverse geocode returned no placemark.")
 				return lastKnownCity
 			}
-
-			let city = placemark.locality ??
-					   placemark.administrativeArea ??
-					   placemark.name ??
-					   placemark.inlandWater ??
-					   placemark.ocean ??
-					   ""
 			
-			await MainActor.run {
-				self.lastKnownCity = city
-				self.lastReverseAt = Date()
-			}
+			let components = RegionComponents(
+				locality: placemark.locality ?? "",
+				administrativeArea: placemark.administrativeArea ?? "",
+				country: placemark.country ?? ""
+			)
+			let formatted = components.formatted.isEmpty ? (placemark.name ?? "") : components.formatted
 			
-			return city
-			
+			lastRegionComponents = components
+			lastKnownCity = formatted
+			lastReverseAt = Date()
+			updateCityCache(city: formatted, for: location)
+			logger.debug("Resolved city: \(formatted, privacy: .public)")
+			return formatted
 		} catch {
-			print("❌ Reverse geocode failed:", error.localizedDescription)
+			logger.error("Reverse geocode failed: \(error.localizedDescription, privacy: .public)")
 			return lastKnownCity
 		}
 	}
@@ -191,34 +227,53 @@ final class LocationService: NSObject, ObservableObject {
 extension LocationService: CLLocationManagerDelegate {
 	
 	func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-		// This callback is always invoked on the main thread by CoreLocation.
-		authorizationStatus = manager.authorizationStatus
+        authorizationStatus = manager.authorizationStatus
 	}
 
 	func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-		guard let latest = locations.last else { return }
+		guard let latest = locations.last else {
+			locationContinuation?.resume(returning: lastKnownCity)
+			locationContinuation = nil
+			return
+		}
 
 		lastKnownLocation = latest
 
-		// Perform reverse geocoding asynchronously off the main actor.
 		Task.detached(priority: .utility) { [weak self] in
 			guard let self else { return }
-			let city = await self.reverseGeocodeIfNeeded(for: latest)
-			await MainActor.run {
-				if !city.isEmpty {
-					self.lastKnownCity = city
-				} else {
-					print("❌ Failed to resolve city, location: \(latest)")
+			let ignoreCache = await self.isOnboardingPhase
+			var resolvedCity = ""
+
+			for attempt in 1...3 {
+				resolvedCity = await self.reverseGeocodeIfNeeded(for: latest, ignoreCache: ignoreCache && attempt == 1)
+				if !resolvedCity.isEmpty { break }
+				if attempt < 3 {
+					try? await Task.sleep(for: .seconds(2))
 				}
+			}
+
+			await MainActor.run {
+				if ignoreCache {
+					self.isOnboardingPhase = false
+				}
+
+				if resolvedCity.isEmpty {
+					self.logger.error("Failed to resolve city after retries. Location: \(latest)")
+					resolvedCity = self.lastKnownCity
+				} else {
+					self.logger.debug("City resolved via delegate: \(resolvedCity, privacy: .public)")
+				}
+
+				self.locationContinuation?.resume(returning: resolvedCity)
+				self.locationContinuation = nil
 			}
 		}
 	}
 
 	func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-		print("❌ Location failed:", error.localizedDescription)
+		logger.error("Location failed: \(error.localizedDescription, privacy: .public)")
 		locationContinuation?.resume(returning: lastKnownCity)
 		locationContinuation = nil
 	}
 	
 }
-

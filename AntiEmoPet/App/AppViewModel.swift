@@ -4,6 +4,7 @@ import SwiftData
 import Combine
 import CoreLocation
 import UIKit
+import OSLog
 
 
 @MainActor
@@ -48,6 +49,7 @@ final class AppViewModel: ObservableObject {
 	private let analytics = AnalyticsService()
 	private var cancellables: Set<AnyCancellable> = []
 	private let sleepReminderService = SleepReminderService()
+	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
 	private let refreshRecordsKey = "taskRefreshRecords"
 	private let slotScheduleKey = "taskSlotSchedule"
 	private let slotGenerationKey = "taskSlotGenerationRecords"
@@ -86,41 +88,51 @@ final class AppViewModel: ObservableObject {
 		userStats?.totalEnergy ?? 0
 	}
 	
-	// MARK: - Lifecycle
+	// MARK: - Load data
 	
-	/// Initial load for users who haven't completed onboarding
-	/// - Note: This method doesn't fetch any data or request permissions
-	/// - Onboarding cache is cleared to ensure fresh start if onboarding is interrupted
+	/// Initial load for users who haven't completed onboarding.
+	/// Clears onboarding cache and determines whether the onboarding flow should be presented.
 	func initLoad() async {
-		print("[AppViewModel] Initialising...")
-		
-		// Clear onboarding cache to ensure fresh start if onboarding is interrupted
+		logger.info("Initialising pre-onboarding state.")
 		await OnboardingCache.shared.clear()
 		
+		if let stats = userStats {
+			let storedComponents = RegionComponents(
+				locality: stats.regionLocality,
+				administrativeArea: stats.regionAdministrativeArea,
+				country: stats.regionCountry
+			)
+			if !storedComponents.formatted.isEmpty {
+				applyRegionComponents(storedComponents)
+			}
+		}
+		showOnboarding = !(userStats?.Onboard ?? false)
 		isLoading = false
 	}
 	
 	/// Full load for users who have completed onboarding
 	func load() async {
-		print("[AppViewModel] Loading app data...")
+		logger.info("Loading app data…")
+		
 		storage.bootstrapIfNeeded()
 		pet = storage.fetchPet()
 		userStats = storage.fetchStats()
-		
-		shopItems = storage.fetchShopItems()
-		sunEvents = storage.fetchSunEvents()
-		inventory = storage.fetchInventory()
+
+		await loadCachedData()
 		
 		scheduleTaskNotifications()
 		prepareSlotGenerationSchedule(for: Date())
 		
-		// Determine onboarding state - must be false for load()
+		// onboarding阶段没有数据缓存
 		showOnboarding = !(userStats?.Onboard ?? false)
 		guard !showOnboarding else {
-			// If somehow still in onboarding, use initLoad instead
 			await initLoad()
+			await fetchInitialWeather()
 			return
 		}
+		
+		moodEntries = storage.fetchMoodEntries()
+		refreshMoodLoggingState()
 
 		// 优先使用上次缓存的城市填充用户信息，避免 Profile 中城市为空
 		let cachedCity = locationService.lastKnownCity
@@ -140,8 +152,7 @@ final class AppViewModel: ObservableObject {
 		
 		applyDailyBondingDecayIfNeeded()
 		
-		// Fetch weather logic
-		await fetchInitialWeather()
+		await refreshWeather(using: locationService.lastKnownLocation)
 		
 		// Determine current slot
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -155,7 +166,7 @@ final class AppViewModel: ObservableObject {
 			)
 			storage.save(tasks: generated)
 			todayTasks = generated
-			print("[AppViewModel] Generated initial daily tasks: \(generated.count)")
+			logger.debug("Generated initial daily tasks: \(generated.count)")
 		}
 
 		checkSlotGenerationTrigger()
@@ -179,16 +190,17 @@ final class AppViewModel: ObservableObject {
 			_ = await locationService.requestLocationOnce()
 		}
 		await refreshWeather(using: locationService.lastKnownLocation)
-#if DEBUG
-		print(
-			"[AppViewModel] fetchInitialWeather: \(weatherReport?.currentWeather.rawValue ?? nil), for city: \(locationService.lastKnownCity), \(locationService.lastKnownLocation?.coordinate.latitude ?? nil), \(locationService.lastKnownLocation?.coordinate.longitude ?? nil)"
-		)
-#endif
+		let latString = locationService.lastKnownLocation.map { String($0.coordinate.latitude) } ?? "nil"
+		let lonString = locationService.lastKnownLocation.map { String($0.coordinate.longitude) } ?? "nil"
+		logger
+			.info(
+				"[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity), lat: \(latString), lon: \(lonString)"
+			)
 		
 	}
 
 	func refreshIfNeeded() async {
-		print("[AppViewModel] \(Date()): Refreshing...")
+		logger.info("Refreshing app data…")
 		await load()
 		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
 		if !showOnboarding && !showSleepReminder {
@@ -234,7 +246,7 @@ final class AppViewModel: ObservableObject {
 		@MainActor
 		func updateTaskStatus(_ id: UUID, to newStatus: TaskStatus) {
 			guard let index = todayTasks.firstIndex(where: { $0.id == id }) else {
-				print("[AppViewModel] ⚠️ updateTaskStatus: Task not found for id \(id)")
+				logger.error("updateTaskStatus: Task not found for id \(id, privacy: .public)")
 				return
 			}
 			
@@ -248,7 +260,6 @@ final class AppViewModel: ObservableObject {
 				task.startedAt = now
 				task.canCompleteAfter = now.addingTimeInterval(task.category.bufferDuration)
 				
-				// 延迟异步检查可完成状态
 				Task { @MainActor in
 					try? await Task.sleep(nanoseconds: UInt64(task.category.bufferDuration * 1_000_000_000))
 					if task.status == .started, let canComplete = task.canCompleteAfter, Date() >= canComplete {
@@ -266,7 +277,7 @@ final class AppViewModel: ObservableObject {
 				task.status = .completed
 				task.completedAt = now
 				completeTask(task)
-				return  // completeTask 会自动处理持久化和刷新
+				return
 
 			case .pending:
 				task.status = .pending
@@ -276,7 +287,6 @@ final class AppViewModel: ObservableObject {
 
 			}
 
-			// 更新数组并持久化
 			todayTasks[index] = task
 			storage.persist()
 			// Only fetch tasks for the current slot to keep view clean, but include onboarding tasks
@@ -297,7 +307,7 @@ final class AppViewModel: ObservableObject {
 		checkSlotGenerationTrigger()
 	}
 	
-	/// 开始任务,设置buffer时间
+	// MARK: Start + complete tasks
 	func startTask(_ task: UserTask) {
 		guard task.status == .pending else { return }
 		
@@ -350,7 +360,7 @@ final class AppViewModel: ObservableObject {
 		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
 		petEngine.applyTaskCompletion()
 
-		// 随机掉落一份 snack 奖励
+		// TODO: 随机掉落一份 snack 奖励
 		var snackName: String?
 		if let snack = rewardEngine.randomSnackReward(from: shopItems) {
 			incrementInventory(for: snack)
@@ -370,66 +380,60 @@ final class AppViewModel: ObservableObject {
 		storage.persist()
 		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 		
-		// Check if all onboarding tasks are completed
 		checkOnboardingCompletion()
 		
-		// 触发强制情绪反馈弹窗
 		pendingMoodFeedbackTask = task
 	}
+
+	//MARK: Mood impact feedback
+	func submitMoodFeedback(delta: Int, for task: TaskCategory) {
+			let lastValue: Int = {
+					let sorted = moodEntries.sorted { $0.date < $1.date }
+					return sorted.last?.value ?? 50
+			}()
+			let entry = MoodEntry(
+					date: Date(),
+					value: max(10, min(100, lastValue + delta)),
+					source: .afterTask,
+					delta: delta,
+					relatedTaskCategory: task,
+					relatedWeather: weather
+			)
+	storage.saveMoodEntry(entry)
+	moodEntries = storage.fetchMoodEntries()
 	
-        /// 提交任务完成后的情绪反馈
-        /// - Parameters:
-        ///   - delta: 情绪变化值 (-5: 更差, 0: 无变化, +5: 更好, +10: 好很多)
-        ///   - task: 完成的任务
-        func submitMoodFeedback(delta: Int, for task: TaskCategory) {
-                let lastValue: Int = {
-                        let sorted = moodEntries.sorted { $0.date < $1.date }
-                        return sorted.last?.value ?? 50
-                }()
-                let entry = MoodEntry(
-                        date: Date(),
-                        value: max(10, min(100, lastValue + delta)),
-                        source: .afterTask,
-                        delta: delta,
-                        relatedTaskCategory: task,
-                        relatedWeather: weather
-                )
-		storage.saveMoodEntry(entry)
-		moodEntries = storage.fetchMoodEntries()
-		
-		// Link mood entry to the task if available
-		if let pendingTask = pendingMoodFeedbackTask {
-			pendingTask.moodEntryId = entry.id
-			storage.persist()
-		}
-		
-		analytics.log(event: "mood_feedback_after_task", metadata: [
-			"delta": "\(delta)",
-			"category": task.rawValue,
-			"weather": weather.rawValue
-		])
-		
-		// 清除待处理的反馈任务
-		pendingMoodFeedbackTask = nil
-		
-		// Check if we should show onboarding celebration
-		checkAndShowOnboardingCelebration()
+	// Link mood entry to the task if available
+	if let pendingTask = pendingMoodFeedbackTask {
+		pendingTask.moodEntryId = entry.id
+		storage.persist()
 	}
 	
-
-        @discardableResult
-        func petting() -> Bool {
-                let count = pettingCount()
-                let maxcount = 3
-                guard count < maxcount else {
-                        showPettingNotice("Lumio needs some rest now")
-                        return false
-                }
-                petEngine.applyPettingReward()
-                incrementPetInteractionCount()
-                incrementPettingCount()
-                storage.persist()
-                objectWillChange.send()
+	analytics.log(event: "mood_feedback_after_task", metadata: [
+		"delta": "\(delta)",
+		"category": task.rawValue,
+		"weather": weather.rawValue
+	])
+	
+	pendingMoodFeedbackTask = nil
+	
+	// Check if we should show onboarding celebration
+	checkAndShowOnboardingCelebration()
+}
+	
+// MARK: Pet actions
+	@discardableResult
+	func petting() -> Bool {
+		let count = pettingCount()
+		let maxcount = 3
+		guard count < maxcount else {
+				showPettingNotice("Lumio needs some rest now")
+				return false
+		}
+		petEngine.applyPettingReward()
+		incrementPetInteractionCount()
+		incrementPettingCount()
+		storage.persist()
+		objectWillChange.send()
 		analytics.log(event: "pet_pat", metadata: ["count": "\(count + 1)"])
 		dailyMetricsCache = makeDailyActivityMetrics()
 		let remaining = max(0, maxcount - (count + 1))
@@ -449,8 +453,8 @@ final class AppViewModel: ObservableObject {
 		let success = rewardEngine.purchase(item: item, stats: stats)
 		guard success else { return false }
 		incrementInventory(for: item)
-		// PRD requirement: Purchase decor -> Bonding +10, XP +10
 		petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: 10)
+		
 		storage.persist()
 		objectWillChange.send()
 		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
@@ -472,9 +476,8 @@ final class AppViewModel: ObservableObject {
 		// Ensure region is populated - wait for location service if needed
 		var finalRegion = region
 		if finalRegion.isEmpty {
-			// Wait for location service to resolve city
-			finalRegion = await locationService.requestLocationOnce()
-			print("[AppViewModel] updateProfile: resolved region from location service: \(finalRegion)")
+			finalRegion = await locationService.requestLocationOnce(isOnboarding: true)
+			logger.debug("updateProfile resolved region: \(finalRegion, privacy: .public)")
 		}
 		
 		// If still empty, use lastKnownCity as fallback
@@ -488,6 +491,13 @@ final class AppViewModel: ObservableObject {
 		userStats?.birthday = birthday
 		userStats?.accountEmail = accountEmail
 		userStats?.Onboard = true
+		
+		if let components = locationService.lastRegionComponents {
+			applyRegionComponents(components)
+		} else {
+			let fallbackComponents = RegionComponents(locality: finalRegion, administrativeArea: "", country: "")
+			applyRegionComponents(fallbackComponents)
+		}
 		
 		// Generate tutorial tasks once upon finishing onboarding
 		let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather)
@@ -510,8 +520,14 @@ final class AppViewModel: ObservableObject {
 				"gender": gender
 			]
 		)
+		
+		// Transition into the fully loaded state after onboarding
+		Task {
+			await self.load()
+		}
 	}
 
+	// MARK: Notifications
 	func requestNotifications() {
 		shouldShowNotificationSettingsPrompt = false
 		notificationService.requestNotiAuth { [weak self] result in
@@ -552,6 +568,7 @@ final class AppViewModel: ObservableObject {
 		}
 	}
 
+	// MARK: mood entry
 	func addMoodEntry(
 		value: Int,
 		source: MoodEntry.MoodSource = .appOpen,
@@ -569,10 +586,8 @@ final class AppViewModel: ObservableObject {
 				storage.saveMoodEntry(entry)
 				moodEntries = storage.fetchMoodEntries()
 		
-                // 刷新今日情绪记录状态
                 refreshMoodLoggingState()
 
-                // 如果是应用打开时的记录,关闭强制弹窗
                 if source == .appOpen {
                         shouldForceMoodCapture = false
                         showMoodCapture = false
@@ -585,8 +600,13 @@ final class AppViewModel: ObservableObject {
 	}
 
 	func incrementInventory(for item: Item) {
-		storage.incrementInventory(forSKU: item.sku)
-		inventory = storage.fetchInventory()
+		Task {
+			await storage.addInventory(forSKU: item.sku)
+			let updatedInventory = await storage.fetchInventory()
+			await MainActor.run {
+				self.inventory = updatedInventory
+			}
+		}
 	}
 
 	func isEquipped(_ item: Item) -> Bool {
@@ -1021,7 +1041,9 @@ final class AppViewModel: ObservableObject {
 
 	func scheduleTaskNotifications() {
 		guard userStats?.notificationsEnabled == true else { return }
-		notificationService.scheduleTaskReminders(for: todayTasks)
+		Task {
+			await notificationService.scheduleTaskReminders(for: todayTasks)
+		}
 	}
 
 	private func refreshWeather(using location: CLLocation?) async {
@@ -1041,20 +1063,28 @@ final class AppViewModel: ObservableObject {
 		}
 		prepareSlotGenerationSchedule(for: Date())
 		checkSlotGenerationTrigger()
+		
+		logger.info("[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
 	}
 
 	private func bindLocationUpdates() {
-		// Listen to city updates and automatically sync to userStats.region
+		locationService.$lastRegionComponents
+			.compactMap { $0 }
+			.receive(on: RunLoop.main)
+			.sink { [weak self] components in
+				self?.applyRegionComponents(components)
+			}
+			.store(in: &cancellables)
+		
+		// Fallback: keep legacy string updates
 		locationService.$lastKnownCity
 			.removeDuplicates()
 			.receive(on: RunLoop.main)
 			.sink { [weak self] city in
 				guard let self, !city.isEmpty else { return }
-				// Always update userStats.region when city is available
-				if self.userStats?.region != city {
+				if self.userStats?.region.isEmpty == true {
 					self.userStats?.region = city
 					self.storage.persist()
-					print("[AppViewModel] Updated region to: \(city)")
 				}
 			}
 			.store(in: &cancellables)
@@ -1160,6 +1190,18 @@ final class AppViewModel: ObservableObject {
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
 	}
+	
+	private func applyRegionComponents(_ components: RegionComponents) {
+		guard let stats = userStats else { return }
+		stats.regionLocality = components.locality
+		stats.regionAdministrativeArea = components.administrativeArea
+		stats.regionCountry = components.country
+		let formatted = components.formatted
+		if !formatted.isEmpty {
+			stats.region = formatted
+		}
+		storage.persist()
+	}
 }
 
 
@@ -1173,51 +1215,83 @@ extension AppViewModel {
 
 			while !Task.isCancelled {
 				await self.handleSlotMonitorTick()
-
-				// 智能休眠逻辑：计算下一次 Tick 的目标时间
-				let now = Date()
-				let cal = TimeZoneManager.shared.calendar
-				let nextMinute = cal.date(byAdding: .minute, value: 1, to: cal.date(bySetting: .second, value: 0, of: now)!)!
-
-				let interval = nextMinute.timeIntervalSinceNow
-				let sleepDuration = max(interval, 30) // 最少 30 秒一循环
-				try? await Task.sleep(for: .seconds(sleepDuration))
+				let interval = self.nextMonitorInterval(from: Date())
+				try? await Task.sleep(for: .seconds(interval))
 			}
 		}
 	}
 
-	/// 每分钟触发一次，用于检查时段变化，并且刷新天气（仅跨时段时）
+	/// 触发检查
 	@MainActor
 	private func handleSlotMonitorTick() async {
 		let currentDate = Date()
 		let currentSlot = TimeSlot.from(date: currentDate, using: TimeZoneManager.shared.calendar)
 
-		// 检测时段变化并刷新天气
 		if currentSlot != lastObservedSlot {
 			lastObservedSlot = currentSlot
-			print("[SlotMonitor] TimeSlot changed → \(currentSlot.rawValue)")
-			do {
-				async let refreshWeatherTask: () = refreshWeather(
-					using: locationService.lastKnownLocation
-				)
-				async let saveScheduleTask = Task {
-					await self.prepareSlotGenerationSchedule(for: currentDate)
-				}
-			}
+			logger.debug("Slot changed → \(currentSlot.rawValue, privacy: .public)")
+			await refreshWeather(using: locationService.lastKnownLocation)
+			prepareSlotGenerationSchedule(for: currentDate)
 		} else {
-			// 若未跨时段，仅更新调度状态
 			prepareSlotGenerationSchedule(for: currentDate)
 		}
 
-		// 检查任务生成触发点
 		checkSlotGenerationTrigger(reference: currentDate)
-
-		// 更新任务刷新按钮是否可用
 		updateTaskRefreshEligibility(reference: currentDate)
-
-		#if DEBUG
-		let slotName = currentSlot.rawValue.capitalized
-		print("[SlotMonitor] Tick Slot: \(slotName), Weather: \(weatherReport?.currentWeather.rawValue ?? "nil")")
-		#endif
+		logger.debug("Slot tick complete for \(currentSlot.rawValue, privacy: .public)")
 	}
+	
+	private func nextMonitorInterval(from date: Date = Date()) -> TimeInterval {
+		let defaultInterval: TimeInterval = 300
+		let nextBoundary = nextSlotBoundary(after: date)
+		let nextTrigger = nextScheduledTrigger(after: date)
+		let target = [nextBoundary, nextTrigger].compactMap { $0 }.min() ?? date.addingTimeInterval(defaultInterval)
+		return max(30, target.timeIntervalSince(date))
+	}
+	
+	private func nextSlotBoundary(after date: Date = Date()) -> Date? {
+		let cal = TimeZoneManager.shared.calendar
+		let todayIntervals = taskGenerator.scheduleIntervals(for: date)
+		var candidates = todayIntervals.values.map(\.start).filter { $0 > date }
+		if let tomorrow = cal.date(byAdding: .day, value: 1, to: date) {
+			let intervals = taskGenerator.scheduleIntervals(for: tomorrow)
+			candidates.append(contentsOf: intervals.values.map(\.start))
+		}
+		return candidates.min()
+	}
+	
+	private func nextScheduledTrigger(after date: Date = Date()) -> Date? {
+		let cal = TimeZoneManager.shared.calendar
+		if let tomorrow = cal.date(byAdding: .day, value: 1, to: date) {
+			prepareSlotGenerationSchedule(for: tomorrow)
+		}
+		let schedule = loadSlotSchedule()
+		let keys = [dayKey(for: date), dayKey(for: cal.date(byAdding: .day, value: 1, to: date)!)]
+		var candidates: [Date] = []
+		for key in keys {
+			guard let slotMap = schedule[key] else { continue }
+			for epoch in slotMap.values {
+				let trigger = Date(timeIntervalSince1970: epoch)
+				if trigger > date {
+					candidates.append(trigger)
+				}
+			}
+		}
+		return candidates.min()
+	}
+	
+	// MARK: - Cached Data Loading
+	private func loadCachedData() async {
+		let fetchedSunEvents: [Date: SunTimes] = storage.fetchSunEvents()
+		let fetchedShopItems: [Item] = storage.fetchShopItems()
+		let fetchedInventory: [InventoryEntry] = storage.fetchInventory()
+
+		shopItems = fetchedShopItems
+		sunEvents = fetchedSunEvents
+		inventory = fetchedInventory
+
+		logger.debug("Cached data loaded: \(fetchedShopItems.count) items, \(fetchedInventory.count) inventory entries.")
+	}
+	
 }
+

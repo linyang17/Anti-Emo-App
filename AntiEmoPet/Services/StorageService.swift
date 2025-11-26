@@ -403,32 +403,34 @@ final class StorageService {
 		return DateInterval(start: start, end: end)
 	}
 
-    func fetchInventory() -> [InventoryEntry] {
-        do {
-            let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])
-            return try context.fetch(descriptor)
-        } catch {
-            logger.error("Failed to fetch inventory: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
+	
+	func fetchInventory() -> [InventoryEntry] {
+		do {
+			let descriptor = FetchDescriptor<InventoryEntry>(sortBy: [SortDescriptor(\InventoryEntry.sku, order: .forward)])
+			return try context.fetch(descriptor)
+		} catch {
+			logger.error("Failed to fetch inventory: \(error.localizedDescription, privacy: .public)")
+			return []
+		}
+	}
 
-    func incrementInventory(forSKU sku: String) {
-        do {
-            let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
-            let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
-            let existing = try context.fetch(descriptor).first
-            if let entry = existing {
-                entry.count += 1
-            } else {
-                let entry = InventoryEntry(sku: sku, count: 1)
-                context.insert(entry)
-            }
-            saveContext(reason: "increment inventory")
-        } catch {
-            logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
-        }
-    }
+
+	func addInventory(forSKU sku: String) {
+	 do {
+		 let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
+		 let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
+		 let existing = try context.fetch(descriptor).first
+		 if let entry = existing {
+			 entry.count += 1
+		 } else {
+			 let entry = InventoryEntry(sku: sku, count: 1)
+			 context.insert(entry)
+		 }
+		 saveContext(reason: "increment inventory")
+	 } catch {
+		 logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
+	 }
+ }
     
     // MARK: - SunTimes Persistence
     /// 保存日照时间数据（用于统计分析）

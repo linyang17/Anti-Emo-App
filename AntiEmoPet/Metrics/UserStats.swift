@@ -36,6 +36,9 @@ final class UserStats: Identifiable {
     var birthday: Date?
     var accountEmail: String
 	var Onboard: Bool
+	var regionLocality: String
+	var regionAdministrativeArea: String
+	var regionCountry: String
 
     init(
         id: UUID = UUID(),
@@ -50,7 +53,10 @@ final class UserStats: Identifiable {
         gender: String = GenderIdentity.unspecified.rawValue,
         birthday: Date? = nil,
         accountEmail: String = "",
-		Onboard: Bool = false
+		Onboard: Bool = false,
+		regionLocality: String = "",
+		regionAdministrativeArea: String = "",
+		regionCountry: String = ""
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
@@ -65,5 +71,8 @@ final class UserStats: Identifiable {
         self.birthday = birthday
         self.accountEmail = accountEmail
 		self.Onboard = Onboard
+		self.regionLocality = regionLocality
+		self.regionAdministrativeArea = regionAdministrativeArea
+		self.regionCountry = regionCountry
     }
 }

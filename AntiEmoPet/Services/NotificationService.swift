@@ -82,23 +82,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
 	// MARK: - Task Reminder Scheduling
 
-	/// Schedules notifications for a given list of tasks.
-	func scheduleTaskReminders(for tasks: [UserTask]) {
+	/// Schedules notifications for a given list of user tasks. Clears existing task notifications, then enqueues the new ones.
+	func scheduleTaskReminders(for tasks: [UserTask]) async {
 		guard !tasks.isEmpty else { return }
 
-		center.getPendingNotificationRequests { [weak self] requests in
-			guard let self else { return }
+		let requests = await center.pendingNotificationRequests()
+		let oldTaskIDs = requests
+			.filter { $0.identifier.hasPrefix("LumioPet.task.") }
+			.map(\.identifier)
 
-			let taskIdentifiers = requests
-				.filter { $0.identifier.hasPrefix("LumioPet.task.") }
-				.map(\.identifier)
-
-			if !taskIdentifiers.isEmpty {
-				self.center.removePendingNotificationRequests(withIdentifiers: taskIdentifiers)
-			}
-
-			self.enqueueTaskNotifications(for: tasks)
+		if !oldTaskIDs.isEmpty {
+			center.removePendingNotificationRequests(withIdentifiers: oldTaskIDs)
 		}
+		
+		enqueueTaskNotifications(for: tasks)
 	}
 
 	/// Creates and enqueues individual task notifications.

@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import UIKit
+import OSLog
 
 @MainActor
 struct OnboardingView: View {
@@ -15,6 +16,8 @@ struct OnboardingView: View {
 	@State private var accessTBD = false
 	@State private var showLocationDeniedAlert = false
 	@State private var hasCompletedOnboarding = false
+	@State private var isProcessingFinalStep = false
+	private let logger = Logger(subsystem: "com.Lumio.pet", category: "OnboardingView")
 
 	// MARK: - Initialization
 	init(locationService: LocationService? = nil) {
@@ -89,7 +92,7 @@ extension OnboardingView {
 		case .gender: return viewModel.selectedGender != nil
 		case .birthday: return viewModel.birthday < Date()
 		case .access: return !accessTBD
-		case .celebration: return true
+		case .celebration: return !isProcessingFinalStep
 		}
 	}
 
@@ -116,6 +119,7 @@ extension OnboardingView {
 		switch locationService.authorizationStatus {
 		case .authorizedAlways, .authorizedWhenInUse:
 			viewModel.enableLocationAndWeather = true
+			accessTBD = false
 			updateRegionAndCache()
 			requestWeatherAndNotifications()
 			withAnimation(.easeInOut) {step = .celebration}
@@ -139,6 +143,7 @@ extension OnboardingView {
 		switch new {
 		case .authorizedAlways, .authorizedWhenInUse:
 			viewModel.enableLocationAndWeather = true
+			accessTBD = false
 			updateRegionAndCache(delay: 1.0)
 			requestWeatherAndNotifications()
 
@@ -156,7 +161,7 @@ extension OnboardingView {
 	func updateRegionAndCache(delay: Double = 0.5) {
 		Task {
 			// Use isOnboarding=true to ensure fresh resolution without cache
-			let city = await locationService.requestLocationOnce()
+			let city = await locationService.requestLocationOnce(isOnboarding: true)
 			if !city.isEmpty {
 				viewModel.region = city
 				await OnboardingCache.shared.setCity(city)
@@ -176,18 +181,12 @@ extension OnboardingView {
 
 		Task {
 			do {
-				// Use isOnboarding=true to ensure fresh resolution without cache
-				let city = await locationService.requestLocationOnce()
+				let city = await locationService.requestLocationOnce(isOnboarding: true)
 				if !city.isEmpty {
 					viewModel.region = city
 					await OnboardingCache.shared.setCity(city)
+					logger.debug("Region resolved during onboarding: \(city, privacy: .public)")
 				}
-				
-				print(
-					viewModel.region,
-					locationService.lastKnownCity,
-					locationService.lastKnownLocation
-				)
 				
 				let granted = await appModel.requestWeatherAccess()
 				await OnboardingCache.shared.setWeatherGranted(granted)
@@ -215,8 +214,8 @@ extension OnboardingView {
 		async let weatherGrantedTask = OnboardingCache.shared.getWeatherGranted()
 
 		do {
-			let cachedCity = try await cachedCityTask
-			let weatherGranted = try await weatherGrantedTask
+			let cachedCity = await cachedCityTask
+			let weatherGranted = await weatherGrantedTask
 
 			if let city = cachedCity, !city.isEmpty {
 				viewModel.region = city
@@ -231,18 +230,13 @@ extension OnboardingView {
 			} else {
 				viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
 			}
-		} catch {
-			// Fallback: gracefully recover
-			if !locationService.lastKnownCity.isEmpty {
-				viewModel.region = locationService.lastKnownCity
-			}
-			viewModel.setWeatherPermission(locationService.weatherPermissionGranted)
 		}
 	}
 
 	// MARK: - Completion
 	func finishOnboarding(shareLocation: Bool) {
 		guard !hasCompletedOnboarding else { return }
+		isProcessingFinalStep = true
 		
 		let trimmedName = viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
 		let genderRaw = viewModel.selectedGender?.rawValue ?? GenderIdentity.unspecified.rawValue
@@ -250,16 +244,34 @@ extension OnboardingView {
 		viewModel.enableLocationAndWeather = shareLocation
 		
 		Task {
+			var region = viewModel.region
+			if region.isEmpty {
+				logger.debug("Waiting for onboarding city resolution…")
+				region = await locationService.requestLocationOnce(maxRetries: 10, retryDelay: 2.0, isOnboarding: true)
+				if !region.isEmpty {
+					viewModel.region = region
+					await OnboardingCache.shared.setCity(region)
+					logger.debug("Resolved onboarding city: \(region, privacy: .public)")
+				} else {
+					logger.error("Failed to resolve city during onboarding, using fallback \(locationService.lastKnownCity, privacy: .public)")
+					region = locationService.lastKnownCity
+				}
+			}
+			
 			await appModel.updateProfile(
 				nickname: trimmedName,
-				region: viewModel.region,
+				region: region,
 				shareLocation: shareLocation,
 				gender: genderRaw,
 				birthday: viewModel.birthday,
 				accountEmail: viewModel.accountEmail,
 				Onboard: true
 			)
+			
+			await MainActor.run {
+				self.hasCompletedOnboarding = true
+				self.isProcessingFinalStep = false
+			}
 		}
-		hasCompletedOnboarding = true
 	}
 }

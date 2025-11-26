@@ -71,6 +71,9 @@ struct TasksView: View {
                 
                 if appModel.showOnboardingCelebration {
                     ZStack {
+                        Color.black.opacity(0.45)
+                            .ignoresSafeArea()
+                            .onTapGesture { appModel.dismissOnboardingCelebration() }
                         OnboardingCelebrationView {
                             appModel.dismissOnboardingCelebration()
                         }
@@ -124,38 +127,42 @@ struct TasksView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            // Weather info at top
-            let report = appModel.weatherReport
-			
-			Text(report!.currentWeather.rawValue.capitalized)
-				.appFont(FontTheme.caption)
-				.foregroundStyle(.secondary)
-			// Temperature would need to be fetched from WeatherKit
-				
-			Spacer()
-			if viewModel.isRefreshing {
-				ProgressView()
-			} else if appModel.canRefreshCurrentSlot {
-				Button {
-					Task(priority: .userInitiated) {
-						await viewModel.forceRefresh(appModel: appModel)
-					}
-				} label: {
-					Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
-						.padding(12)
-				}
-				.appFont(FontTheme.footnote)
-			} else if allTasksCompleted {
-				Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
-					.appFont(FontTheme.caption)
-					.foregroundStyle(.secondary)
-			} else {
-				Text("Refresh")
-					.appFont(FontTheme.footnote)
-					.foregroundStyle(.secondary)
-					.padding(12)
-                }
+            if let report = appModel.weatherReport {
+                Text(report.currentWeather.rawValue.capitalized)
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Weather unavailable")
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
             }
+
+            Spacer()
+            if viewModel.isRefreshing {
+                ProgressView()
+            } else if appModel.canRefreshCurrentSlot {
+                Button {
+                    Task(priority: .userInitiated) {
+                        await viewModel.forceRefresh(appModel: appModel)
+                    }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+                        .padding(12)
+                }
+                .appFont(FontTheme.footnote)
+            } else if allTasksCompleted {
+                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
+                    .appFont(FontTheme.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Refresh")
+                    .appFont(FontTheme.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
     
     private var allTasksCompleted: Bool {

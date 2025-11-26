@@ -33,6 +33,7 @@ final class AnalysisViewModel: ObservableObject {
     @Published var dayPeriodAverages: [DayPeriod: Double] = [:]
     @Published var heatmapData: [TimeSlot: [Int: Double]] = [:]
     @Published var daylightLengthData: [Int: Double] = [:]
+	
 
     // MARK: - Unified Wrapper Function
     func rhythmAnalysis(for entries: [MoodEntry], dayLength: [Date: SunTimes]) {

@@ -24,12 +24,13 @@ struct ShopView: View {
 		.onAppear {
 			selectedCategory = viewModel.defaultCategory(in: appModel.shopItems)
 		}
-		.onChange(of: selectedCategory) { _ in
+		.onChange(of: selectedCategory) {
 			pendingItem = nil
 		}
-		.onChange(of: appModel.shopItems) { items in
-			if !items.contains(where: { $0.type == selectedCategory }) {
-				selectedCategory = viewModel.defaultCategory(in: items)
+
+		.onChange(of: appModel.shopItems) {
+			if !appModel.shopItems.contains(where: { $0.type == selectedCategory }) {
+				selectedCategory = viewModel.defaultCategory(in: appModel.shopItems)
 			}
 		}
 		.alert(

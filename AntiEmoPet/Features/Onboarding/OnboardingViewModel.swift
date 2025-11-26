@@ -114,8 +114,11 @@ final class OnboardingViewModel: NSObject, ObservableObject {
 			guard let self,
 				  let user = result?.user,
 				  let email = user.profile?.email else { return }
-			self.accountEmail = email
-			self.selectedAccountProvider = .google
+			
+		Task { @MainActor in
+				self.accountEmail = email
+				self.selectedAccountProvider = .google
+			}
 		}
 	}
 	
@@ -155,22 +158,22 @@ extension OnboardingViewModel: ASAuthorizationControllerDelegate, ASAuthorizatio
 		// 用户第一次授权时才会有 email
 		if let email = appleIDCredential.email {
 			self.accountEmail = email
-			log.info("📧 Received Apple ID email: \(email)")
+			log.info("Received Apple ID email: \(email)")
 		} else {
 			// 第二次及之后授权不会再返回 email
-			log.info("ℹ️ Apple sign-in: email not returned (already authorized before)")
+			log.info("Apple sign-in: email not returned (already authorized before)")
 		}
 
 		// 保存用户唯一标识符，用于后续登录
 		let userID = appleIDCredential.user
-		log.info("🆔 Apple ID user ID: \(userID)")
+		log.info("Apple ID user ID: \(userID)")
 
 		// 如果你想进一步尝试从 identityToken 解码邮箱，可以安全解析 JWT：
 		if let identityToken = appleIDCredential.identityToken,
 		   let jwtString = String(data: identityToken, encoding: .utf8) {
 			if let decodedEmail = decodeEmailFromIdentityToken(jwtString) {
 				self.accountEmail = decodedEmail
-				log.info("📨 Extracted email from JWT: \(decodedEmail)")
+				log.info("Extracted email from JWT: \(decodedEmail)")
 			}
 		}
 

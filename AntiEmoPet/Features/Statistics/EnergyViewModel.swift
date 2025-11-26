@@ -1,9 +1,11 @@
 import Foundation
 import Combine
+import OSLog
 
 @MainActor
 final class EnergyStatisticsViewModel: ObservableObject {
 	@Published var energySummary: EnergySummary = .empty
+	private let logger = Logger(subsystem: "com.Lumio.pet", category: "EnergyViewModel")
 
 	init() {
 		self.energySummary = .empty
@@ -69,13 +71,13 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		
 #if DEBUG
 for task in tasks {
-	print("TASK:", task.status, task.completedAt ?? "nil", task.energyReward, task.moodEntryId ?? "nil")
+	logger.debug("TASK status = \(task.status.rawValue, privacy: .public) reward: \(task.energyReward) completed: \(String(describing: task.completedAt), privacy: .public)")
 }
-print("Daily Energy Adds:", dailyEnergyAdds)
-print("Today Add:", todayAdd)
-print("Avg Week:", averageAddWeek)
-print("StartDate:", startDate)
-print("Today key:", calendar.startOfDay(for: now))
+logger.debug("Daily energy adds: \(dailyEnergyAdds, privacy: .public)")
+logger.debug("Today add: \(todayAdd)")
+logger.debug("Average week add: \(averageAddWeek)")
+logger.debug("Start date: \(startDate, privacy: .public)")
+logger.debug("Today key: \(calendar.startOfDay(for: now), privacy: .public)")
 #endif
 
 	return EnergySummary(
