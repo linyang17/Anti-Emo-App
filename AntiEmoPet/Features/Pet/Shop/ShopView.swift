@@ -82,7 +82,7 @@ struct ShopView: View {
 					selectedCategory = type
 				} label: {
 					Text(type.displayName)
-						.font(.headline.weight(.bold))
+						.appFont(FontTheme.body)
 						.foregroundStyle(.white)
 						.frame(maxWidth: .infinity)
 						.padding(.vertical, 6)

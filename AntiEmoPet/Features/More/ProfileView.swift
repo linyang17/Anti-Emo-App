@@ -8,8 +8,8 @@ struct ProfileView: View {
         List {
             if let stats = appModel.userStats {
                 Section("User Info") {
-                    Label("Username：\(stats.nickname.isEmpty ? "human unknown" : stats.nickname)", systemImage: "person.fill")
-                    Label("City：\(stats.region.isEmpty ? "city unknown" : stats.region)", systemImage: "mappin.and.ellipse")
+                    Label("Username：\(stats.nickname.isEmpty ? "Some human unknown" : stats.nickname)", systemImage: "person.fill")
+                    Label("City：\(stats.region.isEmpty ? "Somewhere on the Earth" : stats.region)", systemImage: "mappin.and.ellipse")
                     if !stats.accountEmail.isEmpty {
                         Label("Account：\(stats.accountEmail)", systemImage: "envelope")
                     }
