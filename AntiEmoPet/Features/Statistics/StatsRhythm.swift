@@ -29,13 +29,14 @@ struct StatsRhythmSection: View {
 				rhythmWeatherChart(data: analysis.weatherAverages)
 			}
 
-			DashboardCard(title: "Mood vs Daylight", icon: "sun.max") {
+			DashboardCard(title: "Mood vs Daylight", icon: "sun.rise.fill") {
 				rhythmDaylightLineChart(data: analysis.daylightLengthData)
 			}
 			
-			DashboardCard(title: "Task Impact", icon: "chart.bar.xaxis") {
+			DashboardCard(title: "Task Impact", icon: "theatermasks.fill") {
 				TaskMoodImpactChart(data: analysis.taskImpactAverages)
 			}
+			
 		}
 		.onAppear {
 			if !appModel.isLoading {
@@ -182,6 +183,7 @@ struct StatsRhythmSection: View {
 		}
 	}
 
+	
 	// MARK: - 异步更新逻辑
 
 	@MainActor
@@ -205,6 +207,7 @@ struct StatsRhythmSection: View {
 		cachedWeatherData = reduced
 		weatherAnimator.update(with: reduced)
 	}
+	
 
 	@MainActor
 	private func updateDaylightData(_ buckets: [DayPeriod: Double]) async {
@@ -287,3 +290,4 @@ private struct TaskImpact: Identifiable, Equatable {
 	   let avgDelta: Double
 	   var id: String { category.rawValue }
    }
+

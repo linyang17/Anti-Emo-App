@@ -9,7 +9,7 @@ struct ProfileView: View {
             if let stats = appModel.userStats {
                 Section("User Info") {
                     Label("Username：\(stats.nickname.isEmpty ? "Some human unknown" : stats.nickname)", systemImage: "person.fill")
-                    Label("City：\(stats.region.isEmpty ? "Somewhere on the Earth" : stats.region)", systemImage: "mappin.and.ellipse")
+                    Label("City：\(stats.formattedRegion.isEmpty ? "Somewhere on the Earth" : stats.formattedRegion)", systemImage: "mappin.and.ellipse")
                     if !stats.accountEmail.isEmpty {
                         Label("Account：\(stats.accountEmail)", systemImage: "envelope")
                     }
@@ -29,5 +29,14 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
     }
+}
+
+private extension UserStats {
+	var formattedRegion: String {
+		let parts = [regionLocality, regionAdministrativeArea, regionCountry]
+			.filter { !$0.isEmpty }
+		let combined = parts.joined(separator: ", ")
+		return combined.isEmpty ? region : combined
+	}
 }
 

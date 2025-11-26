@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import OSLog
 
 
 struct FontTheme {
@@ -55,8 +56,9 @@ extension Text {
 
 extension UIAppearance {
 	static func setupGlobalFonts() {
+		let logger = Logger(subsystem: "com.Lumio.pet", category: "FontTheme")
 		guard let abeezee16 = UIFont(name: "ABeeZee-Regular", size: 16) else {
-			print("Failed to load ABeeZee-Regular font.")
+			logger.error("Failed to load ABeeZee-Regular font.")
 			return
 		}
 

@@ -8,12 +8,8 @@ struct AdvancedInsightsView: View {
 		ScrollView {
 			VStack(spacing: 20) {
 				// Mood vs Energy Correlation
-				// DashboardCard(title: "Mood & Energy Correlation", icon: "arrow.triangle.2.circlepath") {
-				//	MoodEnergyCorrelationChart() }
-				
-				// Weather Impact
-				DashboardCard(title: "Weather & Activity Pattern", icon: "cloud.sun") {
-					WeatherActivityChart()
+				DashboardCard(title: "Activity Pattern", icon: "circular.shift.2x") {
+					MoodEnergyCorrelationChart()
 				}
 			}
 			.padding()
@@ -121,43 +117,3 @@ extension TaskCategory {
 	}
 }
 
-	
-private struct WeatherActivityChart: View {
-	@EnvironmentObject private var appModel: AppViewModel
-	
-	var body: some View {
-		let data = weatherActivityData()
-		if data.isEmpty {
-			Text("Track more activities to see weather patterns").foregroundStyle(.secondary)
-		} else {
-			Chart(data) { point in
-				BarMark(x: .value("Weather", point.weather.rawValue), y: .value("Tasks", point.taskCount))
-					.foregroundStyle(.blue)
-			}
-			.frame(height: 200)
-		}
-	}
-	
-	private func weatherActivityData() -> [WeatherTaskActivity] {
-		var weatherCounts: [WeatherType: [String: Int]] = [:]
-
-		for task in appModel.tasksSince(days: 365) where task.status == .completed {
-			weatherCounts[task.weatherType, default: [:]][task.category.rawValue, default: 0] += 1
-		}
-
-		return weatherCounts
-			.map { (weather, categoryCounts) in
-				let total = categoryCounts.values.reduce(0, +)
-				return WeatherTaskActivity(weather: weather, taskCount: total)
-			}
-			.sorted { $0.taskCount > $1.taskCount }
-	}
-}
-
-
-
-private struct WeatherTaskActivity: Identifiable {
-	let weather: WeatherType
-	let taskCount: Int
-	var id: String { weather.rawValue }
-}

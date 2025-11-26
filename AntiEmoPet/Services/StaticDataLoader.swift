@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 enum StaticDataError: Error, LocalizedError {
     case resourceNotFound(String)
@@ -18,6 +19,7 @@ enum StaticDataLoader {
     private static var cache: [String: Any] = [:]
     private static let decoder = JSONDecoder()
     private static let lock = NSLock()
+	private static let logger = Logger(subsystem: "com.Lumio.pet", category: "StaticDataLoader")
 
     static func decode<T: Decodable>(_ resource: String, as type: T.Type = T.self) throws -> T {
         lock.lock()
@@ -28,7 +30,7 @@ enum StaticDataLoader {
         }
 
         guard let url = Bundle.main.url(forResource: resource, withExtension: "json", subdirectory: "Static") else {
-			print("❌ \(resource).json not found in Static folder")
+			logger.error("\(resource, privacy: .public).json not found in Static folder.")
 			throw StaticDataError.resourceNotFound(resource)
         }
 
