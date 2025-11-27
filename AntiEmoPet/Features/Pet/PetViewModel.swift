@@ -35,7 +35,7 @@ final class PetViewModel: ObservableObject {
             timeOfDay: .day
         )
         statusSummary = StatusSummary(
-            energy: 50,
+            energy: 0,
             bond: 35,
             levelLabel: "LV 1",
             experienceProgress: 0

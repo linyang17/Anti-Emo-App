@@ -48,15 +48,16 @@ final class AppViewModel: ObservableObject {
 	private let weatherService = WeatherService()
 	private let analytics = AnalyticsService()
 	private var cancellables: Set<AnyCancellable> = []
-	private let sleepReminderService = SleepReminderService()
-	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
-	private let refreshRecordsKey = "taskRefreshRecords"
+        private let sleepReminderService = SleepReminderService()
+        private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
+        private let refreshRecordsKey = "taskRefreshRecords"
 	private let slotScheduleKey = "taskSlotSchedule"
 	private let slotGenerationKey = "taskSlotGenerationRecords"
 	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
-	private let pettingLimitKey = "dailyPettingLimit"
-	private var lastObservedSlot: TimeSlot?
-	private typealias RefreshRecordMap = [String: [String: Double]]
+        private let pettingLimitKey = "dailyPettingLimit"
+        private var lastObservedSlot: TimeSlot?
+        private var isLoadingData = false
+        private typealias RefreshRecordMap = [String: [String: Double]]
 	private typealias SlotScheduleMap = [String: [String: Double]]
 	private typealias SlotGenerationMap = [String: [String: Bool]]
 	private typealias SlotPenaltyMap = [String: [String: Bool]]
@@ -110,11 +111,14 @@ final class AppViewModel: ObservableObject {
 		isLoading = false
 	}
 	
-	/// Full load for users who have completed onboarding
-	func load() async {
-		logger.info("Loading app data…")
-		
-		storage.bootstrapIfNeeded()
+        /// Full load for users who have completed onboarding
+        func load() async {
+                if isLoadingData { return }
+                isLoadingData = true
+                defer { isLoadingData = false }
+                logger.info("Loading app data…")
+
+                storage.bootstrapIfNeeded()
 		pet = storage.fetchPet()
 		userStats = storage.fetchStats()
 
@@ -150,9 +154,14 @@ final class AppViewModel: ObservableObject {
 			energyHistory = decoded
 		}
 		
-		applyDailyBondingDecayIfNeeded()
-		
-		await refreshWeather(using: locationService.lastKnownLocation)
+                applyDailyBondingDecayIfNeeded()
+
+                if userStats?.shareLocationAndWeather == true {
+                        _ = await requestWeatherAccess()
+                        _ = await locationService.requestLocationOnce()
+                }
+
+                await refreshWeather(using: locationService.lastKnownLocation)
 		
 		// Determine current slot
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -1191,17 +1200,18 @@ final class AppViewModel: ObservableObject {
 		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
 	}
 	
-	private func applyRegionComponents(_ components: RegionComponents) {
-		guard let stats = userStats else { return }
-		stats.regionLocality = components.locality
-		stats.regionAdministrativeArea = components.administrativeArea
-		stats.regionCountry = components.country
-		let formatted = components.formatted
-		if !formatted.isEmpty {
-			stats.region = formatted
-		}
-		storage.persist()
-	}
+        private func applyRegionComponents(_ components: RegionComponents) {
+                guard let stats = userStats else { return }
+                stats.regionLocality = components.locality
+                stats.regionAdministrativeArea = components.administrativeArea
+                stats.regionCountry = components.country
+                let formatted = components.formatted
+                if !formatted.isEmpty {
+                        stats.region = formatted
+                        TimeZoneManager.shared.updateTimeZone(forRegion: formatted)
+                }
+                storage.persist()
+        }
 }
 
 

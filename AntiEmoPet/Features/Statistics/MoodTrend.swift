@@ -113,13 +113,15 @@ struct MoodTrendSection: View {
 
 	// MARK: - X轴刻度
 	private func xAxisValues(for window: Int) -> [Date] {
-		let cal = TimeZoneManager.shared.calendar
-		let now = Date()
-		let domain = xDomain(for: window)
-		if window == 1 {
-			let start = cal.startOfDay(for: now)
-			return stride(from: 0, through: 26, by: strideStep(for: window))
-				.compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+                let domain = xDomain(for: window)
+                if window == 1 {
+                        return Array(
+                                stride(
+                                        from: domain.lowerBound,
+                                        through: domain.upperBound,
+                                        by: Double(3600 * strideStep(for: window))
+                                )
+                        )
 		}
 		else if window >= 45 {
 			// 对于3M模式，使用按周为步长的刻度
@@ -154,9 +156,9 @@ struct MoodTrendSection: View {
 				let todayEntries = appModel.moodEntries.filter { calendar.isDate($0.date, inSameDayAs: now) }
 				guard !todayEntries.isEmpty else { return [] }
 
-				let groupedByHour = Dictionary(grouping: todayEntries) { entry in
-						calendar.date(bySetting: .minute, value: 0, of: entry.date)!
-				}
+                                let groupedByHour = Dictionary(grouping: todayEntries) { entry in
+                                                calendar.dateInterval(of: .hour, for: entry.date)!.start
+                                }
 
 				var averaged: [MoodTrendPoint] = []
 				for (hour, group) in groupedByHour {

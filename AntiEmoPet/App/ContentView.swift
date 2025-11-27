@@ -6,23 +6,31 @@ struct ContentView: View {
 	@State private var showWelcome = false
 
 	var body: some View {
-		Group {
-			if appModel.isLoading {
-				ProgressView("Loading…")
-			} else {
-				MainTabView()
-			}
-		}
-		.task {
-			if !appModel.isLoading {
-				evaluateWelcomeDisplay()
-			}
-		}
-		.fullScreenCover(isPresented: $showWelcome) {
-			WelcomeView {
-				showWelcome = false
-			}
-		}
+                Group {
+                        if appModel.isLoading {
+                                ProgressView("Loading…")
+                        } else {
+                                MainTabView()
+                        }
+                }
+                .task {
+                        if !appModel.isLoading {
+                                evaluateWelcomeDisplay()
+                        }
+                }
+                .onChange(of: appModel.isLoading) { _, isLoading in
+                        if !isLoading {
+                                evaluateWelcomeDisplay()
+                        }
+                }
+                .onChange(of: appModel.userStats?.Onboard ?? false) { _, _ in
+                        evaluateWelcomeDisplay()
+                }
+                .fullScreenCover(isPresented: $showWelcome) {
+                        WelcomeView {
+                                showWelcome = false
+                        }
+                }
 	}
 
 	private func evaluateWelcomeDisplay() {
