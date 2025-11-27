@@ -15,7 +15,7 @@ struct PetView: View {
         @State private var activeReward: RewardEvent?
         @State private var rewardOpacity: Double = 0
         @State private var bannerTask: Task<Void, Never>?
-		@State private var showMoodFeedback = false
+        @State private var showMoodFeedback = false
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -86,7 +86,10 @@ struct PetView: View {
                         viewModel.updatePetState(pet: appModel.pet)
                 }
                 .onChange(of: appModel.rewardBanner) { _, newValue in
-                        guard activeSheet != .tasks, let reward = newValue else { return }
+                        guard let reward = newValue else { return }
+                        if activeSheet == .tasks {
+                                activeSheet = nil
+                        }
                         activeReward = reward
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 rewardOpacity = 1
@@ -100,15 +103,32 @@ struct PetView: View {
                                 try? await Task.sleep(nanoseconds: 500_000_000)
                                 activeReward = nil
                                 appModel.consumeRewardBanner()
-							
-							if appModel.pendingMoodFeedbackTask != nil {
-								try? await Task.sleep(nanoseconds: 1_000_000_000)
-								await MainActor.run {
-									withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-										showMoodFeedback = true
-									}
-								}
-							}
+
+                                if appModel.pendingMoodFeedbackTask != nil {
+                                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                                        await MainActor.run {
+                                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                                        showMoodFeedback = true
+                                                }
+                                        }
+                                }
+                        }
+                }
+                .onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
+                        if newValue != nil {
+                                if activeSheet == .tasks {
+                                        activeSheet = nil
+                                }
+                                if activeReward == nil {
+                                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                                showMoodFeedback = true
+                                        }
+                                }
+                        } else {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                        showMoodFeedback = false
+                                }
+                                appModel.checkAndShowOnboardingCelebration()
                         }
                 }
                 .onDisappear {
@@ -393,16 +413,6 @@ struct PetView: View {
                 }
         }
 	
-	private func triggerMoodFeedbackOverlay(after delay: TimeInterval = 1.0) {
-		Task {
-			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-			guard appModel.pendingMoodFeedbackTask != nil else { return }
-			withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-				showMoodFeedback = true
-			}
-		}
-	}
-
         @ViewBuilder
         private var overlayStack: some View {
                 ZStack {
@@ -412,28 +422,52 @@ struct PetView: View {
                                 }
                                 .frame(maxWidth: 360)
                                 .transition(.scale(scale: 0.92).combined(with: .opacity))
-								.zIndex(999)
+                                .zIndex(999)
                         }
 
                         if let reward = activeReward {
-								RewardToastView(event: reward)
-										.opacity(rewardOpacity)
-										.padding(.top, 16)
-										.padding(.horizontal)
-										.transition(.move(edge: .top).combined(with: .opacity))
-                                .allowsHitTesting(false)
-								.zIndex(999)
+                                Color.clear
+                                        .ignoresSafeArea()
+                                        .allowsHitTesting(false)
+                                        .zIndex(998)
+                                RewardToastView(event: reward)
+                                        .opacity(rewardOpacity)
+                                        .padding(.horizontal)
+                                        .transition(.scale(scale: 0.94).combined(with: .opacity))
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                                        .allowsHitTesting(false)
+                                        .zIndex(999)
                         }
-					
-						if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
-								MoodFeedbackOverlayView(
-										taskCategory: task.category
-								)
-								.frame(maxWidth: 360)
-								.transition(.scale(scale: 0.92).combined(with: .opacity))
-								.zIndex(999)
-						}
+
+                        if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
+                                Color.black.opacity(0.4)
+                                        .ignoresSafeArea()
+                                        .transition(.opacity)
+                                        .zIndex(998)
+                                MoodFeedbackOverlayView(
+                                        taskCategory: task.category
+                                )
+                                .frame(maxWidth: 360)
+                                .padding()
+                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+                                .zIndex(999)
+                        }
+
+                        if appModel.showOnboardingCelebration {
+                                Color.black.opacity(0.45)
+                                        .ignoresSafeArea()
+                                        .transition(.opacity)
+                                        .zIndex(998)
+                                OnboardingCelebrationView {
+                                        appModel.dismissOnboardingCelebration()
+                                }
+                                .frame(maxWidth: 320)
+                                .padding()
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                                .zIndex(999)
+                        }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.showMoodCapture)
         }

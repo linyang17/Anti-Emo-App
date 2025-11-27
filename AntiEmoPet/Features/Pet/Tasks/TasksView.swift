@@ -1,6 +1,4 @@
 import SwiftUI
-import Combine
-
 
 struct RewardEvent: Identifiable, Equatable {
 	let id = UUID()
@@ -18,10 +16,6 @@ struct RewardEvent: Identifiable, Equatable {
 struct TasksView: View {
     @EnvironmentObject private var appModel: AppViewModel
     @StateObject private var viewModel = TasksViewModel()
-    @State private var activeReward: RewardEvent?
-    @State private var rewardOpacity: Double = 0
-    @State private var bannerTask: Task<Void, Never>?
-    @State private var showMoodFeedback = false
     let lastMood: Int
 
     var body: some View {
@@ -48,79 +42,7 @@ struct TasksView: View {
                 }
                 .listStyle(.insetGrouped)
 
-                if let reward = activeReward {
-                    RewardToastView(event: reward)
-                        .opacity(rewardOpacity)
-                        .padding(.top, 12)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .zIndex(2)
-                }
-                
-                if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
-                    ZStack {
-                         Color.clear.ignoresSafeArea()
-                             .onTapGesture { } // Block taps
-                         MoodFeedbackOverlayView(taskCategory: task.category)
-                             .frame(maxWidth: 360)
-                             .padding()
-                    }
-                    .transition(.opacity)
-                    .zIndex(10)
-					.interactiveDismissDisabled(true)
-                }
-                
-                if appModel.showOnboardingCelebration {
-                    ZStack {
-                        Color.black.opacity(0.45)
-                            .ignoresSafeArea()
-                            .onTapGesture { appModel.dismissOnboardingCelebration() }
-                        OnboardingCelebrationView {
-                            appModel.dismissOnboardingCelebration()
-                        }
-                        .frame(maxWidth: 320)
-                        .padding()
-                    }
-                    .transition(.opacity)
-                    .zIndex(20)
-                    .interactiveDismissDisabled(true)
-                }
             }
-        }
-        .onChange(of: appModel.rewardBanner) { _, newValue in
-            guard let reward = newValue else { return }
-            activeReward = reward
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                rewardOpacity = 1
-            }
-            bannerTask?.cancel()
-            bannerTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 50_000_000)
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    rewardOpacity = 0
-                }
-                try? await Task.sleep(nanoseconds: 50_000_000)
-                activeReward = nil
-                appModel.consumeRewardBanner()
-                
-                if appModel.pendingMoodFeedbackTask != nil {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    withAnimation {
-                        showMoodFeedback = true
-                    }
-                }
-            }
-        }
-        .onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
-            if newValue == nil {
-                withAnimation {
-                    showMoodFeedback = false
-                }
-                // Check if we should show onboarding celebration after mood feedback
-                appModel.checkAndShowOnboardingCelebration()
-            }
-        }
-        .onDisappear {
-            bannerTask?.cancel()
         }
     }
 }
