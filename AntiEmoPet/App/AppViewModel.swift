@@ -1064,7 +1064,7 @@ final class AppViewModel: ObservableObject {
 		prepareSlotGenerationSchedule(for: Date())
 		checkSlotGenerationTrigger()
 		
-		logger.info("[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
+		logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
 	}
 
 	private func bindLocationUpdates() {

@@ -36,7 +36,7 @@ final class PetViewModel: ObservableObject {
         )
         statusSummary = StatusSummary(
             energy: 50,
-            bond: 30,
+            bond: 35,
             levelLabel: "LV 1",
             experienceProgress: 0
         )
@@ -60,7 +60,7 @@ final class PetViewModel: ObservableObject {
             summary.experienceProgress = min(max(progress, 0), 1)
             summary.levelLabel = "LV \(pet.level)"
         } else {
-            summary.bond = 30
+            summary.bond = 35
             summary.experienceProgress = 0
             summary.levelLabel = ""
         }

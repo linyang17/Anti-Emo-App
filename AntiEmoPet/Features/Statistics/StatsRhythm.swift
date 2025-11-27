@@ -29,7 +29,7 @@ struct StatsRhythmSection: View {
 				rhythmWeatherChart(data: analysis.weatherAverages)
 			}
 
-			DashboardCard(title: "Mood vs Daylight", icon: "sun.rise.fill") {
+			DashboardCard(title: "Mood vs Daylight", icon: "sun.horizon.fill") {
 				rhythmDaylightLineChart(data: analysis.daylightLengthData)
 			}
 			
