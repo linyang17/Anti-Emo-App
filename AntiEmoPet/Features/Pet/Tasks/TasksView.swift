@@ -20,47 +20,45 @@ struct TasksView: View {
     let lastMood: Int
 
     var body: some View {
-        ZStack {
-            Color(uiColor: .systemGroupedBackground)
-            
-            VStack(spacing: 0) {
-                header
-					.padding(12)
-                
-                ZStack(alignment: .top) {
-                    List {
-                    Section {
-                        ForEach(appModel.todayTasks) { task in
-                            TaskRow(task: task, appModel: appModel, viewModel: viewModel)
-                        }
-                    }
-                    if appModel.todayTasks.isEmpty {
-                        Section {
-                            Text("There's currently nothing to do for you, take some time to relax and recharge!.")
-                                .appFont(FontTheme.body)
-                        }
-                    }
-                }
-                .listStyle(.insetGrouped)
+		
+		VStack(spacing: .h(0.015)) {
+			header
+				.padding(.top, .h(0.03))
+				.padding(.horizontal, .w(0.1))
 
-            }
-        }
+			Divider().opacity(0.25)
+			
+			List {
+				Section {
+					ForEach(appModel.todayTasks) { task in
+						TaskRow(task: task, appModel: appModel, viewModel: viewModel)
+					}
+				}
+				if appModel.todayTasks.isEmpty {
+					Section {
+						Text("There's currently nothing to do for you, take some time to relax and recharge!.")
+							.appFont(FontTheme.body)
+					}
+				}
+			}
+			.listStyle(.insetGrouped)
+		}
     }
-}
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             if let report = appModel.weatherReport {
                 Text(report.currentWeather.rawValue.capitalized)
-                    .appFont(FontTheme.caption)
+                    .appFont(FontTheme.body)
                     .foregroundStyle(.secondary)
             } else {
                 Text("Weather unavailable")
-                    .appFont(FontTheme.caption)
+                    .appFont(FontTheme.body)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
+			
             if viewModel.isRefreshing {
                 ProgressView()
             } else if appModel.canRefreshCurrentSlot {
@@ -72,20 +70,18 @@ struct TasksView: View {
                     Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
                         .padding(12)
                 }
-                .appFont(FontTheme.footnote)
+                .appFont(FontTheme.body)
             } else if allTasksCompleted {
-                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, come back in the next session" : "All completed!")
+                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, \n come back in the next session" : "All completed!")
                     .appFont(FontTheme.caption)
                     .foregroundStyle(.secondary)
             } else {
                 Text("Refresh")
-                    .appFont(FontTheme.footnote)
+                    .appFont(FontTheme.body)
                     .foregroundStyle(.secondary)
                     .padding(12)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
     
     private var allTasksCompleted: Bool {
@@ -142,7 +138,6 @@ private struct TaskRow: View {
 	private var taskActionButton: some View {
 		switch task.status {
 		case .pending:
-			// 未开始 - 显示"开始"按钮
 			Button {
 				appModel.startTask(task)
 			} label: {
@@ -156,7 +151,6 @@ private struct TaskRow: View {
 			.buttonStyle(.plain)
 			
 		case .started:
-			// 已开始但未到时间 - 显示等待图标
 			HStack(spacing: 4) {
 				ProgressView()
 					.scaleEffect(0.8)
@@ -166,7 +160,6 @@ private struct TaskRow: View {
 			}
 			
 		case .ready:
-			// 可以完成 - 显示"完成"按钮
 			Button {
 				appModel.completeTask(task)
 			} label: {
@@ -180,7 +173,6 @@ private struct TaskRow: View {
 			.buttonStyle(.plain)
 			
 		case .completed:
-			// 已完成 - 显示完成图标
 			Image(systemName: "checkmark.circle.fill")
 				.foregroundStyle(.black.opacity(0.5))
 				.imageScale(.large)
@@ -208,21 +200,21 @@ struct RewardToastView: View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .foregroundStyle(.yellow)
+				.padding(8)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Energy +\(event.energy)")
                 Text("Xp +\(event.xp)")
                 if let snack = event.snackName {
                     Text("You got \(snack) in the bag!")
-                        .font(.caption2)
+                        .font(.body)
                 }
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 12)
+        .padding(20)
         .background(.thinMaterial, in: Capsule())
         .shadow(radius: 12)
-        .padding(.horizontal, 32)
     }
 }

@@ -1097,14 +1097,6 @@ final class AppViewModel: ObservableObject {
 			}
 			.store(in: &cancellables)
 
-		locationService.$lastKnownLocation
-			.compactMap { $0 }
-			.receive(on: RunLoop.main)
-			.sink { [weak self] location in
-				guard let self else { return }
-				Task { await self.refreshWeather(using: location) }
-			}
-			.store(in: &cancellables)
 	}
 
 	private func bindSleepReminder() {
