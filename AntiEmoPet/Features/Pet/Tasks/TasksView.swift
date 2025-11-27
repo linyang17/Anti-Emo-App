@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct RewardEvent: Identifiable, Equatable {
 	let id = UUID()
