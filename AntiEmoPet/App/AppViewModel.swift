@@ -52,16 +52,17 @@ final class AppViewModel: ObservableObject {
         private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
         private let refreshRecordsKey = "taskRefreshRecords"
 	private let slotScheduleKey = "taskSlotSchedule"
-	private let slotGenerationKey = "taskSlotGenerationRecords"
-	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+        private let slotGenerationKey = "taskSlotGenerationRecords"
+        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
         private let pettingLimitKey = "dailyPettingLimit"
         private var lastObservedSlot: TimeSlot?
         private var isLoadingData = false
+        private var awaitingLocationWeatherRefresh = false
         private typealias RefreshRecordMap = [String: [String: Double]]
-	private typealias SlotScheduleMap = [String: [String: Double]]
-	private typealias SlotGenerationMap = [String: [String: Bool]]
-	private typealias SlotPenaltyMap = [String: [String: Bool]]
-	private var slotMonitorTask: Task<Void, Never>?
+        private typealias SlotScheduleMap = [String: [String: Double]]
+        private typealias SlotGenerationMap = [String: [String: Bool]]
+        private typealias SlotPenaltyMap = [String: [String: Bool]]
+        private var slotMonitorTask: Task<Void, Never>?
 	private var pettingNoticeTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
 	let formatter = ISO8601DateFormatter()
@@ -144,24 +145,29 @@ final class AppViewModel: ObservableObject {
 			userStats?.region = cachedCity
 		}
 		
-		if let stats = userStats, stats.totalEnergy <= 0 {
-			stats.totalEnergy = 0
-		}
+                if let stats = userStats, stats.totalEnergy <= 0 {
+                        stats.totalEnergy = 0
+                }
 
-		// Load stored energy history (for daily totalEnergy snapshots)
+                // Load stored energy history (for daily totalEnergy snapshots)
 		if let data = UserDefaults.standard.data(forKey: "energyHistory"),
 		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
 			energyHistory = decoded
 		}
 		
-		applyDailyBondingDecayIfNeeded()
+                applyDailyBondingDecayIfNeeded()
 
-		if userStats?.shareLocationAndWeather == true {
-				_ = await requestWeatherAccess()
-				_ = await locationService.requestLocationOnce()
-		}
+                if userStats?.shareLocationAndWeather == true {
+                        let granted = await requestWeatherAccess()
+                        if granted {
+                                awaitingLocationWeatherRefresh = locationService.lastKnownLocation == nil
+                                _ = await locationService.requestLocationOnce()
+                        }
+                }
 
-		await refreshWeather(using: locationService.lastKnownLocation)
+                if !awaitingLocationWeatherRefresh {
+                        await refreshWeather(using: locationService.lastKnownLocation)
+                }
 		
 		// Determine current slot
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -192,16 +198,21 @@ final class AppViewModel: ObservableObject {
 		
 	}
 	
-	private func fetchInitialWeather() async {
-			// Request location once when app opens
-		if let stats = userStats, stats.shareLocationAndWeather {
-			_ = await requestWeatherAccess()
-			_ = await locationService.requestLocationOnce()
-		}
-		await refreshWeather(using: locationService.lastKnownLocation)
-		let latString = locationService.lastKnownLocation.map { String($0.coordinate.latitude) } ?? "nil"
-		let lonString = locationService.lastKnownLocation.map { String($0.coordinate.longitude) } ?? "nil"
-		logger
+        private func fetchInitialWeather() async {
+                        // Request location once when app opens
+                if let stats = userStats, stats.shareLocationAndWeather {
+                        let granted = await requestWeatherAccess()
+                        if granted {
+                                awaitingLocationWeatherRefresh = locationService.lastKnownLocation == nil
+                                _ = await locationService.requestLocationOnce()
+                        }
+                }
+                if !awaitingLocationWeatherRefresh {
+                        await refreshWeather(using: locationService.lastKnownLocation)
+                }
+                let latString = locationService.lastKnownLocation.map { String($0.coordinate.latitude) } ?? "nil"
+                let lonString = locationService.lastKnownLocation.map { String($0.coordinate.longitude) } ?? "nil"
+                logger
 			.info(
 				"[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity), lat: \(latString), lon: \(lonString)"
 			)
@@ -1097,15 +1108,16 @@ final class AppViewModel: ObservableObject {
 			}
 			.store(in: &cancellables)
 
-		locationService.$lastKnownLocation
-			.compactMap { $0 }
-			.receive(on: RunLoop.main)
-			.sink { [weak self] location in
-				guard let self else { return }
-				Task { await self.refreshWeather(using: location) }
-			}
-			.store(in: &cancellables)
-	}
+                locationService.$lastKnownLocation
+                        .compactMap { $0 }
+                        .receive(on: RunLoop.main)
+                        .sink { [weak self] location in
+                                guard let self else { return }
+                                self.awaitingLocationWeatherRefresh = false
+                                Task { await self.refreshWeather(using: location) }
+                        }
+                        .store(in: &cancellables)
+        }
 
 	private func bindSleepReminder() {
 		sleepReminderService.$isReminderDue
