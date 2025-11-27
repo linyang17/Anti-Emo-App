@@ -155,6 +155,13 @@ final class AppViewModel: ObservableObject {
 		}
 		
 		applyDailyBondingDecayIfNeeded()
+
+		if userStats?.shareLocationAndWeather == true {
+				_ = await requestWeatherAccess()
+				_ = await locationService.requestLocationOnce()
+		}
+
+		await refreshWeather(using: locationService.lastKnownLocation)
 		
 		// Determine current slot
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -1069,18 +1076,6 @@ final class AppViewModel: ObservableObject {
 	}
 
 	private func bindLocationUpdates() {
-		
-		locationService.$lastKnownLocation
-			.compactMap { $0 }
-			.receive(on: RunLoop.main)
-			.sink { [weak self] location in
-				guard let self else { return }
-				Task { _ = await locationService.requestLocationOnce()
-					await self.refreshWeather(using: location)
-				}
-			}
-			.store(in: &cancellables)
-		
 		locationService.$lastRegionComponents
 			.compactMap { $0 }
 			.receive(on: RunLoop.main)
@@ -1089,7 +1084,7 @@ final class AppViewModel: ObservableObject {
 			}
 			.store(in: &cancellables)
 		
-			// Fallback: keep legacy string updates
+		// Fallback: keep legacy string updates
 		locationService.$lastKnownCity
 			.removeDuplicates()
 			.receive(on: RunLoop.main)
@@ -1099,6 +1094,15 @@ final class AppViewModel: ObservableObject {
 					self.userStats?.region = city
 					self.storage.persist()
 				}
+			}
+			.store(in: &cancellables)
+
+		locationService.$lastKnownLocation
+			.compactMap { $0 }
+			.receive(on: RunLoop.main)
+			.sink { [weak self] location in
+				guard let self else { return }
+				Task { await self.refreshWeather(using: location) }
 			}
 			.store(in: &cancellables)
 	}
@@ -1235,7 +1239,6 @@ extension AppViewModel {
 		if currentSlot != lastObservedSlot {
 			lastObservedSlot = currentSlot
 			logger.debug("Slot changed → \(currentSlot.rawValue, privacy: .public)")
-			await refreshWeather(using: locationService.lastKnownLocation)
 			prepareSlotGenerationSchedule(for: currentDate)
 		} else {
 			prepareSlotGenerationSchedule(for: currentDate)
