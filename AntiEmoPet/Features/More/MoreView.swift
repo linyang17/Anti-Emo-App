@@ -33,6 +33,9 @@ struct MoreView: View {
 				NavigationLink(destination: SettingView().environmentObject(appModel)) {
 					Label("Settings", systemImage: "gearshape")
 				}
+				NavigationLink(destination: FeedbackView()) {
+					Label("Feedback", systemImage: "envelope")
+				}
 			}
 				
 				// TODO: add more relevant settings

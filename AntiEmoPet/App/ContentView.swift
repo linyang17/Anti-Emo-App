@@ -23,19 +23,22 @@ struct ContentView: View {
                                 evaluateWelcomeDisplay()
                         }
                 }
-                .onChange(of: appModel.userStats?.Onboard ?? false) { _, _ in
-                        evaluateWelcomeDisplay()
-                }
-                .fullScreenCover(isPresented: $showWelcome) {
+                .overlay {
+                    if showWelcome {
                         WelcomeView {
-                                showWelcome = false
+                            withAnimation(.easeInOut(duration: 0.35)) { showWelcome = false }
                         }
+						.transition(.opacity)
+                        .ignoresSafeArea()
+                    }
                 }
+                .animation(.easeInOut(duration: 0.35), value: showWelcome)
 	}
 
 	private func evaluateWelcomeDisplay() {
-		guard let onboarded = appModel.userStats?.Onboard else { return }
-		showWelcome = onboarded
+	    guard let onboarded = appModel.userStats?.Onboard else { return }
+	    // Only show global welcome when not in onboarding flow
+	    showWelcome = onboarded && !appModel.showOnboarding
 	}
 }
 

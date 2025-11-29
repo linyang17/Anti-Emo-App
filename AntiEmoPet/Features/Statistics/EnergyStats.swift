@@ -21,41 +21,46 @@ struct EnergyStatsSection: View {
 				HStack(spacing: 20) {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Avg Past Week")
+							Text("Avg Added Past Week")
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(energy.averageDailyAddPastWeek)")
 								.font(.title3.weight(.medium))
 						}
+						
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Total Tasks")
+							Text("Tasks Done Today")
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(energy.todayTaskCount)")
 								.font(.title3.weight(.medium))
 						}
 					}
+					.frame(maxWidth: .w(0.45))
+					
 					Spacer()
 					
 					VStack(alignment: .leading, spacing: 12) {
+						
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Avg Tasks Completed")
+							Text("Trend")
+								.font(.subheadline)
+								.foregroundStyle(.secondary)
+							Text(energy.trend.rawValue)
+								.font(.title3.weight(.medium))
+								.foregroundStyle(energy.trend == .up ? .green : (energy.trend == .down ? .red : .primary))
+						}
+						
+						VStack(alignment: .leading, spacing: 5) {
+							Text("Avg Tasks Done Past Week")
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
 							Text(String(format: "%.0f", energy.averageDailyTaskCountPastWeek))
 								.font(.title3.weight(.medium))
 						}
-						VStack(alignment: .leading, spacing: 5) {
-							Text("Trend")
-								.font(.subheadline)
-								.foregroundStyle(.secondary)
-                            Text(energy.trend.rawValue)
-								.font(.title3.weight(.medium))
-                                .foregroundStyle(energy.trend == .up ? .green : (energy.trend == .down ? .red : .primary))
-						}
 					}
+					.frame(maxWidth: .w(0.45))
 				}
-				.frame(maxWidth: 350)
 				.padding(.bottom, 12)
 				
                 // Comment

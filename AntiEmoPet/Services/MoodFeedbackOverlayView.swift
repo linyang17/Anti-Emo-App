@@ -28,24 +28,13 @@ struct MoodFeedbackOverlayView: View {
 			}
 		}
 
-		// TODO: replace with facial expression image
 		var icon: String {
 			switch self {
-			case .muchWorse: return "chevron.down.2"
-			case .worse: return "chevron.down"
-			case .unchanged: return "minus.circle.fill"
-			case .better: return "chevron.up"
-			case .muchBetter: return "chevron.up.2"
-			}
-		}
-
-		var color: Color {
-			switch self {
-			case .muchWorse: return .red
-			case .worse: return .orange
-			case .unchanged: return .gray
-			case .better: return .green
-			case .muchBetter: return .blue
+			case .muchWorse: return "mood-facepalm"
+			case .worse: return "mood-upset"
+			case .unchanged: return "mood-calm"
+			case .better: return "mood-wink"
+			case .muchBetter: return "mood-laugh"
 			}
 		}
 	}
@@ -56,14 +45,14 @@ struct MoodFeedbackOverlayView: View {
 						
 					LumioSay(text: "Feeling better?")
 
-					HStack(spacing: 8) {
+					HStack(spacing: 2) {
 						ForEach(FeedbackOption.allCases) { option in
 							FeedbackButton(option: option, isSelected: selectedOption == option) {
 								withAnimation(.spring(response: 0.3)) {
 										selectedOption = option
 								}
 								
-								DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+								DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 										appModel.submitMoodFeedback(
 														delta: option.rawValue,
 														for: taskCategory
@@ -74,27 +63,23 @@ struct MoodFeedbackOverlayView: View {
 							}
                         }
                         .padding(28)
-                        .background(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .fill(.ultraThinMaterial)
-                        )
                 }
         }
 	
 }
 
 /// 反馈按钮组件
-private struct FeedbackButton: View {
+struct FeedbackButton: View {
 	let option: MoodFeedbackOverlayView.FeedbackOption
 	let isSelected: Bool
 	let action: () -> Void
 
 	var body: some View {
 		Button(action: action) {
-			Image(systemName: option.icon)
-				.font(.title.weight(.semibold))
-				.foregroundStyle(.white)
-				.frame(width: 66, height: 66)
+			Image(option.icon)
+				.resizable()
+				.scaledToFit()
+				.frame(width: 55, height: 55)
 		}
 		.buttonStyle(.plain)
 	}

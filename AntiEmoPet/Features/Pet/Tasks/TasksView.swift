@@ -25,22 +25,24 @@ struct TasksView: View {
 			header
 				.padding(.top, .h(0.03))
 				.padding(.horizontal, .w(0.1))
-
-			Divider().opacity(0.25)
 			
 			List {
 				Section {
 					ForEach(appModel.todayTasks) { task in
 						TaskRow(task: task, appModel: appModel, viewModel: viewModel)
 					}
+					.listRowBackground(Color.clear)
 				}
+				
 				if appModel.todayTasks.isEmpty {
 					Section {
 						Text("There's currently nothing to do for you, take some time to relax and recharge!.")
 							.appFont(FontTheme.body)
 					}
+					.listRowBackground(Color.clear)
 				}
 			}
+			.scrollContentBackground(.hidden) 
 			.listStyle(.insetGrouped)
 		}
     }
@@ -91,48 +93,48 @@ struct TasksView: View {
 
 /// 任务行组件 - 显示不同状态的按钮和倒计时
 private struct TaskRow: View {
-        let task: UserTask
-        let appModel: AppViewModel
-        let viewModel: TasksViewModel
-		@State private var remainingTime: TimeInterval = 0
-		@State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
+	let task: UserTask
+	let appModel: AppViewModel
+	let viewModel: TasksViewModel
+	@State private var remainingTime: TimeInterval = 0
+	@State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+	
 	var body: some View {
-			HStack {
-				VStack(alignment: .leading, spacing: 6) {
-					Text(task.title)
-						.appFont(FontTheme.body)
-					HStack {
-						Text(task.category.title)
-							.appFont(FontTheme.caption)
-							.foregroundStyle(.secondary)
-						Text(viewModel.badge(for: task))
-							.appFont(FontTheme.caption)
-							.foregroundStyle(.secondary)
-					}
-				}
-				Spacer()
-				VStack {
-					if task.status == .started, let canComplete = task.canCompleteAfter {
-						Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
-							.appFont(FontTheme.caption)
-							.foregroundStyle(.orange)
-					}
-					taskActionButton
+		HStack {
+			VStack(alignment: .leading, spacing: 6) {
+				Text(task.title)
+					.appFont(FontTheme.body)
+				HStack {
+					Text(task.category.title)
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.secondary)
+					Text(viewModel.badge(for: task))
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.secondary)
 				}
 			}
-			.padding(.vertical, 6)
-			.onAppear {
-				remainingTime = max(0, task.canCompleteAfter?.timeIntervalSinceNow ?? 0)
-			}
-			.onReceive(timer) { _ in
-				guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
-				remainingTime = max(0, canComplete.timeIntervalSinceNow)
-				if remainingTime <= 0 {
-					appModel.updateTaskStatus(task.id, to: .ready)
+			Spacer()
+			VStack {
+				if task.status == .started, let canComplete = task.canCompleteAfter {
+					Text(formatRemainingTime(remainingTime > 0 ? remainingTime : canComplete.timeIntervalSinceNow))
+						.appFont(FontTheme.caption)
+						.foregroundStyle(.orange)
 				}
+				taskActionButton
 			}
 		}
+		.padding(.vertical, 6)
+		.onAppear {
+			remainingTime = max(0, task.canCompleteAfter?.timeIntervalSinceNow ?? 0)
+		}
+		.onReceive(timer) { _ in
+			guard task.status == .started, let canComplete = task.canCompleteAfter else { return }
+			remainingTime = max(0, canComplete.timeIntervalSinceNow)
+			if remainingTime <= 0 {
+				appModel.updateTaskStatus(task.id, to: .ready)
+			}
+		}
+	}
 	
 	@ViewBuilder
 	private var taskActionButton: some View {
@@ -174,47 +176,47 @@ private struct TaskRow: View {
 			
 		case .completed:
 			Image(systemName: "checkmark.circle.fill")
+				.font(.subheadline.weight(.medium))
 				.foregroundStyle(.black.opacity(0.5))
 				.imageScale(.large)
 		}
 	}
 	
-        private func formatRemainingTime(_ interval: TimeInterval) -> String {
-                let remaining = max(0, interval)
-                let minutes = Int(remaining) / 60
-                let seconds = Int(remaining) % 60
+	
+	private func formatRemainingTime(_ interval: TimeInterval) -> String {
+		let remaining = max(0, interval)
+		let minutes = Int(remaining) / 60
+		let seconds = Int(remaining) % 60
 		
 		if minutes > 0 {
 			return String(format: "%d:%02d", minutes, seconds)
 		} else {
 			return String(format: "00:%02d", seconds)
 		}
+		
 	}
+}
 	
-}
-
-struct RewardToastView: View {
-    let event: RewardEvent
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "sparkles")
-                .foregroundStyle(.yellow)
-				.padding(8)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Energy +\(event.energy)")
-                Text("Xp +\(event.xp)")
-                if let snack = event.snackName {
-                    Text("You got \(snack) in the bag!")
-                        .font(.body)
-                }
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
-            Spacer(minLength: 0)
-        }
-        .padding(20)
-        .background(.thinMaterial, in: Capsule())
-        .shadow(radius: 12)
-    }
-}
+	struct RewardToastView: View {
+		let event: RewardEvent
+		
+		var body: some View {
+			HStack(spacing: 4) {
+				Image(systemName: "sparkles")
+					.foregroundStyle(.yellow)
+				
+				VStack(alignment: .leading, spacing: 2) {
+					LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp)", style: FontTheme.body)
+					if let snack = event.snackName {
+						LumioSay(text: "You got a \(snack) in the bag!", style: FontTheme.body)
+					}
+				}
+				.font(.subheadline.weight(.semibold))
+				.foregroundStyle(.white)
+				Spacer(minLength: 0)
+			}
+			.padding(12)
+			.frame(maxWidth: .w(0.5))
+			.shadow(radius: 6)
+		}
+	}

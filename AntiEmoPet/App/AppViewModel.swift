@@ -153,8 +153,6 @@ final class AppViewModel: ObservableObject {
 		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
 			energyHistory = decoded
 		}
-		
-		applyDailyBondingDecayIfNeeded()
 
 		if userStats?.shareLocationAndWeather == true {
 				_ = await requestWeatherAccess()
@@ -188,6 +186,9 @@ final class AppViewModel: ObservableObject {
 
 		isLoading = false
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+		if userStats!.TotalDays > 1 {
+			applyDailyBondingDecayIfNeeded()
+		}
 		recordMoodOnLaunch()
 		
 	}
@@ -899,45 +900,32 @@ final class AppViewModel: ObservableObject {
 	}
 
 
-        private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
-                guard let stats = userStats else { return }
-                let calendar = TimeZoneManager.shared.calendar
-                let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
-                let today = calendar.startOfDay(for: date)
-		guard today > lastDay else {
-			stats.lastActiveDate = date
-			return
-		}
-		let decayDays = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
-		guard decayDays > 0 else { return }
-                petEngine.applyDailyDecay(days: decayDays)
-                stats.lastActiveDate = date
-                storage.persist()
+        func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
+                return
         }
 
-        func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
-                let calendar = TimeZoneManager.shared.calendar
-                let dkey = dayKey(for: date)
-                var penaltyRecords = purgePenaltyRecords(loadPenaltyRecords(), keepingDay: dkey)
-                var slotMap = penaltyRecords[dkey] ?? [:]
-                guard slotMap[slot.rawValue] != true else { return }
+	
+        func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
+            let cal = TimeZoneManager.shared.calendar
+			let todayStart = cal.startOfDay(for: .now)
 
-                let intervals = taskGenerator.scheduleIntervals(for: date)
-                guard let interval = intervals[slot] else { return }
+            // Guard: only run after local midnight and once per day
+            let stampKey = "bondingPenalty.lastEvaluatedDay"
+            let todayStamp = dayKey(for: todayStart)
+            if UserDefaults.standard.string(forKey: stampKey) == todayStamp { return }
+			guard .now >= todayStart else { return }
 
-                let slotTasks = todayTasks.filter { task in
-                        guard calendar.isDate(task.date, inSameDayAs: date) else { return false }
-                        return interval.contains(task.date)
-                }
-
-                guard slotTasks.contains(where: { $0.status != .completed }) else { return }
-
-			petEngine.applyLightPenalty()
+            // Evaluate yesterday's completion
+            let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            let tasks = storage.fetchTasks(for: yesterday)
+            let didComplete = tasks.contains { $0.status == .completed }
+            if !didComplete {
+                petEngine.applyLightPenalty()
                 storage.persist()
-                slotMap[slot.rawValue] = true
-                penaltyRecords[dkey] = slotMap
-                savePenaltyRecords(penaltyRecords)
                 showPettingNotice("Lumio felt a bit lonely (bonding level down)")
+            }
+
+            UserDefaults.standard.set(todayStamp, forKey: stampKey)
         }
 
         private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {

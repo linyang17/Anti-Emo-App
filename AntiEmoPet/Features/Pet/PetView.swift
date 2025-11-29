@@ -16,6 +16,7 @@ struct PetView: View {
         @State private var rewardOpacity: Double = 0
         @State private var bannerTask: Task<Void, Never>?
         @State private var showMoodFeedback = false
+        @State private var appearOpacity: Double = 0
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -33,10 +34,12 @@ struct PetView: View {
 
 			content()
 		}
+        .opacity(appearOpacity)
 			.overlay(alignment: .topTrailing) {
 				VStack(alignment: .trailing, spacing: .h(0.15)) {
 						MoreButton
 							.padding(.trailing, .w(0.1))
+							.padding(.top, .h(0.02))
 						taskButton
 							.padding(.trailing, .w(0.05))
 				}
@@ -48,18 +51,23 @@ struct PetView: View {
 			.overlay { overlayStack }
 			.sheet(item: $activeSheet) { sheet in
 			switch sheet {
-			case .tasks:
-				TasksView(lastMood: mood.lastMood)
-					.presentationDetents([.medium])
-					.presentationDragIndicator(.hidden)
-			case .shop:
-				ShopView()
-					.presentationDetents([.medium])
-					.presentationDragIndicator(.hidden)
+				case .tasks:
+					TasksView(lastMood: mood.lastMood)
+						.presentationDetents([.fraction(0.55)])
+						.presentationBackground(.thinMaterial)
+						.presentationDragIndicator(.hidden)
+				case .shop:
+					ShopView()
+						.presentationDetents([.fraction(0.55)])
+						.presentationBackground(.ultraThinMaterial)
+						.presentationDragIndicator(.hidden)
 			}
 		}
 			.toolbar(.hidden, for: .navigationBar)
 			.onAppear {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    appearOpacity = 1
+                }
 					viewModel.sync(with: appModel)
 					if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
 							mood = summary
@@ -95,16 +103,13 @@ struct PetView: View {
 					}
 					bannerTask?.cancel()
 					bannerTask = Task { @MainActor in
-							try? await Task.sleep(nanoseconds: 1_500_000_000)
+							try? await Task.sleep(nanoseconds: 500_000_000)
 							withAnimation(.easeInOut(duration: 0.5)) {
 									rewardOpacity = 0
 							}
-							try? await Task.sleep(nanoseconds: 500_000_000)
-							activeReward = nil
 							appModel.consumeRewardBanner()
 
 							if appModel.pendingMoodFeedbackTask != nil {
-									try? await Task.sleep(nanoseconds: 1_000_000_000)
 									await MainActor.run {
 											withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
 													showMoodFeedback = true
@@ -138,7 +143,7 @@ struct PetView: View {
 	@ViewBuilder
 	private func content() -> some View {
 		if let pet = appModel.pet {
-			VStack(alignment: .leading, spacing: .h(0.03)) {
+			VStack(alignment: .leading) {
 				topBar
 					.padding(.vertical, .h(0.03))
 					.padding(.horizontal, .w(0.12))
@@ -149,7 +154,7 @@ struct PetView: View {
 			}
 			.overlay(alignment: .top) {
 				pettingNoticeOverlay()
-					.padding(.top, .h(0.03))
+					.padding(.top, .h(0.05))
 			}
 		} else {
 			VStack(spacing: .h(0.1)) {
@@ -283,7 +288,7 @@ struct PetView: View {
 			Image("giftbox")
 				.resizable()
 				.scaledToFit()
-				.frame(width: 100)
+				.frame(width: 90)
 				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 2, y: 2)
 		}
 		.buttonStyle(.borderless)
@@ -374,7 +379,7 @@ struct PetView: View {
 					Image(systemName: "heart.fill")
 						.appFont(FontTheme.title)
 						.foregroundStyle(Color.pink.opacity(0.85 - Double(index) * 0.2))
-						.offset(x: CGFloat(index * 5), y: CGFloat(-240 - index * 20))
+						.offset(x: CGFloat(index * 5), y: CGFloat(-240 - index * 10))
 						.scaleEffect(1 + CGFloat(index) * 0.2)
 				}
 			}
@@ -392,24 +397,7 @@ struct PetView: View {
 				.transition(.move(edge: .top).combined(with: .opacity))
 		}
 	}
-	
-	@ViewBuilder
-        private func presentSheet(for sheet: ActiveSheet) -> some View {
-                switch sheet {
-                case .tasks:
-                        TasksView(lastMood: mood.lastMood)
-							.environmentObject(appModel)
-							.presentationDetents([.fraction(0.55)])
-							.presentationBackground(.ultraThickMaterial)
-							.presentationDragIndicator(.hidden)
-                case .shop:
-                        ShopView()
-							.environmentObject(appModel)
-							.presentationDetents([.fraction(0.55)])
-							.presentationBackground(.ultraThickMaterial)
-							.presentationDragIndicator(.hidden)
-                }
-        }
+
 	
         @ViewBuilder
         private var overlayStack: some View {
@@ -425,9 +413,9 @@ struct PetView: View {
                         }
 
                         if let reward = activeReward {
-                                Color.clear
+								Color.clear
                                         .ignoresSafeArea()
-                                        .allowsHitTesting(false)
+                                        .allowsHitTesting(true)
                                         .zIndex(998)
                                 RewardToastView(event: reward)
                                         .opacity(rewardOpacity)
@@ -441,9 +429,9 @@ struct PetView: View {
 
                         if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
                                 Color.clear
-                                        .ignoresSafeArea()
-                                        .transition(.opacity)
-                                        .zIndex(998)
+										.ignoresSafeArea()
+										.transition(.opacity)
+										.zIndex(998)
                                 MoodFeedbackOverlayView(
                                         taskCategory: task.category
                                 )
