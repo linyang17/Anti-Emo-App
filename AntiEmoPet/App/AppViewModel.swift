@@ -48,19 +48,21 @@ final class AppViewModel: ObservableObject {
 	private let weatherService = WeatherService()
 	private let analytics = AnalyticsService()
 	private var cancellables: Set<AnyCancellable> = []
-	private let sleepReminderService = SleepReminderService()
-	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
-	private let refreshRecordsKey = "taskRefreshRecords"
+        private let sleepReminderService = SleepReminderService()
+        private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
+        private let refreshRecordsKey = "taskRefreshRecords"
 	private let slotScheduleKey = "taskSlotSchedule"
-	private let slotGenerationKey = "taskSlotGenerationRecords"
-	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
-	private let pettingLimitKey = "dailyPettingLimit"
-	private var lastObservedSlot: TimeSlot?
-	private typealias RefreshRecordMap = [String: [String: Double]]
-	private typealias SlotScheduleMap = [String: [String: Double]]
-	private typealias SlotGenerationMap = [String: [String: Bool]]
-	private typealias SlotPenaltyMap = [String: [String: Bool]]
-	private var slotMonitorTask: Task<Void, Never>?
+        private let slotGenerationKey = "taskSlotGenerationRecords"
+        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+        private let pettingLimitKey = "dailyPettingLimit"
+        private var lastObservedSlot: TimeSlot?
+        private var isLoadingData = false
+        private var awaitingLocationWeatherRefresh = false
+        private typealias RefreshRecordMap = [String: [String: Double]]
+        private typealias SlotScheduleMap = [String: [String: Double]]
+        private typealias SlotGenerationMap = [String: [String: Bool]]
+        private typealias SlotPenaltyMap = [String: [String: Bool]]
+        private var slotMonitorTask: Task<Void, Never>?
 	private var pettingNoticeTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
 	let formatter = ISO8601DateFormatter()
@@ -110,11 +112,14 @@ final class AppViewModel: ObservableObject {
 		isLoading = false
 	}
 	
-	/// Full load for users who have completed onboarding
-	func load() async {
-		logger.info("Loading app data…")
-		
-		storage.bootstrapIfNeeded()
+        /// Full load for users who have completed onboarding
+        func load() async {
+                if isLoadingData { return }
+                isLoadingData = true
+                defer { isLoadingData = false }
+                logger.info("Loading app data…")
+
+                storage.bootstrapIfNeeded()
 		pet = storage.fetchPet()
 		userStats = storage.fetchStats()
 
@@ -140,18 +145,21 @@ final class AppViewModel: ObservableObject {
 			userStats?.region = cachedCity
 		}
 		
-		if let stats = userStats, stats.totalEnergy <= 0 {
-			stats.totalEnergy = 0
-		}
+                if let stats = userStats, stats.totalEnergy <= 0 {
+                        stats.totalEnergy = 0
+                }
 
-		// Load stored energy history (for daily totalEnergy snapshots)
+                // Load stored energy history (for daily totalEnergy snapshots)
 		if let data = UserDefaults.standard.data(forKey: "energyHistory"),
 		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
 			energyHistory = decoded
 		}
-		
-		applyDailyBondingDecayIfNeeded()
-		
+
+		if userStats?.shareLocationAndWeather == true {
+				_ = await requestWeatherAccess()
+				_ = await locationService.requestLocationOnce()
+		}
+
 		await refreshWeather(using: locationService.lastKnownLocation)
 		
 		// Determine current slot
@@ -179,20 +187,28 @@ final class AppViewModel: ObservableObject {
 
 		isLoading = false
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
+		if userStats!.TotalDays > 1 {
+			applyDailyBondingDecayIfNeeded()
+		}
 		recordMoodOnLaunch()
 		
 	}
 	
-	private func fetchInitialWeather() async {
-			// Request location once when app opens
-		if let stats = userStats, stats.shareLocationAndWeather {
-			_ = await requestWeatherAccess()
-			_ = await locationService.requestLocationOnce()
-		}
-		await refreshWeather(using: locationService.lastKnownLocation)
-		let latString = locationService.lastKnownLocation.map { String($0.coordinate.latitude) } ?? "nil"
-		let lonString = locationService.lastKnownLocation.map { String($0.coordinate.longitude) } ?? "nil"
-		logger
+        private func fetchInitialWeather() async {
+                        // Request location once when app opens
+                if let stats = userStats, stats.shareLocationAndWeather {
+                        let granted = await requestWeatherAccess()
+                        if granted {
+                                awaitingLocationWeatherRefresh = locationService.lastKnownLocation == nil
+                                _ = await locationService.requestLocationOnce()
+                        }
+                }
+                if !awaitingLocationWeatherRefresh {
+                        await refreshWeather(using: locationService.lastKnownLocation)
+                }
+                let latString = locationService.lastKnownLocation.map { String($0.coordinate.latitude) } ?? "nil"
+                let lonString = locationService.lastKnownLocation.map { String($0.coordinate.longitude) } ?? "nil"
+                logger
 			.info(
 				"[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity), lat: \(latString), lon: \(lonString)"
 			)
@@ -890,45 +906,32 @@ final class AppViewModel: ObservableObject {
 	}
 
 
-        private func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
-                guard let stats = userStats else { return }
-                let calendar = TimeZoneManager.shared.calendar
-                let lastDay = calendar.startOfDay(for: stats.lastActiveDate)
-                let today = calendar.startOfDay(for: date)
-		guard today > lastDay else {
-			stats.lastActiveDate = date
-			return
-		}
-		let decayDays = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
-		guard decayDays > 0 else { return }
-                petEngine.applyDailyDecay(days: decayDays)
-                stats.lastActiveDate = date
-                storage.persist()
+        func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
+                return
         }
 
-        func evaluateBondingPenalty(for slot: TimeSlot, reference date: Date = Date()) async {
-                let calendar = TimeZoneManager.shared.calendar
-                let dkey = dayKey(for: date)
-                var penaltyRecords = purgePenaltyRecords(loadPenaltyRecords(), keepingDay: dkey)
-                var slotMap = penaltyRecords[dkey] ?? [:]
-                guard slotMap[slot.rawValue] != true else { return }
+	
+        func applyDailyBondingDecayIfNeeded(reference date: Date = Date()) {
+            let cal = TimeZoneManager.shared.calendar
+			let todayStart = cal.startOfDay(for: .now)
 
-                let intervals = taskGenerator.scheduleIntervals(for: date)
-                guard let interval = intervals[slot] else { return }
+            // Guard: only run after local midnight and once per day
+            let stampKey = "bondingPenalty.lastEvaluatedDay"
+            let todayStamp = dayKey(for: todayStart)
+            if UserDefaults.standard.string(forKey: stampKey) == todayStamp { return }
+			guard .now >= todayStart else { return }
 
-                let slotTasks = todayTasks.filter { task in
-                        guard calendar.isDate(task.date, inSameDayAs: date) else { return false }
-                        return interval.contains(task.date)
-                }
-
-                guard slotTasks.contains(where: { $0.status != .completed }) else { return }
-
-			petEngine.applyLightPenalty()
+            // Evaluate yesterday's completion
+            let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            let tasks = storage.fetchTasks(for: yesterday)
+            let didComplete = tasks.contains { $0.status == .completed }
+            if !didComplete {
+                petEngine.applyLightPenalty()
                 storage.persist()
-                slotMap[slot.rawValue] = true
-                penaltyRecords[dkey] = slotMap
-                savePenaltyRecords(penaltyRecords)
                 showPettingNotice("Lumio felt a bit lonely (bonding level down)")
+            }
+
+            UserDefaults.standard.set(todayStamp, forKey: stampKey)
         }
 
         private func elapsedTaskSlots(before slot: TimeSlot, on date: Date) -> [TimeSlot] {
@@ -1055,8 +1058,7 @@ final class AppViewModel: ObservableObject {
 			let merged = storage.fetchSunEvents()
 			sunEvents = merged
 		}
-		// Region is automatically updated via bindLocationUpdates() listener when locationService.lastKnownCity changes
-		// Only update from weather report if location service hasn't provided a city yet
+		
 		if let city = report.locality, !(city.isEmpty), locationService.lastKnownCity.isEmpty {
 			userStats?.region = city
 			storage.persist()
@@ -1064,7 +1066,7 @@ final class AppViewModel: ObservableObject {
 		prepareSlotGenerationSchedule(for: Date())
 		checkSlotGenerationTrigger()
 		
-		logger.info("[AppViewModel] fetchInitialWeather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
+		logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
 	}
 
 	private func bindLocationUpdates() {
@@ -1089,14 +1091,6 @@ final class AppViewModel: ObservableObject {
 			}
 			.store(in: &cancellables)
 
-		locationService.$lastKnownLocation
-			.compactMap { $0 }
-			.receive(on: RunLoop.main)
-			.sink { [weak self] location in
-				guard let self else { return }
-				Task { await self.refreshWeather(using: location) }
-			}
-			.store(in: &cancellables)
 	}
 
 	private func bindSleepReminder() {
@@ -1191,17 +1185,18 @@ final class AppViewModel: ObservableObject {
 		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
 	}
 	
-	private func applyRegionComponents(_ components: RegionComponents) {
-		guard let stats = userStats else { return }
-		stats.regionLocality = components.locality
-		stats.regionAdministrativeArea = components.administrativeArea
-		stats.regionCountry = components.country
-		let formatted = components.formatted
-		if !formatted.isEmpty {
-			stats.region = formatted
-		}
-		storage.persist()
-	}
+        private func applyRegionComponents(_ components: RegionComponents) {
+                guard let stats = userStats else { return }
+                stats.regionLocality = components.locality
+                stats.regionAdministrativeArea = components.administrativeArea
+                stats.regionCountry = components.country
+                let formatted = components.formatted
+                if !formatted.isEmpty {
+                        stats.region = formatted
+                        TimeZoneManager.shared.updateTimeZone(forRegion: formatted)
+                }
+                storage.persist()
+        }
 }
 
 
@@ -1230,7 +1225,6 @@ extension AppViewModel {
 		if currentSlot != lastObservedSlot {
 			lastObservedSlot = currentSlot
 			logger.debug("Slot changed → \(currentSlot.rawValue, privacy: .public)")
-			await refreshWeather(using: locationService.lastKnownLocation)
 			prepareSlotGenerationSchedule(for: currentDate)
 		} else {
 			prepareSlotGenerationSchedule(for: currentDate)

@@ -10,6 +10,7 @@ struct MoodFeedbackOverlayView: View {
 
 	/// 反馈选项枚举
 	enum FeedbackOption: Int, CaseIterable, Identifiable {
+		case muchWorse = -10
 		case worse = -5
 		case unchanged = 0
 		case better = 5
@@ -19,81 +20,66 @@ struct MoodFeedbackOverlayView: View {
 
 		var label: String {
 			switch self {
+			case .muchWorse: return "Terrible"
 			case .worse: return "Worse"
 			case .unchanged: return "No Change"
 			case .better: return "Better"
-			case .muchBetter: return "Much Better"
+			case .muchBetter: return "Great"
 			}
 		}
 
 		var icon: String {
 			switch self {
-			case .worse: return "arrow.down.circle.fill"
-			case .unchanged: return "minus.circle.fill"
-			case .better: return "arrow.up.circle.fill"
-			case .muchBetter: return "arrow.up.circle.fill"
-			}
-		}
-
-		var color: Color {
-			switch self {
-			case .worse: return .red
-			case .unchanged: return .gray
-			case .better: return .green
-			case .muchBetter: return .blue
+			case .muchWorse: return "mood-facepalm"
+			case .worse: return "mood-upset"
+			case .unchanged: return "mood-calm"
+			case .better: return "mood-wink"
+			case .muchBetter: return "mood-laugh"
 			}
 		}
 	}
 
         var body: some View {
-                ZStack(alignment: .center) {
-                        VStack(spacing: 8) {
-                                
-								Text("Feeling better?")
-										.font(.title2)
-										.foregroundStyle(.secondary)
-										.padding(.bottom, 16)
+			ZStack(alignment: .center) {
+				VStack(spacing: 8) {
+						
+					LumioSay(text: "Feeling better?")
 
-                                HStack(spacing: 16) {
-                                        ForEach(FeedbackOption.allCases) { option in
-                                                FeedbackButton(option: option, isSelected: selectedOption == option) {
-                                                        withAnimation(.spring(response: 0.3)) {
-                                                                selectedOption = option
-                                                        }
-                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                                                appModel.submitMoodFeedback(
-                                                                                delta: option.rawValue,
-                                                                                for: taskCategory
-                                                                        )
-                                                        }
-                                                }
-                                        }
-                                }
+					HStack(spacing: 2) {
+						ForEach(FeedbackOption.allCases) { option in
+							FeedbackButton(option: option, isSelected: selectedOption == option) {
+								withAnimation(.spring(response: 0.3)) {
+										selectedOption = option
+								}
+								
+								DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+										appModel.submitMoodFeedback(
+														delta: option.rawValue,
+														for: taskCategory
+												)
+											}
+										}
+								}
+							}
                         }
                         .padding(28)
-                        .background(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .fill(.ultraThinMaterial)
-                        )
-                        .shadow(radius: 8)
-                        .padding(.horizontal, 32)
                 }
         }
 	
 }
 
 /// 反馈按钮组件
-private struct FeedbackButton: View {
+struct FeedbackButton: View {
 	let option: MoodFeedbackOverlayView.FeedbackOption
 	let isSelected: Bool
 	let action: () -> Void
 
 	var body: some View {
 		Button(action: action) {
-			Image(systemName: option.icon)
-				.font(.title2.weight(.semibold))
-				.foregroundStyle(.white)
-				.frame(width: 56, height: 56)
+			Image(option.icon)
+				.resizable()
+				.scaledToFit()
+				.frame(width: 55, height: 55)
 		}
 		.buttonStyle(.plain)
 	}

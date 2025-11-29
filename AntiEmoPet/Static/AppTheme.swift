@@ -59,3 +59,13 @@ extension View {
         self.foregroundStyle(AppTheme.primaryText)
     }
 }
+
+// MARK: Offset
+extension CGFloat {
+	static func w(_ proportion: CGFloat) -> CGFloat {
+		UIScreen.main.bounds.width * proportion // 按 iPhone 17 Pro 宽度比例
+	}
+	static func h(_ proportion: CGFloat) -> CGFloat {
+		UIScreen.main.bounds.height * proportion // 按 iPhone 17 Pro 高度比例
+	}
+}

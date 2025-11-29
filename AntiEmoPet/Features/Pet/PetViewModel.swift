@@ -35,7 +35,7 @@ final class PetViewModel: ObservableObject {
             timeOfDay: .day
         )
         statusSummary = StatusSummary(
-            energy: 50,
+            energy: 0,
             bond: 30,
             levelLabel: "LV 1",
             experienceProgress: 0
@@ -97,8 +97,10 @@ final class PetViewModel: ObservableObject {
             return "foxlying"
         case .happy:
             return "foxhappy"
-		case .familiar:
+		case .relaxed:
 			return "foxstretching"
+		case .familiar:
+			return "foxlooking"
         case .curious:
             return "foxcurious"
         case .sleepy:

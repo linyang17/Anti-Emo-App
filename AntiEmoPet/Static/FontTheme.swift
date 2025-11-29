@@ -21,8 +21,8 @@ struct FontTheme {
 	static let title2      = ABeeZee(24)
 	static let title3      = ABeeZee(21)
 	static let headline    = ABeeZee(18)
-	static let body        = ABeeZee(16)
-	static let subheadline = ABeeZee(14)
+	static let subheadline = ABeeZee(16)
+	static let body		   = ABeeZee(14)
 	static let caption     = ABeeZee(12)
 	static let footnote    = ABeeZee(10)
 }

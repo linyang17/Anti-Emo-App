@@ -2,21 +2,21 @@ import SwiftUI
 
 struct LumioSay: View {
         let text: String
-        private static let maxBubbleWidth: CGFloat = {
-                let characters = String(repeating: "W", count: 27)
-				let font = UIFont(name: "ABeeZee", size: 18) ?? UIFont.preferredFont(forTextStyle: .headline)
-                let size = (characters as NSString).size(withAttributes: [.font: font])
-                return size.width
-        }()
+        let style: FontTheme.ThemedFont
+
+        init(text: String, style: FontTheme.ThemedFont = FontTheme.headline) {
+            self.text = text
+            self.style = style
+        }
 
         var body: some View {
                 Text(text)
-					.appFont(FontTheme.headline)
+					.appFont(style)
 					.multilineTextAlignment(.center)
 					.foregroundStyle(.white)
 					.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
 					.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
-					.frame(maxWidth: LumioSay.maxBubbleWidth)
+					.frame(maxWidth: .w(0.7), alignment: .center)
 	}
 }
 
@@ -95,3 +95,4 @@ struct OnboardingArrowButton: View {
 		}
 	}
 }
+

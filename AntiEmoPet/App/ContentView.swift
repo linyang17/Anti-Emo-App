@@ -6,28 +6,39 @@ struct ContentView: View {
 	@State private var showWelcome = false
 
 	var body: some View {
-		Group {
-			if appModel.isLoading {
-				ProgressView("Loading…")
-			} else {
-				MainTabView()
-			}
-		}
-		.task {
-			if !appModel.isLoading {
-				evaluateWelcomeDisplay()
-			}
-		}
-		.fullScreenCover(isPresented: $showWelcome) {
-			WelcomeView {
-				showWelcome = false
-			}
-		}
+                Group {
+                        if appModel.isLoading {
+                                ProgressView("Loading…")
+                        } else {
+                                MainTabView()
+                        }
+                }
+                .task {
+                        if !appModel.isLoading {
+                                evaluateWelcomeDisplay()
+                        }
+                }
+                .onChange(of: appModel.isLoading) { _, isLoading in
+                        if !isLoading {
+                                evaluateWelcomeDisplay()
+                        }
+                }
+                .overlay {
+                    if showWelcome {
+                        WelcomeView {
+                            withAnimation(.easeInOut(duration: 0.35)) { showWelcome = false }
+                        }
+						.transition(.opacity)
+                        .ignoresSafeArea()
+                    }
+                }
+                .animation(.easeInOut(duration: 0.35), value: showWelcome)
 	}
 
 	private func evaluateWelcomeDisplay() {
-		guard let onboarded = appModel.userStats?.Onboard else { return }
-		showWelcome = onboarded
+	    guard let onboarded = appModel.userStats?.Onboard else { return }
+	    // Only show global welcome when not in onboarding flow
+	    showWelcome = onboarded && !appModel.showOnboarding
 	}
 }
 

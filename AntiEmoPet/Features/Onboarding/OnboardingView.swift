@@ -40,11 +40,12 @@ struct OnboardingView: View {
 						.padding(.bottom, 24)
 						.id(step.rawValue)
 						.animation(.easeInOut(duration: 0.3), value: step)
-					Spacer(minLength: 520)
+					Spacer(minLength: 560)
 				}
 
 				VStack(spacing: 24) {
 					Spacer(minLength: 300)
+					
 					OnboardingArrowButton(
 						isEnabled: canAdvance,
 						isLoading: accessTBD,

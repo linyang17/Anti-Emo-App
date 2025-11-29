@@ -8,7 +8,7 @@ struct AdvancedInsightsView: View {
 		ScrollView {
 			VStack(spacing: 20) {
 				// Mood vs Energy Correlation
-				DashboardCard(title: "Activity Pattern", icon: "circular.shift.2x") {
+				DashboardCard(title: "Activity Pattern", icon: "arrow.2.squarepath") {
 					MoodEnergyCorrelationChart()
 				}
 			}

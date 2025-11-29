@@ -44,8 +44,7 @@ struct WelcomeView: View {
 			
 			VStack {
 					welcomeText
-						.transition(.opacity)
-						.frame(maxWidth: .infinity)
+						.frame(maxWidth: .infinity, alignment: .center)
 						.padding(.top, 150)
 						.padding(.bottom, 120)
 
@@ -71,3 +70,4 @@ struct WelcomeView: View {
 		}
 	}
 }
+

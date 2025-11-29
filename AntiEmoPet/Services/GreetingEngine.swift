@@ -7,7 +7,6 @@ enum GreetingFlavor: CaseIterable {
 	case mood
 }
 
-/// 将 WelcomeView 里的问候上下文抽象成独立结构
 struct GreetingContext {
 	let name: String
 	let timeSlot: TimeSlot
@@ -15,7 +14,7 @@ struct GreetingContext {
 	let lastMood: Int?
 }
 
-/// 问候引擎：根据上下文和静态模板生成一条最终文案
+/// 根据上下文和静态模板生成一条最终文案
 enum GreetingEngine {
 
 	static func makeGreeting(from context: GreetingContext) -> String {

@@ -2,15 +2,16 @@ import Foundation
 import SwiftData
 
 enum PetBonding: String, Codable, CaseIterable {
-	case ecstatic, happy, curious, familiar, sleepy, anxious
+	case ecstatic, happy, curious, relaxed, familiar, sleepy, anxious
 
 	static func from(score: Int) -> PetBonding {
 		switch score {
 		case 85...100: return .ecstatic
 		case 70..<85: return .happy
-		case 50..<70: return .familiar
-		case 35..<50: return .curious
-		case 20..<35: return .sleepy
+		case 55..<70: return .relaxed
+		case 40..<55: return .familiar
+		case 30..<40: return .curious
+		case 20..<30: return .sleepy
 		default: return .anxious
 		}
 	}
