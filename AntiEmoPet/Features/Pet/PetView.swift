@@ -25,11 +25,11 @@ struct PetView: View {
 		var id: Int { hashValue }
 	}
 
-	var body: some View {
-		ZStack {
-			Image(viewModel.screenState.backgroundAsset)
-				.resizable()
-				.scaledToFill()
+        var body: some View {
+                ZStack {
+                        Image(viewModel.screenState.backgroundAsset)
+                                .resizable()
+                                .scaledToFill()
 				.ignoresSafeArea()
 
 			content()
@@ -49,20 +49,14 @@ struct PetView: View {
 					.offset(x: .w(0.1), y: -.h(0.15))
 			}
 			.overlay { overlayStack }
-			.sheet(item: $activeSheet) { sheet in
-			switch sheet {
-				case .tasks:
-					TasksView(lastMood: mood.lastMood)
-						.presentationDetents([.fraction(0.55)])
-						.presentationBackground(.thinMaterial)
-						.presentationDragIndicator(.hidden)
-				case .shop:
-					ShopView()
-						.presentationDetents([.fraction(0.55)])
-						.presentationBackground(.ultraThinMaterial)
-						.presentationDragIndicator(.hidden)
-			}
-		}
+                        .sheet(item: $activeSheet) { sheet in
+                                switch sheet {
+                                case .tasks:
+                                        sheetStyled(TasksView(lastMood: mood.lastMood))
+                                case .shop:
+                                        sheetStyled(ShopView())
+                                }
+                        }
 			.toolbar(.hidden, for: .navigationBar)
 			.onAppear {
                 withAnimation(.easeInOut(duration: 0.35)) {
@@ -137,14 +131,49 @@ struct PetView: View {
 			}
 			.onDisappear {
 					bannerTask?.cancel()
-			}
+                        }
         }
 
-	@ViewBuilder
-	private func content() -> some View {
-		if let pet = appModel.pet {
-			VStack(alignment: .leading) {
-				topBar
+        @ViewBuilder
+        private func sheetStyled<Content: View>(_ content: Content) -> some View {
+                content
+                        .presentationDetents([.fraction(0.55)])
+                        .presentationBackground { sheetBackground }
+                        .presentationDragIndicator(.hidden)
+        }
+
+        @ViewBuilder
+        private var sheetBackground: some View {
+                if #available(iOS 26, *) {
+                        liquidGlassBackground
+                } else {
+                        Rectangle()
+                                .fill(.ultraThinMaterial)
+                }
+        }
+
+        private var liquidGlassBackground: some View {
+                Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                                LinearGradient(
+                                        colors: [Color.white.opacity(0.32), Color.white.opacity(0.12)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                )
+                        )
+                        .overlay(
+                                Rectangle()
+                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.2), radius: 18, x: 0, y: 10)
+        }
+
+        @ViewBuilder
+        private func content() -> some View {
+                if let pet = appModel.pet {
+                        VStack(alignment: .leading) {
+                                topBar
 					.padding(.vertical, .h(0.03))
 					.padding(.horizontal, .w(0.12))
 				
