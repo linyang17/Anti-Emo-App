@@ -148,23 +148,20 @@ struct PetView: View {
                         liquidGlassBackground
                 } else {
                         Rectangle()
-                                .fill(.ultraThinMaterial)
+                                .fill(.thinMaterial)
                 }
         }
 
         private var liquidGlassBackground: some View {
                 Rectangle()
                         .fill(.ultraThinMaterial)
+						.opacity(0.8)
                         .overlay(
                                 LinearGradient(
                                         colors: [Color.white.opacity(0.32), Color.white.opacity(0.12)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                 )
-                        )
-                        .overlay(
-                                Rectangle()
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
                         )
                         .shadow(color: .black.opacity(0.2), radius: 18, x: 0, y: 10)
         }
@@ -444,7 +441,6 @@ struct PetView: View {
                         if let reward = activeReward {
 								Color.clear
                                         .ignoresSafeArea()
-                                        .allowsHitTesting(true)
                                         .zIndex(998)
                                 RewardToastView(event: reward)
                                         .opacity(rewardOpacity)
@@ -452,7 +448,6 @@ struct PetView: View {
                                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 										.offset(y: -UIScreen.main.bounds.height * 0.15)
-                                        .allowsHitTesting(false)
                                         .zIndex(999)
                         }
 
