@@ -26,7 +26,7 @@ struct LumioPetApp: App {
 		}
 	}()
 
-	// MARK: - App ViewModel
+	
 	@StateObject private var appModel: AppViewModel
 
 	init() {
@@ -36,7 +36,7 @@ struct LumioPetApp: App {
 		_appModel = StateObject(wrappedValue: AppViewModel(modelContext: context))
 	}
 
-	// MARK: - Scene Definition
+	
 	var body: some Scene {
 		WindowGroup {
 			ContentView()
