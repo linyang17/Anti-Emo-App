@@ -8,7 +8,7 @@ struct FoxCharacterLayer: View {
             Image("foxcurious")
                 .resizable()
                 .scaledToFit()
-                .frame(maxWidth: 220)
+                .frame(maxWidth: 220, maxHeight: 220)
                 .padding(.bottom, 80)
         }
         .transition(.opacity)

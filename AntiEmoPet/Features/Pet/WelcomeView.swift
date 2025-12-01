@@ -42,22 +42,23 @@ struct WelcomeView: View {
 				.scaledToFill()
 				.ignoresSafeArea()
 			
-			VStack {
-					welcomeText
-						.padding(.top, 150)
-						.padding(.bottom, 120)
+                        VStack {
+                                        welcomeText
+                                                .frame(maxWidth: .infinity, alignment: .center)
+                                                .padding(.top, 150)
+                                                .padding(.bottom, 120)
 
 					Spacer(minLength: 50)
 				}
 			
-			VStack {
-				Image("foxwave")
-					.resizable()
-					.scaledToFit()
-					.frame(maxWidth: 220)
-					.padding(.top, 20)
-					.padding(.bottom, 20)
-			}
+                        VStack {
+                                Image("foxwave")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxWidth: 220, maxHeight: 220)
+                                        .padding(.top, 20)
+                                        .padding(.bottom, 20)
+                        }
 			// TODO: 改成 Lottie 动画
 		}
 		.contentShape(Rectangle()) // 整屏可点击
