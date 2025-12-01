@@ -69,6 +69,7 @@ struct TasksView: View {
 
             Spacer()
 			
+#if !DEBUG
             if viewModel.isRefreshing {
                 ProgressView()
             } else if appModel.canRefreshCurrentSlot {
@@ -91,6 +92,7 @@ struct TasksView: View {
                     .foregroundStyle(.secondary)
                     .padding(12)
             }
+#endif
         }
     }
     

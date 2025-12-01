@@ -157,8 +157,13 @@ final class StorageService {
             let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
             let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+            let onboardingTitles = [
+                "Say hello to Lumio, drag up and down to play together",
+                "Check out shop panel by clicking the gift box",
+                "Try to refresh after all tasks are done (mark this as done first before trying)"
+            ]
             let predicate = #Predicate<UserTask> {
-                $0.date >= start && $0.date < end
+                $0.date >= start && $0.date < end && !onboardingTitles.contains($0.title)
             }
             let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
             let fetched = try context.fetch(descriptor)
@@ -281,7 +286,7 @@ final class StorageService {
         do {
             let completedStatus = TaskStatus.completed
             let predicate = #Predicate<UserTask> { task in
-                task.date >= start && task.date < end && task.status != completedStatus
+                task.date >= start && task.date < end && task.status != completedStatus && task.isOnboarding == false
             }
             
             let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
@@ -300,14 +305,9 @@ final class StorageService {
 		guard let interval = slotInterval(for: slot, on: date) else { return }
 		let start = interval.start
 		let end = interval.end
-		let onboardingTitles = [
-			"Say hello to Lumio, drag up and down to play together",
-			"Check out shop panel by clicking the gift box",
-			"Try to refresh after all tasks are done (mark this as done first before trying)"
-		]
 		do {
 			let predicate = #Predicate<UserTask> { task in
-				task.date >= start && task.date < end && !onboardingTitles.contains(task.title)
+				task.date >= start && task.date < end && task.isOnboarding == false
 			}
 			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
 			let targets = try context.fetch(descriptor)
@@ -342,14 +342,8 @@ final class StorageService {
 			
 			// If includeOnboarding is true, also fetch onboarding tasks for the day
 			if includeOnboarding {
-				let onboardingTitles = [
-					"Say hello to Lumio, drag up and down to play together",
-					"Check out shop panel by clicking the gift box",
-					"Try to refresh after all tasks are done (mark this as done first before trying)"
-				]
 				let onboardingPredicate = #Predicate<UserTask> { task in
-					task.date >= startOfDay && task.date < endOfDay && 
-					onboardingTitles.contains(task.title)
+					task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
 				}
 				let onboardingDescriptor = FetchDescriptor<UserTask>(
 					predicate: onboardingPredicate,
@@ -373,6 +367,24 @@ final class StorageService {
 			return []
 		}
 	}
+
+    func deleteOnboardingTasks(for date: Date) {
+        do {
+            let calendar = TimeZoneManager.shared.calendar
+            let start = calendar.startOfDay(for: date)
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+            let predicate = #Predicate<UserTask> { task in
+                task.date >= start && task.date < end && task.isOnboarding == true
+            }
+            let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+            let targets = try context.fetch(descriptor)
+            guard !targets.isEmpty else { return }
+            targets.forEach { context.delete($0) }
+            saveContext(reason: "delete onboarding tasks for day")
+        } catch {
+            logger.error("Failed to delete onboarding tasks: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 
 	private func slotInterval(for slot: TimeSlot, on date: Date) -> DateInterval? {
 		let calendar = TimeZoneManager.shared.calendar

@@ -12,7 +12,7 @@ struct OnboardingCelebrationView: View {
 				LumioSay(text: "Congratulations!", style: FontTheme.title3)
 				
 				LumioSay(
-					text: "You've completed all the initial tasks! \n Ready to start your journey with Lumio?",
+					text: "You've completed all the initial tasks! Ready to start your journey with Lumio?",
 					style: FontTheme.body
 				)
 				

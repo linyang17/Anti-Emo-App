@@ -90,6 +90,7 @@ final class UserTask: Identifiable {
     var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?
     var moodEntryId: UUID? // 关联完成后的情绪记录
+    var isOnboarding: Bool = false
 
     init(
         id: UUID = UUID(),
@@ -102,7 +103,8 @@ final class UserTask: Identifiable {
         startedAt: Date? = nil,
         canCompleteAfter: Date? = nil,
         completedAt: Date? = nil,
-        moodEntryId: UUID? = nil
+        moodEntryId: UUID? = nil,
+        isOnboarding: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -115,5 +117,7 @@ final class UserTask: Identifiable {
         self.canCompleteAfter = canCompleteAfter
         self.completedAt = completedAt
         self.moodEntryId = moodEntryId
+        self.isOnboarding = isOnboarding
     }
 }
+

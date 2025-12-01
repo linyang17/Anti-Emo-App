@@ -40,7 +40,7 @@
 	
 	"rainy": [
 	  "It's rainy out there, {name}. \nStaying cozy is absolutely allowed.",
-	  "Rainy weather is a good excuse \n for warm drinks and soft blankets, {name}."
+	  "Rainy weather is a good excuse for warm drinks and soft blankets, {name}."
 	],
 	
 	"snowy": [
@@ -53,7 +53,7 @@
   {
 	"low": [
 	  "If things feel heavy lately, {name}, \nit's okay to move very slowly today.",
-	  "You've been carrying a lot, {name}. \nWe can take today\n one tiny step at a time."
+	  "You've been carrying a lot, {name}. \nWe can take today one tiny step at a time."
 	],
 	
 	"neutral": [

@@ -39,6 +39,8 @@ final class UserStats: Identifiable {
 	var regionLocality: String
 	var regionAdministrativeArea: String
 	var regionCountry: String
+	var randomizeTaskTime: Bool
+    var hasShownOnboardingCelebration: Bool
 
     init(
         id: UUID = UUID(),
@@ -56,7 +58,9 @@ final class UserStats: Identifiable {
 		Onboard: Bool = false,
 		regionLocality: String = "",
 		regionAdministrativeArea: String = "",
-		regionCountry: String = ""
+		regionCountry: String = "",
+		randomizeTaskTime: Bool = false,
+        hasShownOnboardingCelebration: Bool = false
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
@@ -74,5 +78,7 @@ final class UserStats: Identifiable {
 		self.regionLocality = regionLocality
 		self.regionAdministrativeArea = regionAdministrativeArea
 		self.regionCountry = regionCountry
+		self.randomizeTaskTime = randomizeTaskTime
+        self.hasShownOnboardingCelebration = hasShownOnboardingCelebration
     }
 }

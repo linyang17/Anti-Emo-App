@@ -48,7 +48,6 @@ struct PetView: View {
 			.overlay(alignment: .bottomLeading) {
 					shopButton
 					.offset(x: .w(0.1), y: -.h(0.15))
-					.opacity(0.8)
 			}
 			.overlay { overlayStack }
                         .sheet(item: $activeSheet) { sheet in
@@ -61,7 +60,7 @@ struct PetView: View {
                         }
 			.toolbar(.hidden, for: .navigationBar)
 			.onAppear {
-                withAnimation(.easeInOut(duration: 0.35)) {
+                withAnimation(.easeInOut(duration: 0.5)) {
                     appearOpacity = 1
                 }
 					viewModel.sync(with: appModel)
@@ -94,20 +93,21 @@ struct PetView: View {
 							activeSheet = nil
 					}
 					activeReward = reward
-					withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+					withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
 							rewardOpacity = 1
 					}
 					bannerTask?.cancel()
 					bannerTask = Task { @MainActor in
-							try? await Task.sleep(nanoseconds: 500_000_000)
-							withAnimation(.easeInOut(duration: 0.5)) {
+							try? await Task.sleep(nanoseconds: 1_500_000_000)
+							withAnimation(.easeInOut(duration: 1.5)) {
 									rewardOpacity = 0
 							}
 							appModel.consumeRewardBanner()
+							activeReward = nil
 
 							if appModel.pendingMoodFeedbackTask != nil {
 									await MainActor.run {
-											withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+											withAnimation(.spring(response: 1, dampingFraction: 0.8)) {
 													showMoodFeedback = true
 											}
 									}
@@ -115,21 +115,21 @@ struct PetView: View {
 					}
 			}
 			.onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
-					if newValue != nil {
-							if activeSheet == .tasks {
-									activeSheet = nil
-							}
-							if activeReward == nil {
-									withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-											showMoodFeedback = true
-									}
-							}
-					} else {
-							withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-									showMoodFeedback = false
-							}
-							appModel.checkAndShowOnboardingCelebration()
-					}
+			    if newValue != nil {
+			        if activeSheet == .tasks {
+			            activeSheet = nil
+			        }
+			        if activeReward == nil {
+			            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+			                showMoodFeedback = true
+			            }
+			        }
+			    } else {
+			        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+			            showMoodFeedback = false
+			        }
+			        appModel.checkAndShowOnboardingCelebration()
+			    }
 			}
 			.onDisappear {
 					bannerTask?.cancel()
@@ -173,12 +173,14 @@ struct PetView: View {
                 if let pet = appModel.pet {
                         VStack(alignment: .leading) {
                                 topBar
-					.padding(.vertical, .h(0.03))
-					.padding(.horizontal, .w(0.12))
-				
-				Spacer(minLength: 0) // Remove fixed spacer
-				
-				petStage(for: pet)
+									.padding(.vertical, .h(0.03))
+									.padding(.horizontal, .w(0.12))
+								
+								Spacer(minLength: 0) // Remove fixed spacer
+								
+								petStage(for: pet)
+								
+								Spacer(minLength: 50)
 			}
 			.overlay(alignment: .top) {
 				pettingNoticeOverlay()
@@ -224,9 +226,8 @@ struct PetView: View {
                         Image(viewModel.screenState.petAsset)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(maxWidth: 220, maxHeight: 220)
-                                .padding(.top, 120)
-                                .padding(.bottom, 120)
+								.frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
+                                .padding(20)
 				.shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
 				.simultaneousGesture(
 					TapGesture()
@@ -291,7 +292,7 @@ struct PetView: View {
 				.scaledToFit()
 				.frame(width: 75)
 				.accessibilityLabel("tasks")
-				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 1, y: 1)
+				.shadow(color: Color.black.opacity(0.1), radius: 6, x: 1, y: 1)
 		}
 		// 随机漂移 + 上下 的综合 offset
 		.offset(
@@ -450,43 +451,42 @@ struct PetView: View {
                                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 										.offset(y: -UIScreen.main.bounds.height * 0.15)
-                                        .zIndex(999)
+                                        .zIndex(997)
                         }
 
                         if showMoodFeedback, let task = appModel.pendingMoodFeedbackTask {
                                 Color.clear
 										.ignoresSafeArea()
 										.transition(.opacity)
-										.zIndex(998)
+										.zIndex(990)
                                 MoodFeedbackOverlayView(
                                         taskCategory: task.category
                                 )
                                 .frame(maxWidth: 360)
 								.offset(y: -UIScreen.main.bounds.height * 0.1)
                                 .transition(.scale(scale: 0.9).combined(with: .opacity))
-                                .zIndex(999)
+                                .zIndex(998)
                         }
 
                         if appModel.showOnboardingCelebration {
 								Color.clear
                                         .ignoresSafeArea()
                                         .transition(.opacity)
-                                        .zIndex(998)
+                                        .zIndex(990)
                                 OnboardingCelebrationView {
                                         appModel.dismissOnboardingCelebration()
                                 }
                                 .frame(maxWidth: 360)
                                 .padding()
-								.offset(y: -UIScreen.main.bounds.height * 0.15)
+								.offset(y: UIScreen.main.bounds.height * 0.18)
                                 .transition(.scale(scale: 0.9).combined(with: .opacity))
                                 .zIndex(999)
                         }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appModel.showMoodCapture)
+                .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
+                .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.showMoodCapture)
         }
 	
 	
 }
-

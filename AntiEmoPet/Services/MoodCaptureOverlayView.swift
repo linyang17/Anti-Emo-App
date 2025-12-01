@@ -16,53 +16,50 @@ struct MoodCaptureOverlayView: View {
         var body: some View {
                 ZStack {
 
-                        VStack(spacing: 24) {
-                                // Fixed title
-                                Text("How do you feel now?")
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
+					VStack(spacing: 24) {
+						Text("How do you feel now?")
+								.font(.headline)
+								.foregroundStyle(.primary)
 
-                                // Slider section
-                                VStack(spacing: 12) {
-                                        HStack {
-                                                Text("10")
-                                                        .foregroundStyle(.secondary)
-                                                        .font(.body)
-                                                Spacer()
-                                                Text("100")
-                                                        .foregroundStyle(.secondary)
-														.font(.body)
-                                        }
+						VStack(spacing: 12) {
+								HStack {
+										Text("10")
+												.foregroundStyle(.secondary)
+												.font(.body)
+										Spacer()
+										Text("100")
+												.foregroundStyle(.secondary)
+												.font(.body)
+								}
 
-                                        Slider(
-                                                value: Binding(
-                                                        get: { Double(value ?? 55) }, // midpoint visual start
-                                                        set: { newValue in
-                                                                let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
-                                                                let rounded = round(clamped / Constants.step) * Constants.step
-                                                                value = Int(rounded)
-                                                        }
-                                                ),
-                                                in: Constants.minValue...Constants.maxValue,
-                                                step: Constants.step
-                                        )
+								Slider(
+									value: Binding(
+										get: { Double(value ?? 55) }, // midpoint visual start
+										set: { newValue in
+												let clamped = max(Constants.minValue, min(Constants.maxValue, newValue))
+												let rounded = round(clamped / Constants.step) * Constants.step
+												value = Int(rounded)
+											}
+										),
+									in: Constants.minValue...Constants.maxValue,
+									step: Constants.step
+								)
                                 }
 
-                                // Save button
                                 Button(action: {
-                                        if let value = value {
-                                                onSave(value)
-                                        }
+									if let value = value {
+											onSave(value)
+									}
                                 }) {
-                                        Text("Save")
-                                                .font(.headline)
-                                                .foregroundStyle(.white)
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 12)
-                                                .background(
-                                                        value != nil ? Color.blue : Color.gray,
-                                                        in: RoundedRectangle(cornerRadius: 12)
-                                                )
+									Text("Save")
+										.font(.headline)
+										.foregroundStyle(.white)
+										.frame(maxWidth: .infinity)
+										.padding(.vertical, 12)
+										.background(
+												value != nil ? Color.blue : Color.gray,
+												in: RoundedRectangle(cornerRadius: 12)
+										)
                                 }
                                 .disabled(value == nil)
                         }

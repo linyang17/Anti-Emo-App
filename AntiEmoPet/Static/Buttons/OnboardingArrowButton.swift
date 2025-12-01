@@ -16,7 +16,7 @@ struct LumioSay: View {
 					.foregroundStyle(.white)
 					.shadow(color: .gray.opacity(0.25), radius: 4, x: 1, y: 1)
 					.shadow(color: .cyan.opacity(0.1), radius: 2, x: 1, y: 1)
-					//.frame(maxWidth: .w(0.7), alignment: .center)
+					.frame(maxWidth: .w(0.6), alignment: .center)
 	}
 }
 

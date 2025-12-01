@@ -43,21 +43,20 @@ struct WelcomeView: View {
 				.ignoresSafeArea()
 			
                         VStack {
-                                        welcomeText
-                                                .frame(maxWidth: .infinity, alignment: .center)
-                                                .padding(.top, 150)
-                                                .padding(.bottom, 120)
+								welcomeText
+										.frame(maxWidth: .w(0.7), alignment: .leading)
+										.padding(.top, .h(0.18))
+										.padding(.bottom, .h(0.14))
 
-					Spacer(minLength: 50)
-				}
+							Spacer(minLength: 0.1)
+							}
 			
                         VStack {
                                 Image("foxwave")
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(maxWidth: 220, maxHeight: 220)
-                                        .padding(.top, 20)
-                                        .padding(.bottom, 20)
+										.frame(maxWidth: .w(0.5), maxHeight: .h(0.25))
+										.padding(.top, .h(0.2))
                         }
 			// TODO: 改成 Lottie 动画
 		}

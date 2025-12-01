@@ -26,13 +26,13 @@ struct ContentView: View {
                 .overlay {
                     if showWelcome {
                         WelcomeView {
-                            withAnimation(.easeInOut(duration: 0.35)) { showWelcome = false }
+                            withAnimation(.easeInOut(duration: 0.5)) { showWelcome = false }
                         }
 						.transition(.opacity)
                         .ignoresSafeArea()
                     }
                 }
-                .animation(.easeInOut(duration: 0.35), value: showWelcome)
+                .animation(.easeInOut(duration: 0.5), value: showWelcome)
 	}
 
 	private func evaluateWelcomeDisplay() {

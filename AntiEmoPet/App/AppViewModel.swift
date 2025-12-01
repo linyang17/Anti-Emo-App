@@ -42,7 +42,7 @@ final class AppViewModel: ObservableObject {
 
 	let locationService = LocationService()
 	let storage: StorageService
-	let taskGenerator: TaskGeneratorService
+	var taskGenerator: TaskGeneratorService
 	private let rewardEngine = RewardEngine()
 	private let notificationService = NotificationService()
 	private let weatherService = WeatherService()
@@ -70,6 +70,9 @@ final class AppViewModel: ObservableObject {
 	formatter.timeZone = TimeZone(secondsFromGMT: 0)
 	return formatter
 	}()
+
+	// New private property added as per instructions
+	private var pendingGenerationConfigUpdate = false
 
 	// MARK: - Initialization
 	init(modelContext: ModelContext) {
@@ -122,11 +125,11 @@ final class AppViewModel: ObservableObject {
                 storage.bootstrapIfNeeded()
 		pet = storage.fetchPet()
 		userStats = storage.fetchStats()
+                self.taskGenerator = TaskGeneratorService(storage: storage, randomizeTime: self.userStats?.randomizeTaskTime ?? false)
 
 		await loadCachedData()
 		
 		scheduleTaskNotifications()
-		prepareSlotGenerationSchedule(for: Date())
 		
 		// onboarding阶段没有数据缓存
 		showOnboarding = !(userStats?.Onboard ?? false)
@@ -161,25 +164,7 @@ final class AppViewModel: ObservableObject {
 		}
 
 		await refreshWeather(using: locationService.lastKnownLocation)
-		
-                // Determine current slot
-                let now = Date()
-                let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
-                todayTasks = storage.fetchTasks(in: slot, on: now, includeOnboarding: true)
 
-                if todayTasks.isEmpty {
-                        let generated = taskGenerator.generateTasks(
-                                for: slot,
-                                date: now,
-                                report: weatherReport
-                        )
-                        storage.save(tasks: generated)
-                        todayTasks = generated
-                        markSlotTasksGenerated(slot, on: now)
-                        logger.debug("Generated initial daily tasks: \(generated.count)")
-                }
-
-		checkSlotGenerationTrigger()
 		startSlotMonitor()
 		
 		// Check sleep reminder and mood capture
@@ -193,6 +178,9 @@ final class AppViewModel: ObservableObject {
 			applyDailyBondingDecayIfNeeded()
 		}
 		recordMoodOnLaunch()
+		
+		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+		self.refreshDisplayedTasks(for: slot, on: Date())
 		
 	}
 	
@@ -309,7 +297,7 @@ final class AppViewModel: ObservableObject {
 			storage.persist()
 			// Only fetch tasks for the current slot to keep view clean, but include onboarding tasks
 			let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-			todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+			refreshDisplayedTasks(for: slot, on: Date())
 			objectWillChange.send()
 		}
 
@@ -321,7 +309,6 @@ final class AppViewModel: ObservableObject {
 		markCurrentSlotRefreshed()
 		markSlotTasksGenerated(slot, on: Date())
 		updateTaskRefreshEligibility()
-		prepareSlotGenerationSchedule(for: Date())
 		checkSlotGenerationTrigger()
 	}
 	
@@ -342,7 +329,7 @@ final class AppViewModel: ObservableObject {
 		
 		storage.persist()
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+		refreshDisplayedTasks(for: slot, on: Date())
 		
 		analytics.log(event: "task_started", metadata: [
 			"title": task.title,
@@ -357,7 +344,7 @@ final class AppViewModel: ObservableObject {
 				task.status = .ready
 				storage.persist()
 				let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-				todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+				refreshDisplayedTasks(for: slot, on: Date())
 				objectWillChange.send()
 			}
 		}
@@ -396,10 +383,8 @@ final class AppViewModel: ObservableObject {
 		logTodayEnergySnapshot()
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
-		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
-		
-		checkOnboardingCompletion()
-		
+		refreshDisplayedTasks(for: slot, on: Date())
+				
 		pendingMoodFeedbackTask = task
 	}
 
@@ -619,8 +604,8 @@ final class AppViewModel: ObservableObject {
 
 	func incrementInventory(for item: Item) {
 		Task {
-			await storage.addInventory(forSKU: item.sku)
-			let updatedInventory = await storage.fetchInventory()
+			storage.addInventory(forSKU: item.sku)
+			let updatedInventory = storage.fetchInventory()
 			await MainActor.run {
 				self.inventory = updatedInventory
 			}
@@ -762,66 +747,126 @@ final class AppViewModel: ObservableObject {
 		return filtered
 	}
 
-	private func prepareSlotGenerationSchedule(for date: Date) {
+	// MARK: - Slot Schedule Preparation
+	/// 确保当天任务时段生成调度表存在。
+	/// 仅在跨日或首次启动时生成，防止重复重建。
+	private func ensureSlotScheduleExists(for date: Date) {
 		let dkey = dayKey(for: date)
-		var schedule = purgeSlotSchedule(loadSlotSchedule(), keepingDay: dkey)
-		var slotMap = schedule[dkey] ?? [:]
-		for slot in activeTaskSlots where slotMap[slot.rawValue] == nil {
+		var schedule = loadSlotSchedule()
+		
+		schedule = purgeSlotSchedule(schedule, keepingDay: dkey)
+
+		if let existing = schedule[dkey], !existing.isEmpty {
+			logger.debug("[Schedule] Existing found for \(dkey), no regeneration needed.")
+			return
+		}
+
+		var slotMap: [String: Double] = [:]
+		for slot in activeTaskSlots {
 			if let trigger = taskGenerator.generationTriggerTime(for: slot, date: date, report: weatherReport) {
 				slotMap[slot.rawValue] = trigger.timeIntervalSince1970
 			}
 		}
+		let readableSchedule = scheduleFormatter(slotmap: slotMap)
 		schedule[dkey] = slotMap
 		saveSlotSchedule(schedule)
+		logger.info("[Schedule] New schedule generated for \(dkey): \(readableSchedule)")
 
+		// 清理旧的生成记录，仅保留当天
 		let generation = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
 		saveSlotGenerationRecords(generation)
 	}
+	
+	private func scheduleFormatter(slotmap: [String: Double]) -> [String: String] {
+		
+		let dateFormatter = DateFormatter()
+		dateFormatter.dateFormat = "HH:mm:ss"
+		dateFormatter.timeZone = .current
+		
+		let readableSchedule = slotmap.mapValues { epoch -> String in
+			let date = Date(timeIntervalSince1970: epoch)
+			return dateFormatter.string(from: date)
+		}
+		return readableSchedule
+	}
+	
 
 	private func checkSlotGenerationTrigger(reference date: Date = Date()) {
 		let schedule = loadSlotSchedule()
 		let dkey = dayKey(for: date)
 		guard let slotMap = schedule[dkey] else { return }
 		let currentSlot = TimeSlot.from(date: date, using: TimeZoneManager.shared.calendar)
+
+		let readableSchedule = scheduleFormatter(slotmap: slotMap)
+		logger.info("[Today's schedule]: \(readableSchedule)")
 		
 		// Only check current slot, not past slots
 		guard let epoch = slotMap[currentSlot.rawValue] else { return }
 		let triggerDate = Date(timeIntervalSince1970: epoch)
+		
 		guard date >= triggerDate else { return }
 		guard !hasGeneratedSlotTasks(currentSlot, on: date) else { return }
 		
-		let isLate = date.timeIntervalSince(triggerDate) > 5400
+		let isLate = date.timeIntervalSince(triggerDate) > 3600 * 1
 		generateTasksForSlot(currentSlot, reference: date, notify: !isLate)
 	}
 
 	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
-		
-		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
-		guard !generated.isEmpty else { return }
-		
-		// Clear uncompleted tasks from previous slots on the same day
-		storage.deleteUncompletedTasks(before: slot, on: date)
-		
-		// Only delete tasks for the specific slot being generated (but not onboarding tasks)
-		storage.deleteTasks(in: slot, on: date)
-		
-		storage.save(tasks: generated)
-		todayTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
-		scheduleTaskNotifications()
-		markSlotTasksGenerated(slot, on: date)
-		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
-		
-		// Only show mood capture once per slot (excluding night)
-		if slot != .night && !hasLoggedMoodThisSlot && !showOnboarding {
-			checkAndShowMoodCapture()
+		// 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
+		let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+
+		guard existingTasks.isEmpty else {
+			logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
+			refreshDisplayedTasks(for: slot, on: date)
+			return
 		}
 		
-		if notify, userStats?.notificationsEnabled == true {
-			notificationService.notifyTasksUnlocked(for: slot)
+		storage.deleteUncompletedTasks(before: slot, on: date)
+
+		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
+		guard !generated.isEmpty else {
+			logger.warning("[AppViewModel] generateTasksForSlot: no tasks generated for slot \(slot.rawValue).")
+			return
+		}
+
+		storage.save(tasks: generated)
+
+		refreshDisplayedTasks(for: slot, on: date)
+		markSlotTasksGenerated(slot, on: date)
+
+		scheduleTaskNotifications()
+		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
+		logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
+
+		if slot != .night && !hasLoggedMoodThisSlot && !showOnboarding {
+			checkAndShowMoodCapture()
 		}
 	}
 
 	private var activeTaskSlots: [TimeSlot] { [.morning, .afternoon, .evening] }
+	
+	// New helper method inserted as per instructions
+	private func refreshDisplayedTasks(for slot: TimeSlot, on date: Date) {
+	    // Always base onboarding visibility on today's onboarding tasks
+	    let todayAll = storage.fetchTasks(for: date)
+	    let onboardingTasks = todayAll.filter { $0.isOnboarding }
+	    if !onboardingTasks.isEmpty {
+	        let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
+	        if allCompleted && !showOnboardingCelebration {
+	            // Trigger celebration as soon as all onboarding tasks complete
+	            checkAndShowOnboardingCelebration()
+	        }
+	        // Show onboarding tasks until the celebration is shown (and while it's visible)
+	        if !allCompleted || showOnboardingCelebration {
+	            todayTasks = onboardingTasks.sorted { $0.date < $1.date }
+	            return
+	        }
+	    }
+
+	    // Otherwise, show current slot tasks (non-onboarding)
+	    let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+	    todayTasks = slotTasks
+	}
 
 	private func hasGeneratedSlotTasks(_ slot: TimeSlot, on date: Date = Date()) -> Bool {
 		let map = loadSlotGenerationRecords()
@@ -1040,7 +1085,7 @@ final class AppViewModel: ObservableObject {
 				)
 		}
 		storage.save(tasks: generated)
-		todayTasks = storage.fetchTasks(in: slot, on: now, includeOnboarding: true)
+		refreshDisplayedTasks(for: slot, on: now)
 		scheduleTaskNotifications()
 	}
 
@@ -1065,8 +1110,6 @@ final class AppViewModel: ObservableObject {
 			userStats?.region = city
 			storage.persist()
 		}
-		prepareSlotGenerationSchedule(for: Date())
-		checkSlotGenerationTrigger()
 		
 		logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
 	}
@@ -1147,43 +1190,40 @@ final class AppViewModel: ObservableObject {
 	}
 	
 	// MARK: - Onboarding Completion Check
-	private func checkOnboardingCompletion() {
-		let onboardingTitles = [
-			"Say hello to Lumio, drag up and down to play together",
-			"Check out shop panel by clicking the gift box",
-			"Try to refresh after all tasks are done (mark this as done first before trying)"
-		]
-		
-		let onboardingTasks = todayTasks.filter { onboardingTitles.contains($0.title) }
-		guard !onboardingTasks.isEmpty else { return }
-		
-		let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
-		if allCompleted && !showOnboardingCelebration {
-			// Only show celebration after mood feedback is submitted
-			// This will be triggered when user returns to TasksView after mood feedback
-		}
-	}
-	
+
 	func checkAndShowOnboardingCelebration() {
-		let onboardingTitles = [
-			"Say hello to Lumio, drag up and down to play together",
-			"Check out shop panel by clicking the gift box",
-			"Try to refresh after all tasks are done (mark this as done first before trying)"
-		]
-		
-		let onboardingTasks = todayTasks.filter { onboardingTitles.contains($0.title) }
-		guard !onboardingTasks.isEmpty else { return }
-		
-		let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
-		if allCompleted && !showOnboardingCelebration && pendingMoodFeedbackTask == nil {
-			showOnboardingCelebration = true
-		}
+	    // Must have onboarding tasks today
+	    let todayTasksAll = storage.fetchTasks(for: Date())
+	    let onboardingTasks = todayTasksAll.filter { $0.isOnboarding }
+	    guard !onboardingTasks.isEmpty else { return }
+	    
+	    // Check if celebration already shown once per user
+	    if let stats = userStats, stats.hasShownOnboardingCelebration {
+	        return
+	    }
+
+	    // All onboarding tasks must be completed
+	    let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
+	    guard allCompleted else { return }
+
+	    // No pending mood feedback or visible reward banner
+	    guard pendingMoodFeedbackTask == nil else { return }
+	    guard rewardBanner == nil else { return }
+
+	    // Only show if not already showing
+	    if !showOnboardingCelebration {
+	        showOnboardingCelebration = true
+	    }
 	}
 	
 	func dismissOnboardingCelebration() {
 		showOnboardingCelebration = false
-		// After celebration, replace onboarding tasks with current slot tasks
+		// Persist one-time flag
+		userStats?.hasShownOnboardingCelebration = true
+		storage.persist()
+		// After celebration, remove today's onboarding tasks and show current slot tasks
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+		storage.deleteOnboardingTasks(for: Date())
 		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
 	}
 	
@@ -1199,12 +1239,44 @@ final class AppViewModel: ObservableObject {
                 }
                 storage.persist()
         }
+
+        // MARK: - Task generation config change handler
+        func applyTaskGenerationSettingsChanged() {
+			let useRandom = self.userStats?.randomizeTaskTime ?? false
+			
+			// Rebuild generator immediately with the latest setting
+			self.taskGenerator = TaskGeneratorService(storage: self.storage, randomizeTime: useRandom)
+			self.pendingGenerationConfigUpdate = false
+			
+			// Reset and rebuild today's schedule so remaining slots use the new configuration
+			let now = Date()
+			let todayKey = dayKey(for: now)
+			var schedule = loadSlotSchedule()
+			schedule[todayKey] = [:]
+			saveSlotSchedule(schedule)
+			
+			// Create a fresh schedule and re-evaluate triggers for today
+			ensureSlotScheduleExists(for: now)
+			checkSlotGenerationTrigger(reference: now)
+        }
+	
+	/// Public method to force-regenerate current slot tasks after settings change
+	func regenerateCurrentSlotTasks() {
+		let now = Date()
+		let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
+		// Delete non-onboarding tasks in current slot to allow fresh generation
+		storage.deleteTasks(in: slot, on: now)
+		// Trigger generation flow based on current schedule/generator
+		generateTasksForSlot(slot, reference: now, notify: false)
+	}
 }
+
 
 
 // MARK: - Slot Monitor
 extension AppViewModel {
-	/// - Note: 负责驱动每个时段的定时逻辑与天气刷新，不可重复启动。
+	
+	/// 每个时段的定时逻辑与天气刷新，自动检测跨日并生成当天 schedule。
 	private func startSlotMonitor() {
 		slotMonitorTask?.cancel()
 		slotMonitorTask = Task { [weak self] in
@@ -1218,61 +1290,79 @@ extension AppViewModel {
 		}
 	}
 
-	/// 触发检查
+	/// 每个时段定时触发检查，驱动任务生成与刷新逻辑。
 	@MainActor
 	private func handleSlotMonitorTick() async {
 		let currentDate = Date()
-		let currentSlot = TimeSlot.from(date: currentDate, using: TimeZoneManager.shared.calendar)
+		let calendar = TimeZoneManager.shared.calendar
+		let currentSlot = TimeSlot.from(date: currentDate, using: calendar)
+		let currentDayKey = dayKey(for: currentDate)
 
+		// 检查是否跨日（dayKey变更）
+		let lastDayKey = lastObservedSlot.flatMap { _ in
+			UserDefaults.standard.string(forKey: "lastObservedDayKey")
+		}
+
+		if lastDayKey != currentDayKey {
+			logger.info("Detected day change → generating new schedule for \(currentDayKey)")
+			ensureSlotScheduleExists(for: currentDate)
+			UserDefaults.standard.set(currentDayKey, forKey: "lastObservedDayKey")
+		}
+
+		// Changed block as per instructions
 		if currentSlot != lastObservedSlot {
 			lastObservedSlot = currentSlot
 			logger.debug("Slot changed → \(currentSlot.rawValue, privacy: .public)")
-			prepareSlotGenerationSchedule(for: currentDate)
-		} else {
-			prepareSlotGenerationSchedule(for: currentDate)
+
+			if pendingGenerationConfigUpdate {
+				// Rebuild generator with the latest setting at the boundary of the new slot
+				self.taskGenerator = TaskGeneratorService(storage: self.storage, randomizeTime: self.userStats?.randomizeTaskTime ?? false)
+
+				// Reset today's schedule so remaining slots use the new generator configuration
+				let todayKey = dayKey(for: currentDate)
+				var schedule = loadSlotSchedule()
+				schedule[todayKey] = [:]
+				saveSlotSchedule(schedule)
+
+				pendingGenerationConfigUpdate = false
+			}
+
+			ensureSlotScheduleExists(for: currentDate)
 		}
 
+		// 检查当前 slot 是否应触发任务生成
 		checkSlotGenerationTrigger(reference: currentDate)
 		updateTaskRefreshEligibility(reference: currentDate)
+
 		logger.debug("Slot tick complete for \(currentSlot.rawValue, privacy: .public)")
 	}
-	
+
+	/// 计算下一个监控时间点（只考虑当天）
 	private func nextMonitorInterval(from date: Date = Date()) -> TimeInterval {
-		let defaultInterval: TimeInterval = 300
+		let defaultInterval: TimeInterval = 300 // fallback 5分钟
 		let nextBoundary = nextSlotBoundary(after: date)
 		let nextTrigger = nextScheduledTrigger(after: date)
 		let target = [nextBoundary, nextTrigger].compactMap { $0 }.min() ?? date.addingTimeInterval(defaultInterval)
 		return max(30, target.timeIntervalSince(date))
 	}
+
 	
 	private func nextSlotBoundary(after date: Date = Date()) -> Date? {
-		let cal = TimeZoneManager.shared.calendar
-		let todayIntervals = taskGenerator.scheduleIntervals(for: date)
-		var candidates = todayIntervals.values.map(\.start).filter { $0 > date }
-		if let tomorrow = cal.date(byAdding: .day, value: 1, to: date) {
-			let intervals = taskGenerator.scheduleIntervals(for: tomorrow)
-			candidates.append(contentsOf: intervals.values.map(\.start))
-		}
+		let intervals = taskGenerator.scheduleIntervals(for: date)
+		let candidates = intervals.values.map(\.start).filter { $0 > date }
 		return candidates.min()
 	}
+
 	
 	private func nextScheduledTrigger(after date: Date = Date()) -> Date? {
-		let cal = TimeZoneManager.shared.calendar
-		if let tomorrow = cal.date(byAdding: .day, value: 1, to: date) {
-			prepareSlotGenerationSchedule(for: tomorrow)
-		}
+		let todayKey = dayKey(for: date)
 		let schedule = loadSlotSchedule()
-		let keys = [dayKey(for: date), dayKey(for: cal.date(byAdding: .day, value: 1, to: date)!)]
-		var candidates: [Date] = []
-		for key in keys {
-			guard let slotMap = schedule[key] else { continue }
-			for epoch in slotMap.values {
-				let trigger = Date(timeIntervalSince1970: epoch)
-				if trigger > date {
-					candidates.append(trigger)
-				}
-			}
-		}
+		guard let slotMap = schedule[todayKey] else { return nil }
+
+		let candidates = slotMap.values
+			.map { Date(timeIntervalSince1970: $0) }
+			.filter { $0 > date }
+
 		return candidates.min()
 	}
 	
@@ -1288,6 +1378,7 @@ extension AppViewModel {
 
 		logger.debug("Cached data loaded: \(fetchedShopItems.count) items, \(fetchedInventory.count) inventory entries.")
 	}
+	
 	
 }
 

@@ -40,7 +40,7 @@ struct OnboardingView: View {
 						.padding(.bottom, 24)
 						.id(step.rawValue)
 						.animation(.easeInOut(duration: 0.3), value: step)
-					Spacer(minLength: 560)
+					Spacer(minLength: 500)
 				}
 
 				VStack(spacing: 24) {

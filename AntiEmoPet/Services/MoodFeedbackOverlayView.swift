@@ -45,7 +45,7 @@ struct MoodFeedbackOverlayView: View {
 						
 					LumioSay(text: "Feeling better?")
 
-					HStack(spacing: 12) {
+					HStack(spacing: 15) {
 						ForEach(FeedbackOption.allCases) { option in
 							FeedbackButton(option: option, isSelected: selectedOption == option) {
 								withAnimation(.spring(response: 0.7)) {
@@ -80,7 +80,7 @@ struct FeedbackButton: View {
 				.resizable()
 				.scaledToFit()
 				.frame(width: 45, height: 45)
-				.opacity(0.75)
+				.opacity(0.8)
 		}
 		.buttonStyle(.plain)
 	}

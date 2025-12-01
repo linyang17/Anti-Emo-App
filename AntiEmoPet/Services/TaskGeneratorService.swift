@@ -4,10 +4,48 @@ import Foundation
 final class TaskGeneratorService {
     private let storage: StorageService
     private let calendar = TimeZoneManager.shared.calendar
+	private let useRandomizedTime: Bool
 
-    init(storage: StorageService) {
-        self.storage = storage
-    }
+	init(storage: StorageService, randomizeTime: Bool = false) {
+		self.storage = storage
+		self.useRandomizedTime = randomizeTime
+	}
+
+	func generationTriggerTime(for slot: TimeSlot, date: Date, report: WeatherReport?) -> Date? {
+		guard let interval = scheduleIntervals(for: date)[slot] else { return nil }
+		
+		if useRandomizedTime {
+			// 在这个“最优天气窗口”内取随机时间点
+			let windows = overlappingWindows(interval: interval, report: report)
+			let defaultWeather = report?.currentWeather ?? .cloudy
+
+			let bestWindow = preferredWindow(in: windows) ?? WeatherWindow(
+				startDate: interval.start,
+				endDate: interval.end,
+				weather: defaultWeather
+			)
+
+			// 如果这个窗口大于1小时，就只在最优天气持续的首小时范围内随机
+			let start = max(bestWindow.startDate, interval.start)
+			let end = min(bestWindow.endDate, interval.end)
+			let oneHourEnd = min(start.addingTimeInterval(3600), end)
+			
+			guard oneHourEnd > start else { return start }
+
+			let duration = oneHourEnd.timeIntervalSince(start)
+			let randomOffset = Double.random(in: 0..<duration)
+			let date = start.addingTimeInterval(randomOffset)
+			return date
+		} else {
+			// 固定时间
+			switch slot {
+			case .morning:   return calendar.date(bySettingHour: 9, minute: 30, second: 0, of: date)
+			case .afternoon: return calendar.date(bySettingHour: 14, minute: 0, second: 0, of: date)
+			case .evening:   return calendar.date(bySettingHour: 18, minute: 30, second: 0, of: date)
+			default: return nil
+			}
+		}
+	}
 
 	private let slotOrder: [TimeSlot] = [.morning, .afternoon, .evening]
 
@@ -42,12 +80,6 @@ final class TaskGeneratorService {
 		return tasks.sorted { $0.date < $1.date }
 	}
 
-	func generationTriggerTime(for slot: TimeSlot, date: Date, report: WeatherReport?) -> Date? {
-		guard let interval = scheduleIntervals(for: date)[slot] else { return nil }
-		let windows = overlappingWindows(interval: interval, report: report)
-		let schedule = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .cloudy)
-		return schedule.date
-	}
 
 	func makeOnboardingTasks(for date: Date, weather: WeatherType) -> [UserTask] {
         let titles = [
@@ -62,7 +94,8 @@ final class TaskGeneratorService {
 				weatherType: weather,
                 category: .indoorDigital,
                 energyReward: 5,
-                date: calendar.date(byAdding: .minute, value: index * 10, to: baseDate) ?? baseDate
+                date: calendar.date(byAdding: .minute, value: index * 10, to: baseDate) ?? baseDate,
+                isOnboarding: true
             )
         }
     }
@@ -192,3 +225,4 @@ final class TaskGeneratorService {
         return baseRange.randomElement() ?? 1
     }
 }
+
