@@ -94,17 +94,17 @@ final class PetViewModel: ObservableObject {
     func petAsset(for bonding: PetBonding) -> String {
         switch bonding {
         case .ecstatic:
-            return "foxlying"
+            return "foxplaying"
         case .happy:
             return "foxhappy"
 		case .relaxed:
-			return "foxstretching"
+			return "foxrelax"
 		case .familiar:
-			return "foxlooking"
+			return "foxnormal"
         case .curious:
             return "foxcurious"
         case .sleepy:
-            return "foxsleep-2"
+            return "foxsleep"
         case .anxious:
             return "foxtired"
 		}
@@ -114,15 +114,13 @@ final class PetViewModel: ObservableObject {
 		// TODO: add animation and change background day/night
         switch (weather, timeOfDay) {
         case (.snowy, _):
+            return "bg-snow"
+		case (.rainy, _):
             return "bg-main"
-        case (.rainy, _):
-            return "bg-main"
-        case (.windy, _):
-            return "bg-main"
-        case (.cloudy, .night):
-            return "bg-main"
-        case (.sunny, .night):
-            return "bg-main"
+		case (.cloudy, .day):
+            return "bg-dawn"
+        case (_, .night):
+            return "bg-night"
         default:
             return "bg-main"
         }

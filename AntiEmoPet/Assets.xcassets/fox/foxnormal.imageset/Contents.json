@@ -1,15 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "foxnormal.png",
+      "filename" : "foxstretching1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "主题 20.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "filename" : "主题 16.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

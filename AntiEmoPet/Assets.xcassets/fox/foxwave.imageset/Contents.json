@@ -1,11 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "foxwave.png",
+      "filename" : "petwave.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "主题 21.png",
       "idiom" : "universal",
       "scale" : "2x"
     },

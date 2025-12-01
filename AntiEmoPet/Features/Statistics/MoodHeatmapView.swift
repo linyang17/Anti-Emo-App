@@ -8,8 +8,8 @@ struct MoodHeatmapView: View {
     let weekdays = [2, 3, 4, 5, 6, 7, 1]
     let weekdaySymbols = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     
-    // TimeSlot order: Morning, Afternoon, Evening, Night
-    private let timeSlots: [TimeSlot] = [.morning, .afternoon, .evening, .night]
+    // no analysis for night slot
+    private let timeSlots: [TimeSlot] = [.morning, .afternoon, .evening]
     
     var body: some View {
         VStack(spacing: 4) {

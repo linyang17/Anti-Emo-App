@@ -44,7 +44,6 @@ struct WelcomeView: View {
 			
 			VStack {
 					welcomeText
-						.frame(maxWidth: .infinity, alignment: .center)
 						.padding(.top, 150)
 						.padding(.bottom, 120)
 

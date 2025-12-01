@@ -60,7 +60,7 @@ private extension StatsInsightsSection {
 		// 使用简单启发式：趋势一致 & 数值区间接近 → 高相关；否则给出中性提示
 		switch (mood.trend, energy.trend) {
 		case (.up, .up), (.down, .down), (.flat, .flat):
-			return "Your mood and energy are moving in sync today — the fox notices your overall balance."
+			return "Your effort is well paid off — Lumio notices your overall balance."
 		default:
 			// 若方向不一致，用轻量说明提示用户关注身心落差
 			return "Your mood and energy seem slightly out of sync — maybe your mind or body is a bit tired."

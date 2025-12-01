@@ -21,7 +21,7 @@
 	
 	"night": [
 	  "It's late, {name}. \nThanks for stopping by.",
-	  "Hey {name}, \nLumio is here if you need\n a soft landing tonight.",
+	  "Hey {name}, Lumio is here if you need\n a soft landing tonight.",
 	  "Quiet night, {name}. \nLet's take a deep breath together."
 	]
   },
@@ -29,8 +29,8 @@
   "weather":
   {
 	"sunny": [
-	  "Good day, {name}. \nThe sky looks kind today.\n A bit of sunlight might feel good.",
-	  "Sunny outside, {name}. \nIf you have the energy, \n a tiny walk could feel nice."
+	  "Good day, {name}. \nThe sky looks kind today. A bit of sunlight might feel good.",
+	  "Sunny outside, {name}. \nIf you have the energy, a tiny walk could feel nice."
 	],
 	
 	"cloudy": [
@@ -52,17 +52,17 @@
   "mood":
   {
 	"low": [
-	  "If things feel\n heavy lately, {name}, \nit's okay to move very slowly today.",
+	  "If things feel heavy lately, {name}, \nit's okay to move very slowly today.",
 	  "You've been carrying a lot, {name}. \nWe can take today\n one tiny step at a time."
 	],
 	
 	"neutral": [
-	  "Not every day\n has to be special,\n {name}. \nShowing up is already enough.",
-	  "Balance is also progress,\n {name}. \nGentle is good."
+	  "Not every day has to be special, {name}. \nShowing up is already enough.",
+	  "Balance is also progress, {name}. \nGentle is good."
 	],
 	
 	"high": [
-	  "Your mood has been quite\n warm lately, {name}. \nMaybe we can try one small adventure today.",
+	  "Your mood has been quite warm lately, {name}. \nMaybe we can try one small adventure today.",
 	  "You seem a bit lighter, {name}. \nLet's use that energy kindly."
 	]
   }

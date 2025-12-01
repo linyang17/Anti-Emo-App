@@ -1,15 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "foxhappy.png",
+      "filename" : "主题 1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "主题.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "filename" : "主题 6.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

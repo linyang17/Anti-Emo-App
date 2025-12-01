@@ -42,11 +42,13 @@ struct PetView: View {
 							.padding(.top, .h(0.02))
 						taskButton
 							.padding(.trailing, .w(0.05))
+							.opacity(0.8)
 				}
 			}
 			.overlay(alignment: .bottomLeading) {
 					shopButton
 					.offset(x: .w(0.1), y: -.h(0.15))
+					.opacity(0.8)
 			}
 			.overlay { overlayStack }
                         .sheet(item: $activeSheet) { sheet in
@@ -155,10 +157,10 @@ struct PetView: View {
         private var liquidGlassBackground: some View {
                 Rectangle()
                         .fill(.ultraThinMaterial)
-						.opacity(0.8)
+						.opacity(0.4)
                         .overlay(
                                 LinearGradient(
-                                        colors: [Color.white.opacity(0.32), Color.white.opacity(0.12)],
+                                        colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                 )
@@ -287,7 +289,7 @@ struct PetView: View {
 			Image("spaceship")
 				.resizable()
 				.scaledToFit()
-				.frame(width: 90)
+				.frame(width: 75)
 				.accessibilityLabel("tasks")
 				.shadow(color: Color.gray.opacity(0.2), radius: 8, x: 1, y: 1)
 		}

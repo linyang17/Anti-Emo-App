@@ -245,7 +245,7 @@ struct ShopView: View {
 				RoundedRectangle(cornerRadius: 40, style: .continuous)
 					.fill(
 						LinearGradient(
-							colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
+							colors: [Color.white.opacity(0.25), Color.white.opacity(0.1)],
 							startPoint: .topLeading,
 							endPoint: .bottomTrailing
 						)

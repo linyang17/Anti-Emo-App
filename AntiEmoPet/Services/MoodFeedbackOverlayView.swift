@@ -41,14 +41,14 @@ struct MoodFeedbackOverlayView: View {
 
         var body: some View {
 			ZStack(alignment: .center) {
-				VStack(spacing: 8) {
+				VStack(spacing: 20) {
 						
 					LumioSay(text: "Feeling better?")
 
-					HStack(spacing: 2) {
+					HStack(spacing: 12) {
 						ForEach(FeedbackOption.allCases) { option in
 							FeedbackButton(option: option, isSelected: selectedOption == option) {
-								withAnimation(.spring(response: 0.3)) {
+								withAnimation(.spring(response: 0.7)) {
 										selectedOption = option
 								}
 								
@@ -79,7 +79,8 @@ struct FeedbackButton: View {
 			Image(option.icon)
 				.resizable()
 				.scaledToFit()
-				.frame(width: 55, height: 55)
+				.frame(width: 45, height: 45)
+				.opacity(0.75)
 		}
 		.buttonStyle(.plain)
 	}
