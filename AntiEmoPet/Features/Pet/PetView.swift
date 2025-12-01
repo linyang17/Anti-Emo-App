@@ -222,11 +222,11 @@ struct PetView: View {
         private func petStage(for pet: Pet) -> some View {
                 ZStack(alignment: .bottomTrailing) {
                         Image(viewModel.screenState.petAsset)
-				.resizable()
-				.scaledToFit()
-				.frame(maxWidth: 220)
-				.padding(.top, 120)
-				.padding(.bottom, 120)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 220, maxHeight: 220)
+                                .padding(.top, 120)
+                                .padding(.bottom, 120)
 				.shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
 				.simultaneousGesture(
 					TapGesture()

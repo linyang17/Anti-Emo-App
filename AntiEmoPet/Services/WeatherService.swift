@@ -6,13 +6,14 @@ import OSLog
 
 // MARK: - Codable Snapshots for Persistence
 private struct WeatherReportSnapshot: Codable {
-	let latitude: Double?
-	let longitude: Double?
-	let locality: String?
-	let current: String
-	let windows: [WeatherWindowSnapshot]
-	let sunEvents: [SunEventSnapshot]?
-	let timestamp: Date
+        let latitude: Double?
+        let longitude: Double?
+        let locality: String?
+        let current: String
+        let temperature: Double?
+        let windows: [WeatherWindowSnapshot]
+        let sunEvents: [SunEventSnapshot]?
+        let timestamp: Date
 }
 
 private struct WeatherWindowSnapshot: Codable {
@@ -124,17 +125,19 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 		// Fetch from WeatherKit
 		do {
 			let weather = try await weatherService.weather(for: location)
-			let current = WeatherType(from: weather.currentWeather)
-			let windows = buildWindows(weather: weather)
-			let sunEvents = buildSunEvents(weather: weather)
+                        let current = WeatherType(from: weather.currentWeather)
+                        let temperature = weather.currentWeather.temperature.converted(to: .celsius).value
+                        let windows = buildWindows(weather: weather)
+                        let sunEvents = buildSunEvents(weather: weather)
 
-			let report = WeatherReport(
-				location: location,
-				locality: locality,
-				currentWeather: current,
-				windows: windows,
-				sunEvents: sunEvents
-			)
+                        let report = WeatherReport(
+                                location: location,
+                                locality: locality,
+                                currentWeather: current,
+                                currentTemperature: temperature,
+                                windows: windows,
+                                sunEvents: sunEvents
+                        )
 
 				currentWeatherReport = report
 				lastFetchAt = Date()
@@ -279,21 +282,29 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 		let sunset = calendar.date(bySettingHour: 18, minute: 30, second: 0, of: startOfDay)!
 		let events = [startOfDay: SunTimes(sunrise: sunrise, sunset: sunset)]
 
-		return WeatherReport(location: nil, locality: locality, currentWeather: .sunny, windows: windows, sunEvents: events)
+                return WeatherReport(
+                        location: nil,
+                        locality: locality,
+                        currentWeather: .sunny,
+                        currentTemperature: 22,
+                        windows: windows,
+                        sunEvents: events
+                )
 	}
 
 	// MARK: - Persistence
-	private func persistToDisk(_ report: WeatherReport) {
-		let snap = WeatherReportSnapshot(
-			latitude: report.location?.coordinate.latitude,
-			longitude: report.location?.coordinate.longitude,
-			locality: report.locality,
-			current: report.currentWeather.rawValue,
-			windows: report.windows.map {
-				WeatherWindowSnapshot(startDate: $0.startDate, endDate: $0.endDate, weather: $0.weather.rawValue)
-			},
-			sunEvents: report.sunEvents.map {
-				SunEventSnapshot(day: $0.key, sunrise: $0.value.sunrise, sunset: $0.value.sunset)
+        private func persistToDisk(_ report: WeatherReport) {
+                let snap = WeatherReportSnapshot(
+                        latitude: report.location?.coordinate.latitude,
+                        longitude: report.location?.coordinate.longitude,
+                        locality: report.locality,
+                        current: report.currentWeather.rawValue,
+                        temperature: report.currentTemperature,
+                        windows: report.windows.map {
+                                WeatherWindowSnapshot(startDate: $0.startDate, endDate: $0.endDate, weather: $0.weather.rawValue)
+                        },
+                        sunEvents: report.sunEvents.map {
+                                SunEventSnapshot(day: $0.key, sunrise: $0.value.sunrise, sunset: $0.value.sunset)
 			},
 			timestamp: Date()
 		)
@@ -324,15 +335,16 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 				return nil
 			}()
 
-			let report = WeatherReport(
-				location: loc,
-				locality: snap.locality,
-				currentWeather: WeatherType(rawValue: snap.current) ?? .cloudy,
-				windows: snap.windows.map {
-					WeatherWindow(startDate: $0.startDate, endDate: $0.endDate, weather: WeatherType(rawValue: $0.weather) ?? .cloudy)
-				},
-				sunEvents: sunEvents
-			)
+                        let report = WeatherReport(
+                                location: loc,
+                                locality: snap.locality,
+                                currentWeather: WeatherType(rawValue: snap.current) ?? .cloudy,
+                                currentTemperature: snap.temperature,
+                                windows: snap.windows.map {
+                                        WeatherWindow(startDate: $0.startDate, endDate: $0.endDate, weather: WeatherType(rawValue: $0.weather) ?? .cloudy)
+                                },
+                                sunEvents: sunEvents
+                        )
 
 			currentWeatherReport = report
 			lastFetchAt = snap.timestamp

@@ -50,9 +50,17 @@ struct TasksView: View {
     private var header: some View {
         HStack(spacing: 12) {
             if let report = appModel.weatherReport {
-                Text(report.currentWeather.rawValue.capitalized)
-                    .appFont(FontTheme.body)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text(report.currentWeather.rawValue.capitalized)
+                        .appFont(FontTheme.body)
+                        .foregroundStyle(.secondary)
+
+                    if let temperature = report.currentTemperature {
+                        Text(String(format: "%.0f°C", temperature))
+                            .appFont(FontTheme.body)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             } else {
                 Text("Weather unavailable")
                     .appFont(FontTheme.body)

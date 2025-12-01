@@ -30,13 +30,22 @@ struct WeatherReport: Sendable {
     let location: CLLocation?
     let locality: String?
     let currentWeather: WeatherType
+    let currentTemperature: Double?
     let windows: [WeatherWindow]
     let sunEvents: [Date: SunTimes]
 
-    init(location: CLLocation?, locality: String?, currentWeather: WeatherType, windows: [WeatherWindow], sunEvents: [Date: SunTimes]) {
+    init(
+        location: CLLocation?,
+        locality: String?,
+        currentWeather: WeatherType,
+        currentTemperature: Double?,
+        windows: [WeatherWindow],
+        sunEvents: [Date: SunTimes]
+    ) {
         self.location = location
         self.locality = locality
         self.currentWeather = currentWeather
+        self.currentTemperature = currentTemperature
         self.windows = windows
         self.sunEvents = sunEvents
     }

@@ -162,20 +162,22 @@ final class AppViewModel: ObservableObject {
 
 		await refreshWeather(using: locationService.lastKnownLocation)
 		
-		// Determine current slot
-		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+                // Determine current slot
+                let now = Date()
+                let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
+                todayTasks = storage.fetchTasks(in: slot, on: now, includeOnboarding: true)
 
-		if todayTasks.isEmpty {
-			let generated = taskGenerator.generateTasks(
-				for: slot,
-				date: Date(),
-				report: weatherReport
-			)
-			storage.save(tasks: generated)
-			todayTasks = generated
-			logger.debug("Generated initial daily tasks: \(generated.count)")
-		}
+                if todayTasks.isEmpty {
+                        let generated = taskGenerator.generateTasks(
+                                for: slot,
+                                date: now,
+                                report: weatherReport
+                        )
+                        storage.save(tasks: generated)
+                        todayTasks = generated
+                        markSlotTasksGenerated(slot, on: now)
+                        logger.debug("Generated initial daily tasks: \(generated.count)")
+                }
 
 		checkSlotGenerationTrigger()
 		startSlotMonitor()
