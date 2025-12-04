@@ -362,8 +362,8 @@ final class AppViewModel: ObservableObject {
 		task.completedAt = Date()
 		
 		task.energyReward = task.category.energyReward
-		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)
-		petEngine.applyTaskCompletion()
+		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)  // award energy
+		petEngine.handleAction(.taskComplete)   // award bonding + xp
 
 		// TODO: 随机掉落一份 snack 奖励
 		var snackName: String?
@@ -432,7 +432,7 @@ final class AppViewModel: ObservableObject {
 				showPettingNotice("Lumio needs some rest now")
 				return false
 		}
-		petEngine.applyPettingReward()
+		petEngine.handleAction(.pat)
 		incrementPetInteractionCount()
 		incrementPettingCount()
 		storage.persist()
@@ -973,7 +973,7 @@ final class AppViewModel: ObservableObject {
             let tasks = storage.fetchTasks(for: yesterday)
             let didComplete = tasks.contains { $0.status == .completed }
             if !didComplete {
-                petEngine.applyLightPenalty()
+				petEngine.handleAction(.penalty)
                 storage.persist()
                 showPettingNotice("Lumio felt a bit lonely (bonding level down)")
             }

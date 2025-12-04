@@ -7,9 +7,8 @@
 - 核心价值：项目旨在通过“日常任务 × 天气/时段 × 虚拟宠物反馈”形成一套轻量行为激励系统，辅以情绪记录与商店奖励，驱动用户持续参与。
 - 产品潜力：
   - 结合天气/时段生成动态任务、完成后奖励能量与宠物羁绊/等级，具备“情绪健康 + 游戏化”的差异化空间。
-  - 入门（Onboarding）引导、情绪捕获提醒、轻商城与装扮，具备进一步增长与留存的潜力。
+  - 新手（Onboarding）引导、情绪捕获提醒、轻商城与装扮，具备进一步增长与留存的潜力。
 - 主要风险：
-  - PRD缺失导致“需求边界、指标口径、异常流程”不清晰，易产生实现分歧与重复逻辑。
   - 分析口径分散（UserDefaults计数 vs DataAggregationService指标），后续数据一致性与可验证性存在风险。
 - 关键建议：
   1) 统一“任务/心情/天气/指标”的数据口径与事件命名（Analytics 词典）。
@@ -19,7 +18,7 @@
 
 ---
 
-## 2. 功能地图（从代码反推）
+## 2. 功能地图
 
 - 任务系统
   - `UserTask`（SwiftData @Model）：`TaskCategory`、`TaskStatus`、Buffer机制（`bufferDuration`）与奖励（`energyReward`）。
@@ -154,14 +153,14 @@
 - 处理：收敛到单一入口；`isCompletable` 改为仅 `.ready`（或PRD明确例外）。
 
 2) 奖励口径重复
-- 位置：`TaskCategory.energyReward` 与 `RewardEngine.applyTaskReward`。
+- 位置：`tasks.json`， `usertask.energyReward`
 - 风险：能量值口径不一致；后续活动/配置难以统一。
-- 处理：将奖励计算集中在 `RewardEngine`，`TaskCategory` 仅作为“推荐/默认值”。
+- 处理：使用 `usertask.energyReward`的奖励数值，删除`tasks.json`和其引用函数的不必要字段。
 
 3) 指标双轨
 - 位置：`DailyActivityMetrics`（UserDefaults计数） vs `DataAggregationService`（聚合计算）。
 - 风险：看数不一致、调试困难。
-- 处理：统一指标来源并定义口径；将历史数据迁移或兼容。
+- 处理：统一指标来源并定义口径；历史数据兼容，缺失数据按照默认值补入。
 
 4) 字段类型与存储不一致
 - 位置：`MoodEntry` 使用 String 存储 + 计算属性；`UserTask` 直接存枚举。
