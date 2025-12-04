@@ -36,8 +36,8 @@
 - 代码现状
   - 存在 `TaskGeneratorService` 与 `AppViewModel` 的时段调度、定时触发与刷新限制（每段一次）逻辑，整体框架吻合。
   - 夜间不生成任务与睡眠提醒已实现（`SleepReminderService`）。
-  - 生成触发与保留/清理：当前实现会在新段生成前删除前段“未完成任务”（而非标注归档状态），与“归档到历史”的语义不完全一致。
-  - 天气加权：已有 WeatherKit 窗口，但天气与类别的权重矩阵未显式配置；`TaskCategory` 已新增 `isEligible(for:)`（雨天不户外，晴天不 indoorDigital/petCare）。
+  - 生成触发与保留/清理：当前实现会在新段生成前删除当日“未完成任务”（`refreshTasks` 会调用 `storage.deleteTasks`），与“归档到历史”的语义不一致。
+  - 天气加权：`TaskGeneratorService` 固定生成 3 条任务并依赖 `categoryWeights` 加权，但未结合 `TaskCategory` 的天气适配（代码中缺少 `isEligible(for:)` 过滤），同时 `taskCount(for:)` 等权重函数未被使用。
 - 需要对齐的点
   - 引入“归档”状态或历史标记，避免直接删除未完成任务记录。
   - 在 `TaskGeneratorService` 中使用“固定/随机模式”与“天气窗口加权”的明确配置；并在时间段开始时确定随机生成时刻与通知。
@@ -46,8 +46,8 @@
 - PRD要点
   - 用户必须先“开始”，再等待“Buffer倒计时”，倒计时结束方可“完成”。
 - 代码现状
-  - 已更新：`TaskStatus.isCompletable` 仅 `.ready` 可完成（之前允许 `.pending`）。
-  - `AppViewModel.startTask` 设置 `canCompleteAfter` 并在Buffer后自动转为 `ready`。
+  - 当前 `TaskStatus.isCompletable` 仍允许 `.pending` 完成，`AppViewModel.completeTask` 也以此作为入口，导致未到 Buffer 也能在某些边界下被判定可完成。
+  - `AppViewModel.startTask` 设置 `canCompleteAfter` 并在 Buffer 后自动转为 `ready`，但与上述可完成条件存在冲突，需要收敛单一入口与判定标准。
 - 需要对齐的点
   - 保持单一入口推进状态，避免 `updateTaskStatus` 与 `start/complete` 双轨导致边界不一致。
 
@@ -57,7 +57,7 @@
   - 晴天：不包括 indoorDigital 与 petCare。
   - 其他天气：均等。
 - 代码现状
-  - 在 `TaskCategory` 新增 `isEligible(for:)`，已表达上述规则。
+  - 代码未包含 `TaskCategory.isEligible(for:)` 等天气过滤函数，`TaskGeneratorService` 仅按权重随机选择类别，未屏蔽“雨天户外”“晴天 indoorDigital/petCare”等不符合 PRD 的组合。
 - 需要对齐的点
   - 在任务生成算法中实际使用该方法进行筛选与加权。
 
@@ -68,8 +68,8 @@
   - 完成任务后弹奖励提示，再弹“强制情绪反馈”弹窗；户外/社交任务有概率掉落“纪念品/玫瑰”。
   - 食物（food）不可购买，只能通过完成任务获得。
 - 代码现状
-  - `TaskCategory.energyReward` 与 `RewardEngine` 并存，口径可能重复。
-  - 已有“随机Snack奖励”逻辑；商店目前可购买所有类型（含 snack）。
+  - `TaskCategory.energyReward` 与 `RewardEngine` 并存，口径重复，且完成逻辑会用分类默认值覆盖已有奖励。
+  - 已有“随机Snack奖励”逻辑；商店入口 `ItemType.allCases` 包含 snack，`ShopView` 允许直接购买食物，与“只能掉落”不符。
 - 需要对齐的点
   - 将奖励/掉落集中到 `RewardEngine`，`TaskCategory` 保留默认值。
   - 商店中屏蔽“食物/snack”购买入口，仅通过任务掉落增加库存。
@@ -90,8 +90,8 @@
   - 每天0点若前一天无任务完成，关系值下降2；关系值下限为15。
   - 购买装扮 +10 关系值 +10 XP；喂食 +2 关系值 +2 XP；完成任务 +1 XP。
 - 代码现状
-  - `applyDailyBondingDecayIfNeeded` 在无完成任务时调用 `applyLightPenalty()`（-1），与PRD不一致。
-  - `PetEngine.Constants.minScore = 10`，与PRD的下限 15 不一致。
+  - `applyDailyBondingDecayIfNeeded` 在无完成任务时调用 `applyLightPenalty()`（-1），惩罚与 PRD 的 -2 不一致，且 `Constants.minScore = 10` 低于 PRD 的 15。
+  - `evaluateBondingPenalty` 为空实现，未按时段或刷新触发额外惩罚。
   - 购买/喂食/完成任务的加成与PRD一致。
 - 需要对齐的点
   - 将每日惩罚改为 -2，并把羁绊下限改为 15。
@@ -110,9 +110,9 @@
   - 每天0点上传当日summary，失败留存重试。
   - “能量增长”仅关注 delta > 0（反映任务完成）。
 - 代码现状
-  - `DataAggregationService` 产出 `UserTimeslotSummary`，但 `tasksSummary` 仅 [completed, total] 且未包含情绪反馈总和；`timeslot_weather` 的定义与“生成时天气”不完全一致。
+  - `DataAggregationService` 产出 `UserTimeslotSummary` 时 `tasksSummary` 仅 [completed, total] 且未包含情绪反馈总和，且 `timeslotWeather` 来源于完成/情绪记录而非“生成时天气”。
   - `DailyActivityMetrics` 以 UserDefaults 计数的方式维护部分日级指标，与聚合服务口径不完全一致。
-  - `energyHistory` 记录的是总能量快照，而非“只记录正向delta的事件序列”。
+  - 能量数据仅有每日总量快照（`EnergyHistoryEntry`），缺少“delta>0 + related_task_id”的事件流结构。
 - 需要对齐的点
   - 统一以 `DataAggregationService` 为指标中心：扩展结构以覆盖 `task_feedback` 的三元组与“生成时天气”。
   - 新增“能量事件流（delta>0 + related_task_id）”的数据结构与持久化；总量快照仅用于展示。
@@ -123,7 +123,7 @@
 ## 3. 重复/不一致项（修复清单）
 
 - 任务状态推进双轨
-  - 收敛到单一入口；`isCompletable` 已修正为仅 `.ready`。
+  - 收敛到单一入口；`isCompletable` 需改为仅 `.ready`，并移除允许 `.pending` 完成的入口。
 - 奖励口径重复
   - 将能量/掉落/加成统一在 `RewardEngine`；`TaskCategory` 仅提供默认值与语义。
 - 指标双轨
@@ -132,10 +132,16 @@
   - 屏蔽 `ItemType.snack` 的购买入口，仅允许任务掉落或背包消耗。
 - 宠物羁绊边界与惩罚值不一致
   - 将 `minScore` 调整为 15；每日未完成任务惩罚改为 -2。
-- 历史归档语义
-  - 不再删除前一时段未完成任务，改为标记归档/过期，保留完整行为日志。
+  - 任务历史归档缺失
+    - 避免直接删除未完成任务，改为“过期/归档”状态，保留完整行为日志。
+  - 能量事件缺失
+    - 新增“能量增长事件流”结构，记录 delta>0 与关联任务，配合总量快照展示。
 - 本地化
   - `TaskCategory.title` 等文案迁移到本地化资源；使用 `localizedTitle`。
+- 同功能多命名/未用代码段
+  - `TaskGeneratorService.taskCount(for:)` 与固定生成 3 条任务的实现并行存在，前者未被调用，导致“按天气数量调整”与实际逻辑脱节。
+  - 宠物每日惩罚在 `PetEngine.applyDailyDecay` 与 `AppViewModel.applyDailyBondingDecayIfNeeded` 中双轨存在，前者未接入流程且惩罚值/触发条件不清晰，容易与后者的轻惩罚实现产生混淆。
+  - `InventoryEntry.quantity` 与别名 `count` 并存，`UserStats.TotalDays`/`Onboard` 采用不同命名风格，与其余小写属性混用，建议统一命名与入口以减少歧义。
 
 ---
 
@@ -177,9 +183,9 @@
 
 ## 6. 与PRD对齐的代码变更建议（指令级）
 
-- UserTask/TaskCategory
-  - 已新增：`TaskCategory.isEligible(for:)` 与 `localizedTitle`；`TaskStatus.isCompletable` 仅 `.ready`。
-  - 后续：在生成算法中使用 `isEligible(for:)`；文案改为本地化键。
+  - UserTask/TaskCategory
+    - 补充：实现 `TaskCategory.isEligible(for:)` 与 `localizedTitle`（当前缺失）；`TaskStatus.isCompletable` 收紧为仅 `.ready`。
+    - 后续：在生成算法中实际调用 `isEligible(for:)`；文案改为本地化键。
 - AppViewModel/TaskGeneratorService
   - 在时间段开始时生成“随机生成时刻”，并根据天气窗口加权；到时触发生成与通知。
   - 新任务生成前，将前段任务标记为“归档/过期”，不删除未完成任务记录。
