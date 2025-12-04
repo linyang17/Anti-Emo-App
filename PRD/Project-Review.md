@@ -37,10 +37,10 @@
   - 存在 `TaskGeneratorService` 与 `AppViewModel` 的时段调度、定时触发与刷新限制（每段一次）逻辑，整体框架吻合。
   - 夜间不生成任务与睡眠提醒已实现（`SleepReminderService`）。
   - 生成触发与保留/清理：当前实现会在新段生成前删除当日“未完成任务”（`refreshTasks` 会调用 `storage.deleteTasks`），与“归档到历史”的语义不一致。
-  - 天气加权：`TaskGeneratorService` 固定生成 3 条任务并依赖 `categoryWeights` 加权，但未结合 `TaskCategory` 的天气适配（代码中缺少 `isEligible(for:)` 过滤），同时 `taskCount(for:)` 等权重函数未被使用。
+  - 天气加权：`TaskGeneratorService` 固定生成 3 条任务并依赖 `categoryWeights` 加权，但未结合 `TaskCategory` 的天气适配
 - 需要对齐的点
   - 引入“归档”状态或历史标记，避免直接删除未完成任务记录。
-  - 在 `TaskGeneratorService` 中使用“固定/随机模式”与“天气窗口加权”的明确配置；并在时间段开始时确定随机生成时刻与通知。
+  - 在 `TaskGeneratorService` 中使用“固定/随机模式”与“天气窗口加权”的明确配置；并在时间段开始时确定随机生成时刻。
 
 ### 2.2 任务生命周期与完成判定
 - PRD要点
@@ -53,13 +53,14 @@
 
 ### 2.3 天气 × 任务类型适配
 - PRD要点
-  - 雨天：不包括户外任务。
-  - 晴天：不包括 indoorDigital 与 petCare。
-  - 其他天气：均等。
-- 代码现状
-  - 代码未包含 `TaskCategory.isEligible(for:)` 等天气过滤函数，`TaskGeneratorService` 仅按权重随机选择类别，未屏蔽“雨天户外”“晴天 indoorDigital/petCare”等不符合 PRD 的组合。
+    - 任务重复生成/刷新策略的PRD边界（保留/清理、惩罚/奖励）。
+  - `energyReward` 硬编码在 `TaskCategory`，但 `RewardEngine` 也在计算奖励，存在潜在重复口径。
 - 需要对齐的点
-  - 在任务生成算法中实际使用该方法进行筛选与加权。
+  - 采用“单一状态机 + 单一入口”：
+      • 对外仅暴露 startTask(_:) 与 completeTask(_:)；updateTaskStatus 改为内部私有/删除 UI 层调用。
+      • 明确状态机：pending -> started -> ready -> completed，并在 PRD 固化“只有 ready 才能完成”。
+      • 倒计时触发仅保留 VM 层（startTask 内部 Task.sleep）或 UI 层其一，建议全部由 VM 控（UI 仅显示状态）。
+  - 删除“保留一个任务”的机制和刷新机制
 
 ### 2.4 奖励与掉落
 - PRD要点
@@ -71,9 +72,9 @@
   - `TaskCategory.energyReward` 与 `RewardEngine` 并存，口径重复，且完成逻辑会用分类默认值覆盖已有奖励。
   - 已有“随机Snack奖励”逻辑；商店入口 `ItemType.allCases` 包含 snack，`ShopView` 允许直接购买食物，与“只能掉落”不符。
 - 需要对齐的点
-  - 将奖励/掉落集中到 `RewardEngine`，`TaskCategory` 保留默认值。
+  - 将奖励/掉落集中到 `TaskCategory` ，删除`tasks.json`和其引用函数的不必要字段。
   - 商店中屏蔽“食物/snack”购买入口，仅通过任务掉落增加库存。
-  - 在奖励提示后强制展示情绪反馈（现有 `pendingMoodFeedbackTask` 已基本满足）。
+  - 能量时间序列在 PRD 要求为“delta + related_task_id”，代码目前仅记录 totalEnergy 快照（EnergyHistoryEntry）且不含 delta 与任务关联。
 
 ### 2.5 情绪记录与反馈
 - PRD要点
@@ -90,12 +91,9 @@
   - 每天0点若前一天无任务完成，关系值下降2；关系值下限为15。
   - 购买装扮 +10 关系值 +10 XP；喂食 +2 关系值 +2 XP；完成任务 +1 XP。
 - 代码现状
-  - `applyDailyBondingDecayIfNeeded` 在无完成任务时调用 `applyLightPenalty()`（-1），惩罚与 PRD 的 -2 不一致，且 `Constants.minScore = 10` 低于 PRD 的 15。
-  - `evaluateBondingPenalty` 为空实现，未按时段或刷新触发额外惩罚。
-  - 购买/喂食/完成任务的加成与PRD一致。
-- 需要对齐的点
-  - 将每日惩罚改为 -2，并把羁绊下限改为 15。
-
+  - 购买/喂食/完成任务的加成与PRD不一致。
+  
+  
 ### 2.7 指标、聚合与上传
 - PRD要点
   - 本地持有完整事件日志（情绪、任务、天气、宠物、商店），支持导出/导入。
@@ -130,9 +128,7 @@
   - 统一到 `DataAggregationService`；`DailyActivityMetrics` 作为前端展示缓存，明确来源与口径。
 - 商店“食物”购买与PRD不一致
   - 屏蔽 `ItemType.snack` 的购买入口，仅允许任务掉落或背包消耗。
-- 宠物羁绊边界与惩罚值不一致
-  - 将 `minScore` 调整为 15；每日未完成任务惩罚改为 -2。
-  - 任务历史归档缺失
+- 任务历史归档缺失
     - 避免直接删除未完成任务，改为“过期/归档”状态，保留完整行为日志。
   - 能量事件缺失
     - 新增“能量增长事件流”结构，记录 delta>0 与关联任务，配合总量快照展示。
@@ -160,24 +156,19 @@
 
 ## 5. 优先级路线图（对齐PRD）
 
-- P0（本周）
+- P0
   - 修正任务完成判定（已完成）；收敛任务状态推进单入口。
   - 商店屏蔽“食物”购买；将奖励/掉落统一到 `RewardEngine`。
   - 宠物惩罚与下限对齐（-2、min 15）。
   - 扩展 `DataAggregationService` 结构：`task_feedback` 三元组、`timeslot_weather` 使用“生成时天气”。
 
-- P1（两周内）
+- P1
   - `TaskGeneratorService`：实现固定/随机模式切换、时间段开始时确定随机生成时刻、天气窗口加权、通知调度。
   - 历史归档：替代删除为归档标记；实现历史浏览与导出。
   - 能量事件流：新增 `EnergyEvent`（delta>0 + related_task_id）持久化与查询；总量快照用于展示。
-  - 本地化迁移：采用 `String Catalog`，统一 `TaskCategory.localizedTitle` 等。
+  - 本地化迁移：采用 `String Catalog`，统一 `TaskCategory.localizedTitle` 、天气文案等迁移到本地化资源等。
+  - 指标中心化：将 `DailyActivityMetrics` 与 `DataAggregationService` 逻辑统一
 
-- P2（四周内）
-  - 洞察与AI建议：
-    - 热力图（时间段×星期几 vs 情绪均值，不含夜间）。
-    - 天气 vs 情绪均值；日照时长 vs 情绪均值（平滑）。
-    - 任务类型完成后的情绪反馈均值；情绪-能量相关分析与滞后分析。
-  - 个性化：低情绪时优先推荐舒缓任务；A/B实验。
 
 ---
 
@@ -191,8 +182,6 @@
   - 新任务生成前，将前段任务标记为“归档/过期”，不删除未完成任务记录。
 - RewardEngine/ShopView
   - 将能量/掉落/加成集中到 `RewardEngine`；`ShopView` 中禁止 `snack` 购买，仅展示数量与使用。
-- PetEngine
-  - `minScore = 15`；每日未完成任务惩罚改为 -2；保留上限与边界检查。
 - DataAggregationService
   - `tasksSummary` 扩展为 { category: [published, completed, moodDeltaSum] }，并记录“生成时天气”。
 - Energy 数据结构
@@ -210,6 +199,53 @@
 
 ---
 
+
 ## 8. 结语
 
 项目具备“健康行为激励 + 轻量养成 + 数据洞察”的良好潜力。建议优先完成策略/指标/状态机三大统一，对齐PRD的关键规则（任务生成与完成判定、奖励与掉落、宠物边界与惩罚、分时段聚合与上传），再逐步推进洞察与AI建议能力，以支撑产品验证与增长。
+
+## 9. 附录 A：任务状态机
+
+• 状态与触发
+   • pending：初始；用户点击“Start”→ 进入 started
+   • started：记录 startedAt；计算 canCompleteAfter = startedAt + buffer；倒计时结束→ ready
+   • ready：可完成；点击“Done!”→ completed，记录 completedAt
+   • completed：发放奖励（能量/XP/羁绊/掉落）、写入记录、触发情绪反馈
+• 约束
+   • 同一时间仅允许一个 started（DEBUG除外）
+   • 仅 ready 可完成
+
+⸻
+
+10. 附录 B：Analytics 事件词典
+
+• 通用属性：app_version、build、platform、locale
+• 任务
+   • tasks_generated_slot：slot、count、weather
+   • task_started：title、category、buffer
+   • task_ready：title、category、elapsed
+   • task_completed：title、category、energy、completedAt、slot
+• 情绪
+   • mood_entry_added：id、date、source、value
+   • mood_feedback_after_task：id、date、source、value、delta、category、weather、relatedTaskId
+• 宠物
+   • pet_pat：count
+   • pet_feed：sku
+   • bonding_penalty：reason(no_tasks_completed_yesterday)
+• 系统
+   • onboarding_done：region、gender
+   • 通知授权：notifications_granted/denied/requires_settings
+
+⸻
+
+11. 附录 C：关键字段对齐
+
+• 任务（UserTask）
+   • 新增：timeslot
+   • 删除：moodEntryId
+   • 完成口径：以 completedAt 为准。
+• 能量（EnergyEvent）
+   • 新增：delta、relatedTaskId
+• 情绪
+   • 新增：relatedTaskId?
+
