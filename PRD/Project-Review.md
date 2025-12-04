@@ -23,6 +23,9 @@
 - 任务状态机限制仅 `.ready` 可完成，并通过天气适配过滤任务类别，雨天禁户外、晴天优先非室内数字/宠物护理。
 - 宠物羁绊最小值提升至 15，0 完成惩罚维持 -2，下限与惩罚口径统一。
 - 商店入口隐藏可食用类的购买入口，保留通过任务掉落补给的策略，后续继续集中奖励逻辑到 RewardEngine。
+- RewardEngine 统一计算任务能量奖励与随机掉落，完成后先展示奖励再进入情绪反馈；掉落的 snack 成为唯一补给来源。
+- DataAggregationService 输出 {published, completed, moodDeltaSum} 三元组并使用“生成时天气”口径；新增 EnergyEvent 流（delta>0 + relatedTaskId）并持久化。
+- 启动本地化迁移：TaskCategory.localizedTitle 改为字符串表读取，为后续多语言做准备。
 
 ---
 
@@ -77,6 +80,7 @@
 - 代码现状
   - `TaskCategory.energyReward` 与 `RewardEngine` 并存，口径重复，且完成逻辑会用分类默认值覆盖已有奖励。
   - 已有“随机Snack奖励”逻辑；商店入口 `ItemType.allCases` 包含 snack，`ShopView` 允许直接购买食物，与“只能掉落”不符。
+  - RewardEngine 现已成为统一入口：能量取决于 TaskCategory，完成时集中计算能量/掉落并触发奖励弹窗；ShopView 仅展示可装扮类目，snack 仅能通过掉落获得。
 - 需要对齐的点
   - 将奖励/掉落集中到 `TaskCategory` ，删除`tasks.json`和其引用函数的不必要字段。
   - 商店中屏蔽“食物/snack”购买入口，仅通过任务掉落增加库存。
@@ -115,6 +119,7 @@
   - “能量增长”仅关注 delta > 0（反映任务完成）。
 - 代码现状
   - `DataAggregationService` 产出 `UserTimeslotSummary` 时 `tasksSummary` 仅 [completed, total] 且未包含情绪反馈总和，且 `timeslotWeather` 来源于完成/情绪记录而非“生成时天气”。
+  - 聚合结果已调整为 {published, completed, moodDeltaSum} 并记录任务生成时天气；能量增长事件新增 EnergyEvent 结构，按 delta>0 + relatedTaskId 持久化。
   - `DailyActivityMetrics` 以 UserDefaults 计数的方式维护部分日级指标，与聚合服务口径不完全一致。
   - 能量数据仅有每日总量快照（`EnergyHistoryEntry`），缺少“delta>0 + related_task_id”的事件流结构。
 - 需要对齐的点
@@ -140,6 +145,7 @@
     - 新增“能量增长事件流”结构，记录 delta>0 与关联任务，配合总量快照展示。
 - 本地化
   - `TaskCategory.title` 等文案迁移到本地化资源；使用 `localizedTitle`。
+  - 已以字符串表托管 TaskCategory.localizedTitle，作为本地化迁移起点。
 - 同功能多命名/未用代码段
   - `TaskGeneratorService.taskCount(for:)` 与固定生成 3 条任务的实现并行存在，前者未被调用，导致“按天气数量调整”与实际逻辑脱节。
   - 宠物每日惩罚在 `PetEngine.applyDailyDecay` 与 `AppViewModel.applyDailyBondingDecayIfNeeded` 中双轨存在，前者未接入流程且惩罚值/触发条件不清晰，容易与后者的轻惩罚实现产生混淆。

@@ -39,6 +39,19 @@ final class StorageService {
         }
     }
 
+    func fetchEnergyEvents(limit: Int? = nil) -> [EnergyEvent] {
+        do {
+            var descriptor = FetchDescriptor<EnergyEvent>(
+                sortBy: [SortDescriptor(\EnergyEvent.date, order: .reverse)]
+            )
+            if let limit { descriptor.fetchLimit = limit }
+            return try context.fetch(descriptor)
+        } catch {
+            logger.error("Failed to fetch energy events: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
     func fetchStats() -> UserStats? {
         do {
             if try ensureSeed(for: UserStats.self, create: {
@@ -484,6 +497,11 @@ final class StorageService {
         } catch {
             logger.error("Failed to decrement inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    func addEnergyEvent(_ event: EnergyEvent) {
+        context.insert(event)
+        saveContext(reason: "add energy event")
     }
 
     @discardableResult

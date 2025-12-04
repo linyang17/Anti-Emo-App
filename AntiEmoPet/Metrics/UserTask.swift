@@ -13,14 +13,8 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var localizedTitle: String {
-        switch self {
-        case .outdoor: return "Outdoor Activities"
-        case .indoorDigital: return "Digital"
-        case .indoorActivity: return "Indoor Activities"
-        case .socials: return "Social"
-        case .petCare: return "Pet Care"
-        case .physical: return "Physical Exercises"
-        }
+        let key = "task.category.\(rawValue)"
+        return NSLocalizedString(key, comment: "Task category title")
     }
 
     func isEligible(for weather: WeatherType) -> Bool {

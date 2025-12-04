@@ -19,7 +19,7 @@ struct UserTimeslotSummary: Codable, Sendable {
     let totalEnergyGain: Int
     let moodDeltaAfterTasks: Double // Avg delta
     
-    // Task Summary: { "outdoor": [completed, total] }
+    // Task Summary: { "outdoor": [published, completed, moodDeltaSum] }
     let tasksSummary: [String: [Int]]
 }
 
@@ -62,8 +62,11 @@ final class DataAggregationService {
                 return TimeSlot.from(date: completedAt, using: calendar) == slot
             }
             
-            // Weather for slot (dominant from tasks or first mood entry)
-            let weather = determineWeather(for: slotMoods, tasks: slotTasks)
+            // Weather for slot (use generation-time weather if available)
+            let tasksCreatedInSlot = dailyTasks.filter {
+                TimeSlot.from(date: $0.date, using: calendar) == slot
+            }
+            let weather = tasksCreatedInSlot.first?.weatherType ?? determineWeather(for: slotMoods, tasks: slotTasks)
             
             // Mood metrics
             let countMood = slotMoods.count
@@ -79,20 +82,17 @@ final class DataAggregationService {
             // Task Summary
             var taskSummaryMap: [String: [Int]] = [:]
             let tasksByCat = Dictionary(grouping: slotTasks, by: { $0.category })
-            // Need "total" tasks... but `slotTasks` are only completed ones if we filtered by `completedAt`.
-            // If we want "generated" tasks for the slot, we need to look at creation date.
-            // Let's stick to completed for now or try to fetch created tasks for this slot?
-            // The prompt says "tasks_completed_total_by_type" e.g. [completed, total].
-            // We need tasks created in this slot too.
-            let tasksCreatedInSlot = dailyTasks.filter {
-                TimeSlot.from(date: $0.date, using: calendar) == slot
+            let feedbackByCat = slotMoods.filter { $0.delta != nil }.reduce(into: [:]) { partialResult, entry in
+                guard let category = entry.category else { return }
+                partialResult[category, default: 0] += entry.delta ?? 0
             }
-            let allCategories = Set(tasksCreatedInSlot.map { $0.category }.compactMap { $0 }).union(tasksByCat.keys)
-            
+            let allCategories = Set(tasksCreatedInSlot.map { $0.category }.compactMap { $0 }).union(tasksByCat.keys).union(feedbackByCat.keys)
+
             for cat in allCategories {
-                let total = tasksCreatedInSlot.filter { $0.category == cat }.count
+                let published = tasksCreatedInSlot.filter { $0.category == cat }.count
                 let completed = tasksByCat[cat]?.count ?? 0
-                taskSummaryMap[cat.rawValue] = [completed, total]
+                let moodDeltaSum = feedbackByCat[cat] ?? 0
+                taskSummaryMap[cat.rawValue] = [published, completed, moodDeltaSum]
             }
             
             let summary = UserTimeslotSummary(

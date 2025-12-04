@@ -22,10 +22,11 @@ final class AppViewModel: ObservableObject {
 	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
 	@Published var showOnboarding = true
-	@Published var showOnboardingCelebration = false
-	@Published var moodEntries: [MoodEntry] = []
-	@Published var energyHistory: [EnergyHistoryEntry] = []
-	@Published var inventory: [InventoryEntry] = []
+        @Published var showOnboardingCelebration = false
+        @Published var moodEntries: [MoodEntry] = []
+        @Published var energyHistory: [EnergyHistoryEntry] = []
+        @Published var energyEvents: [EnergyEvent] = []
+        @Published var inventory: [InventoryEntry] = []
 	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
 	@Published var showSleepReminder = false
 	@Published var rewardBanner: RewardEvent?
@@ -153,10 +154,12 @@ final class AppViewModel: ObservableObject {
                 }
 
                 // Load stored energy history (for daily totalEnergy snapshots)
-		if let data = UserDefaults.standard.data(forKey: "energyHistory"),
-		   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
-			energyHistory = decoded
-		}
+                if let data = UserDefaults.standard.data(forKey: "energyHistory"),
+                   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
+                        energyHistory = decoded
+                }
+
+                energyEvents = storage.fetchEnergyEvents()
 
 		if userStats?.shareLocationAndWeather == true {
 				_ = await requestWeatherAccess()
@@ -361,17 +364,19 @@ final class AppViewModel: ObservableObject {
 		task.status = .completed
 		task.completedAt = Date()
 		
-		task.energyReward = task.category.energyReward
-		let energyReward = rewardEngine.applyTaskReward(for: task, stats: stats)  // award energy
-		petEngine.handleAction(.taskComplete)   // award bonding + xp
+                let rewards = rewardEngine.applyTaskReward(for: task, stats: stats, catalog: shopItems)
+                petEngine.handleAction(.taskComplete)   // award bonding + xp
 
-		// TODO: 随机掉落一份 snack 奖励
-		var snackName: String?
-		if let snack = rewardEngine.randomSnackReward(from: shopItems) {
-			incrementInventory(for: snack)
-			snackName = snackDisplayName(for: snack)
-			analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
-		}
+                if rewards.energy > 0 {
+                        recordEnergyEvent(delta: rewards.energy, relatedTask: task)
+                }
+
+                var snackName: String?
+                if let snack = rewards.snack {
+                        incrementInventory(for: snack)
+                        snackName = snackDisplayName(for: snack)
+                        analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
+                }
 
 		analytics.log(event: "task_completed", metadata: ["title": task.title])
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -379,7 +384,7 @@ final class AppViewModel: ObservableObject {
 		if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
 			analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
 		}
-		rewardBanner = RewardEvent(energy: energyReward, xp: 1, snackName: snackName)
+                rewardBanner = RewardEvent(energy: rewards.energy, xp: 1, snackName: snackName)
 		logTodayEnergySnapshot()
 		dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
@@ -657,19 +662,26 @@ final class AppViewModel: ObservableObject {
 		return Double(completed) / Double(todayTasks.count)
 	}
 
-	func logTodayEnergySnapshot() {
-		guard userStats != nil else { return }
-		_ = TimeZoneManager.shared.calendar
-		// Always append a new entry with exact timestamp Date()
-		let entry = EnergyHistoryEntry(date: Date(), totalEnergy: totalEnergy)
-		energyHistory.append(entry)
+        func logTodayEnergySnapshot() {
+                guard userStats != nil else { return }
+                _ = TimeZoneManager.shared.calendar
+                // Always append a new entry with exact timestamp Date()
+                let entry = EnergyHistoryEntry(date: Date(), totalEnergy: totalEnergy)
+                energyHistory.append(entry)
 
-		energyHistory.sort { $0.date < $1.date }
+                energyHistory.sort { $0.date < $1.date }
 
-		if let data = try? JSONEncoder().encode(energyHistory) {
-			UserDefaults.standard.set(data, forKey: "energyHistory")
-		}
-	}
+                if let data = try? JSONEncoder().encode(energyHistory) {
+                        UserDefaults.standard.set(data, forKey: "energyHistory")
+                }
+        }
+
+        private func recordEnergyEvent(delta: Int, relatedTask: UserTask) {
+                guard delta > 0 else { return }
+                let event = EnergyEvent(delta: delta, relatedTaskId: relatedTask.id)
+                storage.addEnergyEvent(event)
+                energyEvents = storage.fetchEnergyEvents()
+        }
 
 	private var interactionsKey: String { "dailyPetInteractions" }
 	private var timeSlotKey: String { "dailyTaskTimeSlots" }
