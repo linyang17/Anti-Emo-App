@@ -821,7 +821,7 @@ final class AppViewModel: ObservableObject {
 			return
 		}
 		
-		storage.deleteUncompletedTasks(before: slot, on: date)
+            storage.archiveUncompletedTasks(before: slot, on: date)
 
 		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
 		guard !generated.isEmpty else {
@@ -1060,7 +1060,7 @@ final class AppViewModel: ObservableObject {
 				retained.status = .pending
 				retained.completedAt = nil
 		}
-		storage.deleteTasks(for: Date(), excluding: retainIDs, includeCompleted: false)
+                storage.archiveTasks(for: Date(), excluding: retainIDs, includeCompleted: false)
 		
 		// Ensure templates are loaded
 		storage.bootstrapIfNeeded()
@@ -1265,7 +1265,7 @@ final class AppViewModel: ObservableObject {
 		let now = Date()
 		let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
 		// Delete non-onboarding tasks in current slot to allow fresh generation
-		storage.deleteTasks(in: slot, on: now)
+                storage.archiveTasks(in: slot, on: now)
 		// Trigger generation flow based on current schedule/generator
 		generateTasksForSlot(slot, reference: now, notify: false)
 	}

@@ -25,7 +25,7 @@ struct XPProgression {
 final class PetEngine {
 
 	private enum Constants {
-		static let minScore = 10
+                static let minScore = 15
 		static let maxScore = 100
 	}
 

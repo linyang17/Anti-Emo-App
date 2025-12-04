@@ -145,7 +145,7 @@ struct StatsRhythmSection: View {
 			let theme = ChartTheme.shared
 			Chart(taskImpactAnimator.displayData) { item in
 				BarMark(
-					x: .value("Task Category", item.category.title),
+                                    x: .value("Task Category", item.category.localizedTitle),
 					y: .value("Avg Mood Change", item.avgDelta)
 				)
 				.foregroundStyle(theme.gradient(for: item.category))

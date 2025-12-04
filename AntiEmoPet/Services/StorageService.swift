@@ -101,9 +101,9 @@ final class StorageService {
             let start = calendar.startOfDay(for: date)
             guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
 
-			let predicate = #Predicate<UserTask> { task in
-				task.date >= start && task.date < end
-			}
+                        let predicate = #Predicate<UserTask> { task in
+                                task.date >= start && task.date < end && task.isArchived == false
+                        }
 
 			let descriptor = FetchDescriptor<UserTask>(
 				predicate: predicate,
@@ -127,11 +127,11 @@ final class StorageService {
             let predicate: Predicate<UserTask>
             if excludingCompleted {
                 predicate = #Predicate<UserTask> { task in
-                    task.date >= start && task.status != completed
+                    task.date >= start && task.status != completed && task.isArchived == false
                 }
             } else {
                 predicate = #Predicate<UserTask> { task in
-                    task.date >= start
+                    task.date >= start && task.isArchived == false
                 }
             }
 
@@ -152,7 +152,7 @@ final class StorageService {
         saveContext(reason: "save tasks")
     }
 
-    func deleteTasks(for date: Date, excluding ids: Set<UUID> = [], includeCompleted: Bool = true) {
+    func archiveTasks(for date: Date, excluding ids: Set<UUID> = [], includeCompleted: Bool = true) {
         do {
             let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
@@ -169,11 +169,11 @@ final class StorageService {
             let fetched = try context.fetch(descriptor)
             let targets = fetched.filter { !ids.contains($0.id) }
             let filtered = includeCompleted ? targets : targets.filter { $0.status != .completed }
-            filtered.forEach { context.delete($0) }
+            filtered.forEach { $0.isArchived = true }
             guard !filtered.isEmpty else { return }
-            saveContext(reason: "delete tasks")
+            saveContext(reason: "archive tasks")
         } catch {
-            logger.error("Failed to delete tasks: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to archive tasks: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -277,7 +277,7 @@ final class StorageService {
 		}
 	}
 
-    func deleteUncompletedTasks(before slot: TimeSlot, on date: Date) {
+    func archiveUncompletedTasks(before slot: TimeSlot, on date: Date) {
         guard let currentSlotInterval = slotInterval(for: slot, on: date) else { return }
         let startOfDay = TimeZoneManager.shared.calendar.startOfDay(for: date)
         
@@ -290,34 +290,34 @@ final class StorageService {
             }
             
             let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
-            let tasksToDelete = try context.fetch(descriptor)
-            
-            guard !tasksToDelete.isEmpty else { return }
-            tasksToDelete.forEach { context.delete($0) }
-            saveContext(reason: "delete uncompleted tasks before slot \(slot.rawValue)")
-            logger.info("Deleted \(tasksToDelete.count) uncompleted tasks before slot \(slot.rawValue)")
+            let tasksToArchive = try context.fetch(descriptor)
+
+            guard !tasksToArchive.isEmpty else { return }
+            tasksToArchive.forEach { $0.isArchived = true }
+            saveContext(reason: "archive uncompleted tasks before slot \(slot.rawValue)")
+            logger.info("Archived \(tasksToArchive.count) uncompleted tasks before slot \(slot.rawValue)")
         } catch {
-            logger.error("Failed to delete uncompleted tasks: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to archive uncompleted tasks: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    func deleteTasks(in slot: TimeSlot, on date: Date) {
-		guard let interval = slotInterval(for: slot, on: date) else { return }
-		let start = interval.start
-		let end = interval.end
-		do {
-			let predicate = #Predicate<UserTask> { task in
-				task.date >= start && task.date < end && task.isOnboarding == false
-			}
-			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
-			let targets = try context.fetch(descriptor)
-			guard !targets.isEmpty else { return }
-			targets.forEach { context.delete($0) }
-			saveContext(reason: "delete tasks in slot \(slot.rawValue)")
-		} catch {
-			logger.error("Failed to delete tasks in slot \(slot.rawValue): \(error.localizedDescription, privacy: .public)")
-		}
-	}
+    func archiveTasks(in slot: TimeSlot, on date: Date) {
+                guard let interval = slotInterval(for: slot, on: date) else { return }
+                let start = interval.start
+                let end = interval.end
+                do {
+                        let predicate = #Predicate<UserTask> { task in
+                                task.date >= start && task.date < end && task.isOnboarding == false
+                        }
+                        let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+                        let targets = try context.fetch(descriptor)
+                        guard !targets.isEmpty else { return }
+                        targets.forEach { $0.isArchived = true }
+                        saveContext(reason: "archive tasks in slot \(slot.rawValue)")
+                } catch {
+                        logger.error("Failed to archive tasks in slot \(slot.rawValue): \(error.localizedDescription, privacy: .public)")
+                }
+        }
 
 	func fetchTasks(in slot: TimeSlot, on date: Date, includeOnboarding: Bool = true) -> [UserTask] {
 		let calendar = TimeZoneManager.shared.calendar
@@ -326,13 +326,13 @@ final class StorageService {
 		
 		do {
 			// Fetch slot tasks
-			var slotTasks: [UserTask] = []
-			if let interval = slotInterval(for: slot, on: date) {
-				let start = interval.start
-				let end = interval.end
-				let predicate = #Predicate<UserTask> { task in
-					task.date >= start && task.date < end
-				}
+                        var slotTasks: [UserTask] = []
+                        if let interval = slotInterval(for: slot, on: date) {
+                                let start = interval.start
+                                let end = interval.end
+                                let predicate = #Predicate<UserTask> { task in
+                                        task.date >= start && task.date < end && task.isArchived == false
+                                }
 				let descriptor = FetchDescriptor<UserTask>(
 					predicate: predicate,
 					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
@@ -341,10 +341,10 @@ final class StorageService {
 			}
 			
 			// If includeOnboarding is true, also fetch onboarding tasks for the day
-			if includeOnboarding {
-				let onboardingPredicate = #Predicate<UserTask> { task in
-					task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
-				}
+                        if includeOnboarding {
+                                let onboardingPredicate = #Predicate<UserTask> { task in
+                                        task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
+                                }
 				let onboardingDescriptor = FetchDescriptor<UserTask>(
 					predicate: onboardingPredicate,
 					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]

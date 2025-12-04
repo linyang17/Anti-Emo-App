@@ -46,7 +46,7 @@ private struct MoodEnergyCorrelationChart: View {
 				Chart(data) { point in
 					PointMark(x: .value("Energy", point.energy), y: .value("Mood", point.mood))
 						.foregroundStyle(point.category.color)
-						.symbol(by: .value("Category", point.category.title))
+                                             .symbol(by: .value("Category", point.category.localizedTitle))
 				}
 				.chartForegroundStyleScale([
 					"Outdoor Activities": .green,

@@ -5,7 +5,7 @@ struct ShopView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var viewModel = ShopViewModel()
 	@State private var alertMessage: String?
-	@State private var selectedCategory: ItemType = ItemType.allCases.first ?? .decor
+        @State private var selectedCategory: ItemType = .decor
 	@State private var pendingItem: Item?
 	@State private var purchaseToast: ShopToast?
 
@@ -21,18 +21,19 @@ struct ShopView: View {
 		}
 		.overlay(alignment: .top) { toastView }
 		.animation(.spring(response: 0.35, dampingFraction: 0.85), value: pendingItem?.id)
-		.onAppear {
-			selectedCategory = viewModel.defaultCategory(in: appModel.shopItems)
-		}
+                .onAppear {
+                        selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .decor
+                }
 		.onChange(of: selectedCategory) {
 			pendingItem = nil
 		}
 
-		.onChange(of: appModel.shopItems) {
-			if !appModel.shopItems.contains(where: { $0.type == selectedCategory }) {
-				selectedCategory = viewModel.defaultCategory(in: appModel.shopItems)
-			}
-		}
+                .onChange(of: appModel.shopItems) {
+                        let options = viewModel.availableCategories(in: appModel.shopItems)
+                        if !options.contains(selectedCategory) {
+                                selectedCategory = options.first ?? .decor
+                        }
+                }
 		.alert(
 			"Oh no!",
 			isPresented: Binding(get: { alertMessage != nil }, set: { _ in alertMessage = nil })
@@ -77,8 +78,9 @@ struct ShopView: View {
 
 
 	private var categoryPicker: some View {
-		HStack(spacing: 8) {
-			ForEach(ItemType.allCases, id: \.self) { type in
+                let options = viewModel.availableCategories(in: appModel.shopItems)
+                HStack(spacing: 8) {
+                        ForEach(options, id: \.self) { type in
 				Button {
 					selectedCategory = type
 				} label: {
@@ -280,10 +282,15 @@ struct ShopView: View {
 		}
 	}
 
-	private func confirmPurchase(of item: Item) {
-		if appModel.purchase(item: item) {
-			appModel.equip(item: item)
-			showToast(for: item)
+        private func confirmPurchase(of item: Item) {
+                guard item.type != .snack else {
+                        alertMessage = "Snacks can only be earned from completing tasks."
+                        pendingItem = nil
+                        return
+                }
+                if appModel.purchase(item: item) {
+                        appModel.equip(item: item)
+                        showToast(for: item)
 			pendingItem = nil
 		} else {
 			alertMessage = "You don't have enough energy, try to complete more tasks!"
