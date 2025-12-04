@@ -248,7 +248,7 @@ extension OnboardingView {
 			var region = viewModel.region
 			if region.isEmpty {
 				logger.debug("Waiting for onboarding city resolution…")
-				region = await locationService.requestLocationOnce(maxRetries: 10, retryDelay: 2.0, isOnboarding: true)
+				region = await locationService.requestLocationOnce(maxRetries: 5, retryDelay: 2.0, isOnboarding: true)
 				if !region.isEmpty {
 					viewModel.region = region
 					await OnboardingCache.shared.setCity(region)

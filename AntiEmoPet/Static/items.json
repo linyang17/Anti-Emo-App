@@ -13,7 +13,7 @@
 			"type": "clothing",
 			"assetName": "backpack",
 			"costEnergy": 150,
-			"bondingBoost": 20
+			"bondingBoost": 15
 		},
 		{
 			"sku": "shoes.bloom.suitcase",
@@ -26,8 +26,8 @@
 			"sku": "shoes.moon.mailbox",
 			"type": "decor",
 			"assetName": "mailbox",
-			"costEnergy": 200,
-			"bondingBoost": 16
+			"costEnergy": 100,
+			"bondingBoost": 10
 		}
 	]
 }

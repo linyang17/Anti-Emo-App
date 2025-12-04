@@ -4,6 +4,7 @@ enum PetActionType {
 	case pat
 	case feed(item: Item)
 	case penalty
+	case taskComplete
 }
 
 struct XPProgression {
@@ -51,25 +52,13 @@ final class PetEngine {
                         updateBonding(for: pet, bondingAddValue: 2)
                         awardXP(2, to: pet)
                 case .penalty:
-                        updateBonding(for: pet, bondingAddValue: -1)
-		}
+                        updateBonding(for: pet, bondingAddValue: -2)
+				case .taskComplete:
+					updateBonding(for: pet, bondingAddValue: 1)
+					awardXP(1, to: pet)
+				}
 	}
 
-	func applyTaskCompletion() {
-		guard let pet else { return }
-		updateBonding(for: pet, bondingAddValue: 1)
-		awardXP(1, to: pet)
-	}
-
-	func applyLightPenalty() {
-		guard let pet else { return }
-		updateBonding(for: pet, bondingAddValue: -1)
-	}
-
-	func applyDailyDecay(days: Int) {
-		guard let pet, days > 0 && pet.bondingScore > 20 else { return }
-		updateBonding(for: pet, bondingAddValue: -(days * 2))
-	}
 
 	func applyPurchaseReward(xpGain: Int, bondingBoost: Int) {
 		guard let pet else { return }
@@ -77,10 +66,6 @@ final class PetEngine {
 		awardXP(xpGain, to: pet)
 	}
 
-	func applyPettingReward() {
-		guard let pet else { return }
-		updateBonding(for: pet, bondingAddValue: 1)
-	}
 
 	// MARK: - 核心计算逻辑
 	private func updateBonding(for pet: Pet, bondingAddValue: Int) {
