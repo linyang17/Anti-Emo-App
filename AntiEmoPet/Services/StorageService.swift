@@ -108,14 +108,16 @@ final class StorageService {
 		}
 	}
 
-    func fetchTasks(for date: Date) -> [UserTask] {
+    func fetchTasks(for date: Date, includeArchived: Bool = false, includeOnboarding: Bool = true) -> [UserTask] {
         do {
             let calendar = TimeZoneManager.shared.calendar
             let start = calendar.startOfDay(for: date)
             guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
 
                         let predicate = #Predicate<UserTask> { task in
-                                task.date >= start && task.date < end && task.isArchived == false
+                                task.date >= start && task.date < end
+                                        && (includeArchived || task.isArchived == false)
+                                        && (includeOnboarding || task.isOnboarding == false)
                         }
 
 			let descriptor = FetchDescriptor<UserTask>(
@@ -130,7 +132,7 @@ final class StorageService {
     }
 
     /// Fetch tasks from the recent N days (inclusive of today).
-    func fetchTasks(since days: Int, excludingCompleted: Bool = false) -> [UserTask] {
+    func fetchTasks(since days: Int, excludingCompleted: Bool = false, includeArchived: Bool = false, includeOnboarding: Bool = true) -> [UserTask] {
         let calendar = TimeZoneManager.shared.calendar
         let now = Date()
         let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
@@ -140,11 +142,16 @@ final class StorageService {
             let predicate: Predicate<UserTask>
             if excludingCompleted {
                 predicate = #Predicate<UserTask> { task in
-                    task.date >= start && task.status != completed && task.isArchived == false
+                    task.date >= start
+                            && task.status != completed
+                            && (includeArchived || task.isArchived == false)
+                            && (includeOnboarding || task.isOnboarding == false)
                 }
             } else {
                 predicate = #Predicate<UserTask> { task in
-                    task.date >= start && task.isArchived == false
+                    task.date >= start
+                            && (includeArchived || task.isArchived == false)
+                            && (includeOnboarding || task.isOnboarding == false)
                 }
             }
 
@@ -440,19 +447,19 @@ final class StorageService {
 	}
 
 
-	func addInventory(forSKU sku: String) {
-	 do {
-		 let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
-		 let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
-		 let existing = try context.fetch(descriptor).first
-		 if let entry = existing {
-			 entry.count += 1
-		 } else {
-			 let entry = InventoryEntry(sku: sku, count: 1)
-			 context.insert(entry)
-		 }
-		 saveContext(reason: "increment inventory")
-	 } catch {
+        func addInventory(forSKU sku: String) {
+         do {
+                 let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
+                 let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
+                 let existing = try context.fetch(descriptor).first
+                 if let entry = existing {
+                         entry.quantity += 1
+                 } else {
+                         let entry = InventoryEntry(sku: sku, quantity: 1)
+                         context.insert(entry)
+                 }
+                 saveContext(reason: "increment inventory")
+         } catch {
 		 logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
 	 }
  }
@@ -491,7 +498,7 @@ final class StorageService {
             let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
             let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
             if let entry = try context.fetch(descriptor).first {
-                entry.count = max(0, entry.count - 1)
+                entry.quantity = max(0, entry.quantity - 1)
                 saveContext(reason: "decrement inventory")
             }
         } catch {

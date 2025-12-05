@@ -13,10 +13,10 @@
 - [x] **本地化迁移启动**：将 `TaskCategory.title` 等文案迁移至本地化资源/字符串表，使用 `localizedTitle`，避免硬编码。【F:PRD/Project-Review.md†L215-L222】
 
 ## P1
-- [ ] **随机生成时刻与通知**：时间段开始时确定随机生成时刻，结合天气窗口加权；到达时刻生成任务并调度推送，刷新限制仍为每段一次。【F:PRD/Project-Review.md†L18-L39】【F:PRD/Project-Review.md†L169-L180】
-- [ ] **历史浏览与导出**：在归档基础上提供历史任务浏览与导出能力，支撑“统计/洞察/AI建议”。【F:PRD/Project-Review.md†L188-L199】
-- [ ] **能量/指标上传重试**：实现 0 点上传当日 summary 的持久化队列与失败重试，上传成功后清理；尊重用户位置/天气分享开关。【F:PRD/Project-Review.md†L154-L186】【F:PRD/Project-Review.md†L233-L241】
-- [ ] **命名与入口统一**：统一 `InventoryEntry.quantity/count`、`UserStats.TotalDays/Onboard` 等命名风格，移除未接入的重复入口（如 `PetEngine.applyDailyDecay`），减少歧义。【F:PRD/Project-Review.md†L203-L212】
+- [x] **随机生成时刻与通知**：时间段开始时确定随机生成时刻，结合天气窗口加权；到达时刻生成任务并调度推送，刷新限制仍为每段一次。【F:PRD/Project-Review.md†L18-L39】【F:PRD/Project-Review.md†L169-L180】
+- [x] **历史浏览与导出**：在归档基础上提供历史任务浏览与导出能力，支撑“统计/洞察/AI建议”。【F:PRD/Project-Review.md†L188-L199】
+- [x] **能量/指标上传重试**：实现 0 点上传当日 summary 的持久化队列与失败重试，上传成功后清理；尊重用户位置/天气分享开关。【F:PRD/Project-Review.md†L154-L186】【F:PRD/Project-Review.md†L233-L241】
+- [x] **命名与入口统一**：统一 `InventoryEntry.quantity/count`、`UserStats.TotalDays/Onboard` 等命名风格，移除未接入的重复入口（如 `PetEngine.applyDailyDecay`），减少歧义。【F:PRD/Project-Review.md†L203-L212】
 
 
 ## Optional（沿用PRD可选项）

@@ -313,9 +313,9 @@ struct ShopView: View {
 		}
 	}
 
-	private func isOwned(_ item: Item) -> Bool {
-		appModel.inventory.first(where: { $0.sku == item.sku })?.count ?? 0 > 0
-	}
+        private func isOwned(_ item: Item) -> Bool {
+                appModel.inventory.first(where: { $0.sku == item.sku })?.quantity ?? 0 > 0
+        }
 
 	@ViewBuilder
 	private var toastView: some View {

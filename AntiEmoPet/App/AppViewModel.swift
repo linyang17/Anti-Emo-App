@@ -45,10 +45,13 @@ final class AppViewModel: ObservableObject {
 	let storage: StorageService
 	var taskGenerator: TaskGeneratorService
 	private let rewardEngine = RewardEngine()
-	private let notificationService = NotificationService()
-	private let weatherService = WeatherService()
-	private let analytics = AnalyticsService()
-	private var cancellables: Set<AnyCancellable> = []
+        private let notificationService = NotificationService()
+        private let weatherService = WeatherService()
+        private let analytics = AnalyticsService()
+        private let aggregationService = DataAggregationService()
+        private let uploadService = DataUploadService()
+        private let historyExporter = HistoryExportService()
+        private var cancellables: Set<AnyCancellable> = []
         private let sleepReminderService = SleepReminderService()
         private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
         private let refreshRecordsKey = "taskRefreshRecords"
@@ -112,7 +115,7 @@ final class AppViewModel: ObservableObject {
 				applyRegionComponents(storedComponents)
 			}
 		}
-		showOnboarding = !(userStats?.Onboard ?? false)
+                showOnboarding = !(userStats?.isOnboard ?? false)
 		isLoading = false
 	}
 	
@@ -133,7 +136,7 @@ final class AppViewModel: ObservableObject {
 		scheduleTaskNotifications()
 		
 		// onboarding阶段没有数据缓存
-		showOnboarding = !(userStats?.Onboard ?? false)
+                showOnboarding = !(userStats?.isOnboard ?? false)
 		guard !showOnboarding else {
 			await initLoad()
 			await fetchInitialWeather()
@@ -166,20 +169,23 @@ final class AppViewModel: ObservableObject {
 				_ = await locationService.requestLocationOnce()
 		}
 
-		await refreshWeather(using: locationService.lastKnownLocation)
+                await refreshWeather(using: locationService.lastKnownLocation)
 
-		startSlotMonitor()
-		
-		// Check sleep reminder and mood capture
-		if !showSleepReminder {
-			checkAndShowMoodCapture()
-		}
+                startSlotMonitor()
+
+                await queuePreviousDaySummaryIfNeeded(reference: Date())
+                await uploadService.processQueue(sharingEnabled: userStats?.shareLocationAndWeather ?? false)
+
+                // Check sleep reminder and mood capture
+                if !showSleepReminder {
+                        checkAndShowMoodCapture()
+                }
 
 		isLoading = false
 		dailyMetricsCache = makeDailyActivityMetrics(days: 7)
-		if userStats!.TotalDays > 1 {
-			applyDailyBondingDecayIfNeeded()
-		}
+                if userStats!.totalDays > 1 {
+                        applyDailyBondingDecayIfNeeded()
+                }
 		recordMoodOnLaunch()
 		
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -379,11 +385,11 @@ final class AppViewModel: ObservableObject {
                 }
 
 		analytics.log(event: "task_completed", metadata: ["title": task.title])
-		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		incrementTaskCompletion(for: Date(), timeSlot: slot)
-		if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
-			analytics.log(event: "streak_up", metadata: ["streak": "\(stats.TotalDays)"])
-		}
+                let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+                incrementTaskCompletion(for: Date(), timeSlot: slot)
+                if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
+                        analytics.log(event: "streak_up", metadata: ["streak": "\(stats.totalDays)"])
+                }
                 rewardBanner = RewardEvent(energy: rewards.energy, xp: 1, snackName: snackName)
 		logTodayEnergySnapshot()
 		dailyMetricsCache = makeDailyActivityMetrics()
@@ -473,12 +479,12 @@ final class AppViewModel: ObservableObject {
 	func updateProfile(
 		nickname: String,
 		region: String,
-		shareLocation: Bool,
-		gender: String,
-		birthday: Date?,
-		accountEmail: String,
-		Onboard: Bool
-	) async {
+                shareLocation: Bool,
+                gender: String,
+                birthday: Date?,
+                accountEmail: String,
+                isOnboard: Bool
+        ) async {
 		userStats?.nickname = nickname
 		
 		// Ensure region is populated - wait for location service if needed
@@ -498,7 +504,7 @@ final class AppViewModel: ObservableObject {
 		userStats?.gender = gender
 		userStats?.birthday = birthday
 		userStats?.accountEmail = accountEmail
-		userStats?.Onboard = true
+                userStats?.isOnboard = isOnboard
 		
 		if let components = locationService.lastRegionComponents {
 			applyRegionComponents(components)
@@ -640,10 +646,10 @@ final class AppViewModel: ObservableObject {
 		objectWillChange.send()
 	}
 
-	func useItem(sku: String) -> Bool {
-		// Check inventory count first
-		if let entry = inventory.first(where: { $0.sku == sku }), entry.count > 0,
-		   let item = shopItems.first(where: { $0.sku == sku }) {
+        func useItem(sku: String) -> Bool {
+                // Check inventory quantity first
+                if let entry = inventory.first(where: { $0.sku == sku }), entry.quantity > 0,
+                   let item = shopItems.first(where: { $0.sku == sku }) {
 			storage.decrementInventory(forSKU: sku)
 			inventory = storage.fetchInventory()
 			petEngine.handleAction(.feed(item: item))
@@ -762,32 +768,30 @@ final class AppViewModel: ObservableObject {
 	// MARK: - Slot Schedule Preparation
 	/// 确保当天任务时段生成调度表存在。
 	/// 仅在跨日或首次启动时生成，防止重复重建。
-	private func ensureSlotScheduleExists(for date: Date) {
-		let dkey = dayKey(for: date)
-		var schedule = loadSlotSchedule()
-		
-		schedule = purgeSlotSchedule(schedule, keepingDay: dkey)
+        private func ensureSlotScheduleExists(for date: Date, focusingOn slot: TimeSlot? = nil) {
+                let dkey = dayKey(for: date)
+                var schedule = loadSlotSchedule()
 
-		if let existing = schedule[dkey], !existing.isEmpty {
-			logger.debug("[Schedule] Existing found for \(dkey), no regeneration needed.")
-			return
-		}
+                schedule = purgeSlotSchedule(schedule, keepingDay: dkey)
 
-		var slotMap: [String: Double] = [:]
-		for slot in activeTaskSlots {
-			if let trigger = taskGenerator.generationTriggerTime(for: slot, date: date, report: weatherReport) {
-				slotMap[slot.rawValue] = trigger.timeIntervalSince1970
-			}
-		}
-		let readableSchedule = scheduleFormatter(slotmap: slotMap)
-		schedule[dkey] = slotMap
-		saveSlotSchedule(schedule)
-		logger.info("[Schedule] New schedule generated for \(dkey): \(readableSchedule)")
+                var slotMap: [String: Double] = schedule[dkey] ?? [:]
+                let slots = slot.map { [$0] } ?? activeTaskSlots
+                for slot in slots {
+                        if slotMap[slot.rawValue] == nil || focusingOn != nil {
+                                if let trigger = taskGenerator.generationTriggerTime(for: slot, date: date, report: weatherReport) {
+                                        slotMap[slot.rawValue] = trigger.timeIntervalSince1970
+                                }
+                        }
+                }
+                let readableSchedule = scheduleFormatter(slotmap: slotMap)
+                schedule[dkey] = slotMap
+                saveSlotSchedule(schedule)
+                logger.info("[Schedule] Schedule prepared for \(dkey): \(readableSchedule)")
 
-		// 清理旧的生成记录，仅保留当天
-		let generation = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
-		saveSlotGenerationRecords(generation)
-	}
+                // 清理旧的生成记录，仅保留当天
+                let generation = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
+                saveSlotGenerationRecords(generation)
+        }
 	
 	private func scheduleFormatter(slotmap: [String: Double]) -> [String: String] {
 		
@@ -843,12 +847,15 @@ final class AppViewModel: ObservableObject {
 
 		storage.save(tasks: generated)
 
-		refreshDisplayedTasks(for: slot, on: date)
-		markSlotTasksGenerated(slot, on: date)
+                refreshDisplayedTasks(for: slot, on: date)
+                markSlotTasksGenerated(slot, on: date)
 
-		scheduleTaskNotifications()
-		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
-		logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
+                if notify, userStats?.notificationsEnabled == true {
+                        notificationService.notifyTasksUnlocked(for: slot)
+                }
+                scheduleTaskNotifications()
+                analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
+                logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
 
 		if slot != .night && !hasLoggedMoodThisSlot && !showOnboarding {
 			checkAndShowMoodCapture()
@@ -982,7 +989,7 @@ final class AppViewModel: ObservableObject {
 
             // Evaluate yesterday's completion
             let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-            let tasks = storage.fetchTasks(for: yesterday)
+            let tasks = storage.fetchTasks(for: yesterday, includeArchived: true, includeOnboarding: false)
             let didComplete = tasks.contains { $0.status == .completed }
             if !didComplete {
 				petEngine.handleAction(.penalty)
@@ -1004,6 +1011,58 @@ final class AppViewModel: ObservableObject {
         /// Fetch cached tasks for the latest `days` to power analytics without mutating state.
         func tasksSince(days: Int) -> [UserTask] {
                 storage.fetchTasks(since: days)
+        }
+
+        func taskHistorySections(days: Int = 30) -> [TaskHistorySection] {
+                let cal = TimeZoneManager.shared.calendar
+                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
+                let grouped = Dictionary(grouping: tasks) { cal.startOfDay(for: $0.date) }
+                return grouped.keys
+                        .sorted(by: >)
+                        .map { day in
+                                TaskHistorySection(date: day, tasks: grouped[day]?.sorted { $0.date < $1.date } ?? [])
+                        }
+        }
+
+        func exportTaskHistory(days: Int = 30) -> URL? {
+                let range = historyRange(forDays: days)
+                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
+                let moods = moodEntries.filter { range.contains($0.date) }
+                let events = energyEvents.filter { range.contains($0.date) }
+                return try? historyExporter.export(tasks: tasks, moods: moods, energyEvents: events, range: range)
+        }
+
+        private func historyRange(forDays days: Int) -> ClosedRange<Date> {
+                let cal = TimeZoneManager.shared.calendar
+                let now = Date()
+                let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
+                return start...now
+        }
+
+        private func queuePreviousDaySummaryIfNeeded(reference date: Date = Date()) async {
+                guard let stats = userStats else { return }
+                let cal = TimeZoneManager.shared.calendar
+                let todayStart = cal.startOfDay(for: reference)
+                let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+                let queuedKey = "summaryUpload.lastQueuedDay"
+                let yesterdayKey = dayKey(for: yesterday)
+
+                guard UserDefaults.standard.string(forKey: queuedKey) != yesterdayKey else { return }
+
+                let tasks = storage.fetchTasks(for: yesterday, includeArchived: true, includeOnboarding: false)
+                let moods = storage.fetchMoodEntries().filter { cal.isDate($0.date, inSameDayAs: yesterday) }
+                let summaries = aggregationService.aggregate(
+                        userId: stats.id.uuidString,
+                        region: stats.region,
+                        date: yesterday,
+                        moodEntries: moods,
+                        tasks: tasks,
+                        sunEvents: sunEvents
+                )
+
+                uploadService.enqueue(date: yesterday, summaries: summaries)
+                UserDefaults.standard.set(yesterdayKey, forKey: queuedKey)
+                await uploadService.processQueue(sharingEnabled: stats.shareLocationAndWeather)
         }
 
         func makeDailyActivityMetrics(days: Int = 7) -> [DailyActivityMetrics] {
@@ -1315,11 +1374,12 @@ extension AppViewModel {
 			UserDefaults.standard.string(forKey: "lastObservedDayKey")
 		}
 
-		if lastDayKey != currentDayKey {
-			logger.info("Detected day change → generating new schedule for \(currentDayKey)")
-			ensureSlotScheduleExists(for: currentDate)
-			UserDefaults.standard.set(currentDayKey, forKey: "lastObservedDayKey")
-		}
+                if lastDayKey != currentDayKey {
+                        logger.info("Detected day change → generating new schedule for \(currentDayKey)")
+                        ensureSlotScheduleExists(for: currentDate)
+                        await queuePreviousDaySummaryIfNeeded(reference: currentDate)
+                        UserDefaults.standard.set(currentDayKey, forKey: "lastObservedDayKey")
+                }
 
 		// Changed block as per instructions
 		if currentSlot != lastObservedSlot {
@@ -1339,8 +1399,8 @@ extension AppViewModel {
 				pendingGenerationConfigUpdate = false
 			}
 
-			ensureSlotScheduleExists(for: currentDate)
-		}
+                        ensureSlotScheduleExists(for: currentDate, focusingOn: currentSlot)
+                }
 
 		// 检查当前 slot 是否应触发任务生成
 		checkSlotGenerationTrigger(reference: currentDate)
@@ -1379,18 +1439,24 @@ extension AppViewModel {
 	}
 	
 	// MARK: - Cached Data Loading
-	private func loadCachedData() async {
-		let fetchedSunEvents: [Date: SunTimes] = storage.fetchSunEvents()
-		let fetchedShopItems: [Item] = storage.fetchShopItems()
-		let fetchedInventory: [InventoryEntry] = storage.fetchInventory()
+private func loadCachedData() async {
+                let fetchedSunEvents: [Date: SunTimes] = storage.fetchSunEvents()
+                let fetchedShopItems: [Item] = storage.fetchShopItems()
+                let fetchedInventory: [InventoryEntry] = storage.fetchInventory()
 
 		shopItems = fetchedShopItems
 		sunEvents = fetchedSunEvents
 		inventory = fetchedInventory
 
-		logger.debug("Cached data loaded: \(fetchedShopItems.count) items, \(fetchedInventory.count) inventory entries.")
-	}
-	
-	
+                logger.debug("Cached data loaded: \(fetchedShopItems.count) items, \(fetchedInventory.count) inventory entries.")
+        }
+
+
+}
+
+struct TaskHistorySection: Identifiable {
+        var id: Date { date }
+        let date: Date
+        let tasks: [UserTask]
 }
 

@@ -26,6 +26,10 @@
 - RewardEngine 统一计算任务能量奖励与随机掉落，完成后先展示奖励再进入情绪反馈；掉落的 snack 成为唯一补给来源。
 - DataAggregationService 输出 {published, completed, moodDeltaSum} 三元组并使用“生成时天气”口径；新增 EnergyEvent 流（delta>0 + relatedTaskId）并持久化。
 - 启动本地化迁移：TaskCategory.localizedTitle 改为字符串表读取，为后续多语言做准备。
+- 每个时段起始按最新天气窗口确定“随机生成时刻”，并在生成任务时触发解锁通知与任务提醒调度，仍保持每段一次的刷新限制。
+- 新增历史浏览与导出入口，支持展示归档任务并导出最近 30 天的任务/情绪/能量事件 JSON。
+- 分时段 Summary 上传增加持久化队列与失败重试，遵循位置/天气分享开关，成功后自动清理。
+- 统一命名：`InventoryEntry.quantity` 成为唯一库存字段，`UserStats.totalDays/isOnboard` 与其余属性风格一致。
 
 ---
 
@@ -45,11 +49,11 @@
 - 代码现状
   - 存在 `TaskGeneratorService` 与 `AppViewModel` 的时段调度、定时触发与刷新限制（每段一次）逻辑，整体框架吻合。
   - 夜间不生成任务与睡眠提醒已实现（`SleepReminderService`）。
-  - 生成触发与保留/清理：当前实现会在新段生成前删除当日“未完成任务”（`refreshTasks` 会调用 `storage.deleteTasks`），与“归档到历史”的语义不一致。
-  - 天气加权：`TaskGeneratorService` 固定生成 3 条任务并依赖 `categoryWeights` 加权，但未结合 `TaskCategory` 的天气适配
+  - 生成触发与保留/清理：在进入新时段时按天气窗口确定随机/固定生成时刻，触发时归档上一段未完成任务并推送解锁提醒。
+  - 天气加权：`TaskGeneratorService` 固定生成 3 条任务，结合 `categoryWeights` 与 `TaskCategory.isEligible(for:)` 过滤不合规类别。
 - 需要对齐的点
-  - 引入“归档”状态或历史标记，避免直接删除未完成任务记录。
-  - 在 `TaskGeneratorService` 中使用“固定/随机模式”与“天气窗口加权”的明确配置；并在时间段开始时确定随机生成时刻。
+  - 持续验证随机/固定配置与通知调度的准确性，确保跨天气窗口的权重选择符合预期。
+  - 后续根据 A/B 或远程配置扩展“生成时刻/权重”策略的参数化能力。
 
 ### 2.2 任务生命周期与完成判定
 - PRD要点
@@ -118,14 +122,12 @@
   - 每天0点上传当日summary，失败留存重试。
   - “能量增长”仅关注 delta > 0（反映任务完成）。
 - 代码现状
-  - `DataAggregationService` 产出 `UserTimeslotSummary` 时 `tasksSummary` 仅 [completed, total] 且未包含情绪反馈总和，且 `timeslotWeather` 来源于完成/情绪记录而非“生成时天气”。
   - 聚合结果已调整为 {published, completed, moodDeltaSum} 并记录任务生成时天气；能量增长事件新增 EnergyEvent 结构，按 delta>0 + relatedTaskId 持久化。
+  - 已引入每日 summary 上传队列，遵循位置/天气分享开关并在成功后清理待上传数据。
   - `DailyActivityMetrics` 以 UserDefaults 计数的方式维护部分日级指标，与聚合服务口径不完全一致。
-  - 能量数据仅有每日总量快照（`EnergyHistoryEntry`），缺少“delta>0 + related_task_id”的事件流结构。
 - 需要对齐的点
-  - 统一以 `DataAggregationService` 为指标中心：扩展结构以覆盖 `task_feedback` 的三元组与“生成时天气”。
-  - 新增“能量事件流（delta>0 + related_task_id）”的数据结构与持久化；总量快照仅用于展示。
-  - 实现“0点上传当日summary”的持久化重试机制与上传成功后清理策略。
+  - 统一以 `DataAggregationService` 为指标中心：明确 DailyActivityMetrics 的来源映射并规划导入/导出。
+  - 补充真实上传通道与错误监控，保证重试队列可观测、可配置。
 
 ---
 
@@ -260,4 +262,3 @@
    • 新增：delta、relatedTaskId
 • 情绪
    • 新增：relatedTaskId?
-

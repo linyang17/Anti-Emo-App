@@ -12,13 +12,4 @@ final class InventoryEntry: Identifiable {
         self.sku = sku
         self.quantity = quantity
     }
-
-    var count: Int {
-        get { quantity }
-        set { quantity = newValue }
-    }
-
-    convenience init(sku: String, count: Int) {
-        self.init(sku: sku, quantity: count)
-    }
 }
