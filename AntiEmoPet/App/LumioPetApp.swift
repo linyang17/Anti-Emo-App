@@ -8,14 +8,15 @@ struct LumioPetApp: App {
 	static var sharedModelContainer: ModelContainer = {
 		let schema = Schema([
 			UserTask.self,
-			TaskTemplate.self,
-			Pet.self,
-			Item.self,
-			UserStats.self,
-			InventoryEntry.self,
-			MoodEntry.self,
-			SunTimesRecord.self
-		])
+                        TaskTemplate.self,
+                        Pet.self,
+                        Item.self,
+                        UserStats.self,
+                        InventoryEntry.self,
+                        MoodEntry.self,
+                        EnergyEvent.self,
+                        SunTimesRecord.self
+                ])
 
 		let configuration = ModelConfiguration(schema: schema)
 

@@ -263,11 +263,11 @@ extension OnboardingView {
 				nickname: trimmedName,
 				region: region,
 				shareLocation: shareLocation,
-				gender: genderRaw,
-				birthday: viewModel.birthday,
-				accountEmail: viewModel.accountEmail,
-				Onboard: true
-			)
+                                gender: genderRaw,
+                                birthday: viewModel.birthday,
+                                accountEmail: viewModel.accountEmail,
+                                isOnboard: true
+                        )
 			
 			await MainActor.run {
 				self.hasCompletedOnboarding = true

@@ -7,7 +7,7 @@ final class TasksViewModel: ObservableObject {
 
 
     func subtitle(for task: UserTask) -> String {
-        return "\(task.category.title)"
+        return "\(task.category.localizedTitle)"
     }
 
     func badge(for task: UserTask) -> String {

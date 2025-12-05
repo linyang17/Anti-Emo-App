@@ -25,7 +25,7 @@ enum GenderIdentity: String {
 final class UserStats: Identifiable {
     @Attribute(.unique) var id: UUID
     var totalEnergy: Int
-    var TotalDays: Int
+    var totalDays: Int
     var lastActiveDate: Date
     var completedTasksCount: Int
     var nickname: String
@@ -35,11 +35,11 @@ final class UserStats: Identifiable {
     var gender: String
     var birthday: Date?
     var accountEmail: String
-	var Onboard: Bool
-	var regionLocality: String
-	var regionAdministrativeArea: String
-	var regionCountry: String
-	var randomizeTaskTime: Bool
+        var isOnboard: Bool
+        var regionLocality: String
+        var regionAdministrativeArea: String
+        var regionCountry: String
+        var randomizeTaskTime: Bool
     var hasShownOnboardingCelebration: Bool
 
     init(
@@ -55,16 +55,16 @@ final class UserStats: Identifiable {
         gender: String = GenderIdentity.unspecified.rawValue,
         birthday: Date? = nil,
         accountEmail: String = "",
-		Onboard: Bool = false,
-		regionLocality: String = "",
-		regionAdministrativeArea: String = "",
-		regionCountry: String = "",
-		randomizeTaskTime: Bool = false,
+                isOnboard: Bool = false,
+                regionLocality: String = "",
+                regionAdministrativeArea: String = "",
+                regionCountry: String = "",
+                randomizeTaskTime: Bool = false,
         hasShownOnboardingCelebration: Bool = false
     ) {
         self.id = id
         self.totalEnergy = totalEnergy
-        self.TotalDays = streakDays
+        self.totalDays = streakDays
         self.lastActiveDate = lastActiveDate
         self.completedTasksCount = completedTasksCount
         self.nickname = nickname
@@ -74,11 +74,11 @@ final class UserStats: Identifiable {
         self.gender = gender
         self.birthday = birthday
         self.accountEmail = accountEmail
-		self.Onboard = Onboard
-		self.regionLocality = regionLocality
-		self.regionAdministrativeArea = regionAdministrativeArea
-		self.regionCountry = regionCountry
-		self.randomizeTaskTime = randomizeTaskTime
+                self.isOnboard = isOnboard
+                self.regionLocality = regionLocality
+                self.regionAdministrativeArea = regionAdministrativeArea
+                self.regionCountry = regionCountry
+                self.randomizeTaskTime = randomizeTaskTime
         self.hasShownOnboardingCelebration = hasShownOnboardingCelebration
     }
 }

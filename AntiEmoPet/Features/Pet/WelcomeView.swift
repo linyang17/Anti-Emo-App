@@ -8,7 +8,7 @@ struct WelcomeView: View {
 
 	@ViewBuilder
 	private var welcomeText: some View {
-		if appModel.userStats?.Onboard == true {
+                if appModel.userStats?.isOnboard == true {
 			LumioSay(text: greeting)
 		} else {
 			LumioSay(text: "Now we know each other.\n Our Journey has begun!")

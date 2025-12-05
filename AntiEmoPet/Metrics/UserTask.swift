@@ -12,15 +12,22 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .outdoor: return "Outdoor Activities"
-        case .indoorDigital: return "Digital"
-        case .indoorActivity: return "Indoor Activities"
-        case .socials: return "Social"
-        case .petCare: return "Pet Care"
-		case .physical: return "Physical Exercises"
-		}
+    var localizedTitle: String {
+        let key = "task.category.\(rawValue)"
+        return NSLocalizedString(key, comment: "Task category title")
+    }
+
+    func isEligible(for weather: WeatherType) -> Bool {
+        switch weather {
+        case .rainy:
+            return self != .outdoor
+        case .sunny:
+            return self != .indoorDigital && self != .petCare
+        case .snowy:
+            return self != .outdoor
+        case .cloudy, .windy:
+            return true
+        }
     }
 	
 	/// Buffer时间(秒) - 开始任务后必须等待的时间
@@ -54,9 +61,7 @@ enum TaskStatus: String, Codable, CaseIterable, Sendable {
 	case ready
 	case completed
 
-	var isCompletable: Bool {
-		self == .ready || self == .pending
-	}
+        var isCompletable: Bool { self == .ready }
 }
 
 
@@ -86,6 +91,7 @@ final class UserTask: Identifiable {
     var energyReward: Int = 0
     var date: Date
     var status: TaskStatus
+        var isArchived: Bool = false
     var startedAt: Date?  // 任务开始时间
     var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?
@@ -100,6 +106,7 @@ final class UserTask: Identifiable {
         energyReward: Int,
         date: Date,
         status: TaskStatus = .pending,
+        isArchived: Bool = false,
         startedAt: Date? = nil,
         canCompleteAfter: Date? = nil,
         completedAt: Date? = nil,
@@ -113,6 +120,7 @@ final class UserTask: Identifiable {
         self.energyReward = energyReward
         self.date = date
         self.status = status
+        self.isArchived = isArchived
         self.startedAt = startedAt
         self.canCompleteAfter = canCompleteAfter
         self.completedAt = completedAt

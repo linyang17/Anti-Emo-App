@@ -35,11 +35,11 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.5), value: showWelcome)
 	}
 
-	private func evaluateWelcomeDisplay() {
-	    guard let onboarded = appModel.userStats?.Onboard else { return }
-	    // Only show global welcome when not in onboarding flow
-	    showWelcome = onboarded && !appModel.showOnboarding
-	}
+        private func evaluateWelcomeDisplay() {
+            guard let onboarded = appModel.userStats?.isOnboard else { return }
+            // Only show global welcome when not in onboarding flow
+            showWelcome = onboarded && !appModel.showOnboarding
+        }
 }
 
 struct MainTabView: View {

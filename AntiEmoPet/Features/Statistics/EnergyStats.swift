@@ -84,7 +84,7 @@ struct EnergyStatsSection: View {
                             innerRadius: .ratio(0.5),
                             angularInset: 1
                         )
-						.foregroundStyle(by: .value("Category", item.key.title))
+                                            .foregroundStyle(by: .value("Category", item.key.localizedTitle))
                         .cornerRadius(4)
                     }
 					.chartForegroundStyleScale(

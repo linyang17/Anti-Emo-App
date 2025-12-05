@@ -138,10 +138,13 @@ final class TaskGeneratorService {
     }
 
     private func pickTemplate(from templates: [TaskTemplate], used: inout Set<String>, windows: [WeatherWindow], defaultWeather: WeatherType) -> TaskTemplate? {
-        let available = templates.filter { !used.contains($0.title) }
+        let weather = dominantWeather(in: windows) ?? defaultWeather
+        let available = templates.filter { template in
+            guard !used.contains(template.title) else { return false }
+            return template.category.isEligible(for: weather)
+        }
         guard !available.isEmpty else { return nil }
 
-        let weather = dominantWeather(in: windows) ?? defaultWeather
         let weights = categoryWeights(for: weather)
         let grouped = Dictionary(grouping: available, by: \TaskTemplate.category)
         let weightedCategories: [TaskCategory] = grouped.compactMap { category, templates -> [TaskCategory] in

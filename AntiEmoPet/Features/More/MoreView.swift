@@ -13,16 +13,20 @@ struct MoreView: View {
 			}
 
 			Section(header: Text("Statistics")) {
-				NavigationLink(
-					destination: StatisticsView()
-						.environmentObject(appModel)
-				) {
-					Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
-				}
+                                NavigationLink(
+                                        destination: StatisticsView()
+                                                .environmentObject(appModel)
+                                ) {
+                                        Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
+                                }
 
-				NavigationLink(destination: InsightsView().environmentObject(appModel)) {
-					Label("Insights", systemImage: "lightbulb.max")
-				}
+                                NavigationLink(destination: TaskHistoryView().environmentObject(appModel)) {
+                                        Label("History", systemImage: "clock.arrow.circlepath")
+                                }
+
+                                NavigationLink(destination: InsightsView().environmentObject(appModel)) {
+                                        Label("Insights", systemImage: "lightbulb.max")
+                                }
 			}
 			Section(header: Text("User")) {
 				NavigationLink(destination: ProfileView().environmentObject(appModel)) {
