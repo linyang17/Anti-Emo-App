@@ -66,7 +66,7 @@ struct HistoryExportService {
                 return decoder
         }()
 
-        func export(tasks: [UserTask], moods: [MoodEntry], energyEvents: [EnergyEvent], range: ClosedRange<Date>) throws -> URL {
+	mutating func export(tasks: [UserTask], moods: [MoodEntry], energyEvents: [EnergyEvent], range: ClosedRange<Date>) throws -> URL {
                 let taskRecords = tasks.map { task in
                         TaskHistoryRecord(
                                 id: task.id,
@@ -125,7 +125,7 @@ struct HistoryExportService {
                 return url
         }
 
-        func importHistory(from url: URL) throws -> TaskHistoryExport {
+	mutating func importHistory(from url: URL) throws -> TaskHistoryExport {
                 let data = try Data(contentsOf: url)
                 return try decoder.decode(TaskHistoryExport.self, from: data)
         }

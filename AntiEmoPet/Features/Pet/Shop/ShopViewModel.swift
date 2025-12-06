@@ -7,7 +7,7 @@ final class ShopViewModel: ObservableObject {
 
     func availableCategories(in items: [Item]) -> [ItemType] {
         let types = Set(items.map(\.type))
-        let ordered = ItemType.allCases.filter { $0 != .snack }
+        let ordered = ItemType.allCases
         let filtered = ordered.filter { types.contains($0) }
         return filtered.isEmpty ? ordered : filtered
     }
@@ -24,6 +24,6 @@ final class ShopViewModel: ObservableObject {
         if let first = items.first?.type {
             return first
         }
-        return ItemType.allCases.first ?? .decor
+        return ItemType.allCases.first ?? .snack
     }
 }

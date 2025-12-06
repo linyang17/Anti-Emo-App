@@ -37,31 +37,31 @@ final class StorageService {
 		}
 	}
 
-        func fetchEnergyEvents(limit: Int? = nil) -> [EnergyEvent] {
-                do {
-                        var descriptor = FetchDescriptor<EnergyEvent>(
-                                sortBy: [SortDescriptor(\EnergyEvent.date, order: .reverse)]
-                        )
+		func fetchEnergyEvents(limit: Int? = nil) -> [EnergyEvent] {
+				do {
+						var descriptor = FetchDescriptor<EnergyEvent>(
+								sortBy: [SortDescriptor(\EnergyEvent.date, order: .reverse)]
+						)
 			if let limit { descriptor.fetchLimit = limit }
 			return try context.fetch(descriptor)
-                } catch {
-                        logger.error("Failed to fetch energy events: \(error.localizedDescription, privacy: .public)")
-                        return []
-                }
-        }
+				} catch {
+						logger.error("Failed to fetch energy events: \(error.localizedDescription, privacy: .public)")
+						return []
+				}
+		}
 
-        func fetchEnergyHistory(limit: Int? = nil) -> [EnergyHistoryEntry] {
-                do {
-                        var descriptor = FetchDescriptor<EnergyHistoryEntry>(
-                                sortBy: [SortDescriptor(\EnergyHistoryEntry.date, order: .forward)]
-                        )
-                        if let limit { descriptor.fetchLimit = limit }
-                        return try context.fetch(descriptor)
-                } catch {
-                        logger.error("Failed to fetch energy history: \(error.localizedDescription, privacy: .public)")
-                        return []
-                }
-        }
+		func fetchEnergyHistory(limit: Int? = nil) -> [EnergyHistoryEntry] {
+				do {
+						var descriptor = FetchDescriptor<EnergyHistoryEntry>(
+								sortBy: [SortDescriptor(\EnergyHistoryEntry.date, order: .forward)]
+						)
+						if let limit { descriptor.fetchLimit = limit }
+						return try context.fetch(descriptor)
+				} catch {
+						logger.error("Failed to fetch energy history: \(error.localizedDescription, privacy: .public)")
+						return []
+				}
+		}
 
 	func fetchStats() -> UserStats? {
 		do {
@@ -475,85 +475,85 @@ final class StorageService {
 		 }
  }
 
-                func importHistory(_ export: TaskHistoryExport) {
-                                do {
-                                        for record in export.tasks {
-                                                let predicate = #Predicate<UserTask> { $0.id == record.id }
-                                                let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
-                                                if let task = try context.fetch(descriptor).first {
-                                                        task.title = record.title
-                                                        task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
-                                                        task.category = TaskCategory(rawValue: record.category) ?? task.category
-                                                        task.energyReward = record.energyReward
-                                                        task.date = record.date
-                                                        task.status = TaskStatus(rawValue: record.status) ?? task.status
-                                                        task.isArchived = record.isArchived
-                                                        task.completedAt = record.completedAt
-                                                        task.isOnboarding = record.isOnboarding
-                                                } else {
-                                                        let task = UserTask(
-                                                                id: record.id,
-                                                                title: record.title,
-                                                                weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
-                                                                category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
-                                                                energyReward: record.energyReward,
-                                                                date: record.date,
-                                                                status: TaskStatus(rawValue: record.status) ?? .pending,
-                                                                isArchived: record.isArchived,
-                                                                completedAt: record.completedAt,
-                                                                isOnboarding: record.isOnboarding
-                                                        )
-                                                        context.insert(task)
-                                                }
-                                        }
+				func importHistory(_ export: TaskHistoryExport) {
+								do {
+										for record in export.tasks {
+												let descriptor = FetchDescriptor<UserTask>()
+												let existing = try context.fetch(descriptor).first { $0.id == record.id }
+												if let task = existing {
+														task.title = record.title
+														task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
+														task.category = TaskCategory(rawValue: record.category) ?? task.category
+														task.energyReward = record.energyReward
+														task.date = record.date
+														task.status = TaskStatus(rawValue: record.status) ?? task.status
+														task.isArchived = record.isArchived
+														task.completedAt = record.completedAt
+														task.isOnboarding = record.isOnboarding
+												} else {
+														let task = UserTask(
+																id: record.id,
+																title: record.title,
+																weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
+																category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
+																energyReward: record.energyReward,
+																date: record.date,
+																status: TaskStatus(rawValue: record.status) ?? .pending,
+																isArchived: record.isArchived,
+																completedAt: record.completedAt,
+																isOnboarding: record.isOnboarding
+														)
+														context.insert(task)
+												}
+										}
 
-                                        for record in export.moods {
-                                                let predicate = #Predicate<MoodEntry> { $0.id == record.id }
-                                                let descriptor = FetchDescriptor<MoodEntry>(predicate: predicate)
-                                                if let mood = try context.fetch(descriptor).first {
-                                                        mood.date = record.date
-                                                        mood.value = record.value
-                                                        mood.source = record.source
-                                                        mood.delta = record.delta
-                                                        mood.relatedTaskCategory = record.relatedTaskCategory
-                                                        mood.relatedWeather = record.relatedWeather
-                                                } else {
-                                                        let mood = MoodEntry(
-                                                                id: record.id,
-                                                                date: record.date,
-                                                                value: record.value,
-                                                                source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
-                                                                delta: record.delta,
-                                                                relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
-                                                                relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
-                                                        )
-                                                        context.insert(mood)
-                                                }
-                                        }
+										for record in export.moods {
+												let descriptor = FetchDescriptor<MoodEntry>()
+												let existing = try context.fetch(descriptor).first { $0.id == record.id }
+												if let mood = existing {
+														mood.date = record.date
+														mood.value = record.value
+														mood.source = record.source
+														mood.delta = record.delta
+														mood.relatedTaskCategory = record.relatedTaskCategory
+														mood.relatedWeather = record.relatedWeather
+												} else {
+														let mood = MoodEntry(
+																id: record.id,
+																date: record.date,
+																value: record.value,
+																source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
+																delta: record.delta,
+																relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
+																relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
+														)
+														context.insert(mood)
+												}
+										}
 
-                                        for record in export.energyEvents {
-                                                let predicate = #Predicate<EnergyEvent> { $0.id == record.id }
-                                                let descriptor = FetchDescriptor<EnergyEvent>(predicate: predicate)
-                                                if let event = try context.fetch(descriptor).first {
-                                                        event.date = record.date
-                                                        event.delta = record.delta
-                                                        event.relatedTaskId = record.relatedTaskId
-                                                } else {
-                                                        let event = EnergyEvent(
-                                                                id: record.id,
-                                                                date: record.date,
-                                                                delta: record.delta,
-                                                                relatedTaskId: record.relatedTaskId
-                                                        )
-                                                        context.insert(event)
-                                                }
-                                        }
+										for record in export.energyEvents {
+												let descriptor = FetchDescriptor<EnergyEvent>()
+												let existing = try context.fetch(descriptor).first { $0.id == record.id }
+												if let event = existing {
+														event.date = record.date
+														event.delta = record.delta
+														event.relatedTaskId = record.relatedTaskId
+												} else {
+														let event = EnergyEvent(
+																id: record.id,
+																date: record.date,
+																delta: record.delta,
+																relatedTaskId: record.relatedTaskId
+														)
+														context.insert(event)
+												}
+										}
 
-                                        saveContext(reason: "import history")
-                                } catch {
-                                        logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
-                                }
-                }
+										saveContext(reason: "import history")
+								} catch {
+										logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
+								}
+				}
 
 	
 	// MARK: - SunTimes Persistence
@@ -598,15 +598,15 @@ final class StorageService {
 		}
 	}
 
-        func addEnergyEvent(_ event: EnergyEvent) {
-                context.insert(event)
-                saveContext(reason: "add energy event")
-        }
+		func addEnergyEvent(_ event: EnergyEvent) {
+				context.insert(event)
+				saveContext(reason: "add energy event")
+		}
 
-        func addEnergyHistoryEntry(_ entry: EnergyHistoryEntry) {
-                context.insert(entry)
-                saveContext(reason: "add energy history entry")
-        }
+		func addEnergyHistoryEntry(_ entry: EnergyHistoryEntry) {
+				context.insert(entry)
+				saveContext(reason: "add energy history entry")
+		}
 
 	@discardableResult
 	private func ensureSeed<T: PersistentModel>(
@@ -620,28 +620,28 @@ final class StorageService {
 		return true
 	}
 
-        @discardableResult
-        private func ensureItems() throws -> Bool {
-                let existing = try context.fetch(FetchDescriptor<Item>())
-                let existingSKUs = Set(existing.map(\.sku))
-                let seedResult = DefaultSeeds.makeItems(logger: existing.isEmpty ? logger : nil)
-                let seeds = seedResult.items
-                let storedVersion = UserDefaults.standard.integer(forKey: "ItemDataVersion")
+		@discardableResult
+		private func ensureItems() throws -> Bool {
+				let existing = try context.fetch(FetchDescriptor<Item>())
+				let existingSKUs = Set(existing.map(\.sku))
+				let seedResult = DefaultSeeds.makeItems(logger: existing.isEmpty ? logger : nil)
+				let seeds = seedResult.items
+				let storedVersion = UserDefaults.standard.integer(forKey: "ItemDataVersion")
 
-                if storedVersion != seedResult.version {
-                        existing.forEach { context.delete($0) }
-                        seeds.forEach { context.insert($0) }
-                        UserDefaults.standard.set(seedResult.version, forKey: "ItemDataVersion")
-                        return true
-                }
+				if storedVersion != seedResult.version {
+						existing.forEach { context.delete($0) }
+						seeds.forEach { context.insert($0) }
+						UserDefaults.standard.set(seedResult.version, forKey: "ItemDataVersion")
+						return true
+				}
 
-                let missing = seeds.filter { !existingSKUs.contains($0.sku) }
-                missing.forEach { context.insert($0) }
-                if !missing.isEmpty {
-                        UserDefaults.standard.set(seedResult.version, forKey: "ItemDataVersion")
-                }
-                return !missing.isEmpty
-        }
+				let missing = seeds.filter { !existingSKUs.contains($0.sku) }
+				missing.forEach { context.insert($0) }
+				if !missing.isEmpty {
+						UserDefaults.standard.set(seedResult.version, forKey: "ItemDataVersion")
+				}
+				return !missing.isEmpty
+		}
 
 	@discardableResult
 	private func ensureTaskTemplates() throws -> Bool {
@@ -731,44 +731,44 @@ enum DefaultSeeds {
 	}
 
 
-        private static var cachedItemContainer: ItemSeedContainer?
+		private static var cachedItemContainer: ItemSeedContainer?
 
-        static func loadItemSeeds(logger: Logger? = nil) -> ItemSeedContainer? {
-                if let cachedItemContainer { return cachedItemContainer }
+		private static func loadItemSeeds(logger: Logger? = nil) -> ItemSeedContainer? {
+				if let cachedItemContainer { return cachedItemContainer }
 
-                do {
-                        guard let url = Bundle.main.url(forResource: "items", withExtension: "json") else {
-                                logger?.error("❌ items.json not found in app bundle.")
-                                return nil
-                        }
+				do {
+						guard let url = Bundle.main.url(forResource: "items", withExtension: "json") else {
+								logger?.error("❌ items.json not found in app bundle.")
+								return nil
+						}
 
-                        let data = try Data(contentsOf: url)
-                        let decoder = JSONDecoder()
-                        decoder.keyDecodingStrategy = .convertFromSnakeCase
+						let data = try Data(contentsOf: url)
+						let decoder = JSONDecoder()
+						decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-                        let container = try decoder.decode(ItemSeedContainer.self, from: data)
-                        cachedItemContainer = container
-                        logger?.info("✅ Loaded \(container.items.count) items from items.json (version \(container.version))")
-                        return container
-                } catch {
-                        logger?.error("❌ Failed to load or decode items.json: \(error.localizedDescription, privacy: .public)")
-                        return nil
-                }
-        }
+						let container = try decoder.decode(ItemSeedContainer.self, from: data)
+						cachedItemContainer = container
+						logger?.info("✅ Loaded \(container.items.count) items from items.json (version \(container.version))")
+						return container
+				} catch {
+						logger?.error("❌ Failed to load or decode items.json: \(error.localizedDescription, privacy: .public)")
+						return nil
+				}
+		}
 
-        static func makeItems(logger: Logger? = nil) -> (version: Int, items: [Item]) {
-                guard let container = loadItemSeeds(logger: logger) else { return (version: 0, items: []) }
-                let items = container.items.map { seed in
-                        Item(
-                                sku: seed.sku,
-                                type: seed.type,
-                                assetName: seed.assetName,
-                                costEnergy: seed.costEnergy,
-                                bondingBoost: seed.bondingBoost
-                        )
-                }
-                return (version: container.version, items: items)
-        }
+		static func makeItems(logger: Logger? = nil) -> (version: Int, items: [Item]) {
+				guard let container = loadItemSeeds(logger: logger) else { return (version: 0, items: []) }
+				let items = container.items.map { seed in
+						Item(
+								sku: seed.sku,
+								type: seed.type,
+								assetName: seed.assetName,
+								costEnergy: seed.costEnergy,
+								bondingBoost: seed.bondingBoost
+						)
+				}
+				return (version: container.version, items: items)
+		}
 
 	
 		private static var cachedTemplates: [TaskTemplate]?

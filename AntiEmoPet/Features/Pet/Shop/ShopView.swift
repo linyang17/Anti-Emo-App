@@ -5,7 +5,7 @@ struct ShopView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var viewModel = ShopViewModel()
 	@State private var alertMessage: String?
-        @State private var selectedCategory: ItemType = .decor
+	@State private var selectedCategory: ItemType = .decor
 	@State private var pendingItem: Item?
 	@State private var purchaseToast: ShopToast?
 
@@ -21,19 +21,18 @@ struct ShopView: View {
 		}
 		.overlay(alignment: .top) { toastView }
 		.animation(.spring(response: 0.35, dampingFraction: 0.85), value: pendingItem?.id)
-                .onAppear {
-                        selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .decor
-                }
+		.onAppear {
+				selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .snack
+		}
 		.onChange(of: selectedCategory) {
 			pendingItem = nil
 		}
-
-                .onChange(of: appModel.shopItems) {
-                        let options = viewModel.availableCategories(in: appModel.shopItems)
-                        if !options.contains(selectedCategory) {
-                                selectedCategory = options.first ?? .decor
-                        }
-                }
+		.onChange(of: appModel.shopItems) {
+				let options = viewModel.availableCategories(in: appModel.shopItems)
+				if !options.contains(selectedCategory) {
+						selectedCategory = options.first ?? .snack
+				}
+		}
 		.alert(
 			"Oh no!",
 			isPresented: Binding(get: { alertMessage != nil }, set: { _ in alertMessage = nil })
@@ -294,7 +293,7 @@ struct ShopView: View {
 
 	private func showToast(for item: Item) {
 		let toast = ShopToast(
-			message: "Energy -\(item.costEnergy) · XP + 20 · Bonding + \(item.bondingBoost)"
+			message: "Energy -\(item.costEnergy) · XP + 10 · Bonding + \(item.bondingBoost)"
 		)
 		withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
 			purchaseToast = toast

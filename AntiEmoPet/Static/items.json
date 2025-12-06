@@ -1,89 +1,89 @@
 {
-        "version": 3,
-        "items": [
-                {
-                        "sku": "clothing.heart.bag",
-			"type": "clothing",
-			"assetName": "heartbag",
-			"costEnergy": 60,
-			"bondingBoost": 10
-		},
-		{
-			"sku": "clothing.heart.backpack",
-			"type": "decor",
-			"assetName": "backpack",
-			"costEnergy": 120,
-			"bondingBoost": 15
-		},
-		{
-			"sku": "shoes.heart.suitcase",
-			"type": "decor",
-			"assetName": "suitcase",
-			"costEnergy": 100,
-			"bondingBoost": 15
-		},
-                {
-                        "sku": "shoes.heart.mailbox",
-                        "type": "decor",
-                        "assetName": "mailbox",
-                        "costEnergy": 100,
-                        "bondingBoost": 15
-                },
-                {
-                        "sku": "snack.banana",
-                        "type": "snack",
-                        "assetName": "banana",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.blueberry",
-                        "type": "snack",
-                        "assetName": "blueberry",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.carrot",
-                        "type": "snack",
-                        "assetName": "carrot",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.chestnut",
-                        "type": "snack",
-                        "assetName": "chestnut",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.corn",
-                        "type": "snack",
-                        "assetName": "corn",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.grapes",
-                        "type": "snack",
-                        "assetName": "grapes",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.peanut",
-                        "type": "snack",
-                        "assetName": "peanut",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                },
-                {
-                        "sku": "snack.strawberry",
-                        "type": "snack",
-                        "assetName": "strawberry",
-                        "costEnergy": 0,
-                        "bondingBoost": 0
-                }
-        ]
+	"version": 5,
+	"items": [
+			{
+		"sku": "clothing.heart.bag",
+		"type": "clothing",
+		"assetName": "heartbag",
+		"costEnergy": 50,
+		"bondingBoost": 5
+	},
+	{
+		"sku": "clothing.heart.backpack",
+		"type": "decor",
+		"assetName": "backpack",
+		"costEnergy": 80,
+		"bondingBoost": 8
+	},
+	{
+		"sku": "shoes.heart.suitcase",
+		"type": "decor",
+		"assetName": "suitcase",
+		"costEnergy": 100,
+		"bondingBoost": 10
+	},
+	{
+		"sku": "shoes.heart.mailbox",
+		"type": "decor",
+		"assetName": "mailbox",
+		"costEnergy": 100,
+		"bondingBoost": 10
+	},
+	{
+			"sku": "snack.banana",
+			"type": "snack",
+			"assetName": "banana",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.blueberry",
+			"type": "snack",
+			"assetName": "blueberry",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.carrot",
+			"type": "snack",
+			"assetName": "carrot",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.chestnut",
+			"type": "snack",
+			"assetName": "chestnut",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.corn",
+			"type": "snack",
+			"assetName": "corn",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.grapes",
+			"type": "snack",
+			"assetName": "grapes",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.peanut",
+			"type": "snack",
+			"assetName": "peanut",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	},
+	{
+			"sku": "snack.strawberry",
+			"type": "snack",
+			"assetName": "strawberry",
+			"costEnergy": 0,
+			"bondingBoost": 1
+	}
+	]
 }

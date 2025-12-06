@@ -53,16 +53,6 @@
 			path = AntiEmoPet;
 			sourceTree = "<group>";
 		};
-		5A4F407E2EBDAB6500F41BD7 /* AntiEmoPetTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = AntiEmoPetTests;
-			sourceTree = "<group>";
-		};
-		5A4F40882EBDAB6600F41BD7 /* AntiEmoPetUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = AntiEmoPetUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,8 +86,6 @@
 			isa = PBXGroup;
 			children = (
 				5A4F406E2EBDAB6500F41BD7 /* AntiEmoPet */,
-				5A4F407E2EBDAB6500F41BD7 /* AntiEmoPetTests */,
-				5A4F40882EBDAB6600F41BD7 /* AntiEmoPetUITests */,
 				5A4F406D2EBDAB6500F41BD7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -152,9 +140,6 @@
 			dependencies = (
 				5A4F407D2EBDAB6500F41BD7 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				5A4F407E2EBDAB6500F41BD7 /* AntiEmoPetTests */,
-			);
 			name = AntiEmoPetTests;
 			packageProductDependencies = (
 			);
@@ -174,9 +159,6 @@
 			);
 			dependencies = (
 				5A4F40872EBDAB6600F41BD7 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				5A4F40882EBDAB6600F41BD7 /* AntiEmoPetUITests */,
 			);
 			name = AntiEmoPetUITests;
 			packageProductDependencies = (

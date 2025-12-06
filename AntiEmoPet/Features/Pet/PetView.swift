@@ -245,8 +245,8 @@ struct PetView: View {
 			decorationStack(for: pet.decorations)
                 }
                 .frame(maxWidth: .infinity)
-                .offset(y: activeSheet == .shop ? -UIScreen.main.bounds.height * 0.18 : 0)
-                .animation(.spring(response: 0.6, dampingFraction: 0.85), value: activeSheet)
+				.offset(y: activeSheet == .shop ? -.h(0.3) : 0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.85), value: activeSheet)
                 .onDisappear {
                         pettingEffectTask?.cancel()
                         showPettingHearts = false
@@ -436,21 +436,21 @@ struct PetView: View {
 				.zIndex(1)
 
 				// Base UI: bottom-left shop button
-                                shopButton
-                                        .offset(x: .w(0.1), y: -.h(0.15))
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                                        .zIndex(1)
+					shopButton
+							.offset(x: .w(0.1), y: -.h(0.15))
+							.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+							.zIndex(1)
 
-                                if isInteractionLocked {
-                                        Color.black.opacity(0.001)
-                                                .ignoresSafeArea()
-                                                .zIndex(5)
-                                }
+					if isInteractionLocked {
+							Color.black.opacity(0.001)
+									.ignoresSafeArea()
+									.zIndex(5)
+					}
 
-                                // Overlays ABOVE the buttons
-                                if appModel.showMoodCapture && !appModel.showOnboarding {
-                                        MoodCaptureOverlayView() { value in
-                                                appModel.recordMoodOnLaunch(value: value)
+					// Overlays ABOVE the buttons
+					if appModel.showMoodCapture && !appModel.showOnboarding {
+							MoodCaptureOverlayView() { value in
+									appModel.recordMoodOnLaunch(value: value)
                                         }
 					.frame(maxWidth: 360)
 					.offset(y: -UIScreen.main.bounds.height * 0.1)

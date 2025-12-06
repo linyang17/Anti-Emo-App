@@ -91,7 +91,7 @@ final class UserTask: Identifiable {
     var energyReward: Int = 0
     var date: Date
     var status: TaskStatus
-        var isArchived: Bool = false
+	var isArchived: Bool = false
     var startedAt: Date?  // 任务开始时间
     var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?

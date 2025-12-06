@@ -51,7 +51,7 @@ final class AppViewModel: ObservableObject {
 	private let analytics = AnalyticsService()
 	private let aggregationService = DataAggregationService()
 	private let uploadService = DataUploadService()
-	private let historyExporter = HistoryExportService()
+	private var historyExporter = HistoryExportService()
 	private var cancellables: Set<AnyCancellable> = []
 	private let sleepReminderService = SleepReminderService()
 	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
@@ -473,7 +473,7 @@ final class AppViewModel: ObservableObject {
 		let success = rewardEngine.purchase(item: item, stats: stats)
 		guard success else { return false }
 		incrementInventory(for: item)
-		petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: 10)
+		petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: item.bondingBoost)
 		
 		storage.persist()
 		objectWillChange.send()

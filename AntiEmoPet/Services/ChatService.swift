@@ -49,7 +49,7 @@ struct ChatService {
         }
 
         private func systemPrompt(for weather: WeatherType) -> String {
-                "You are Lumio, a supportive pet friend. Keep answers concise, empathetic, and mention current weather: \(weather.rawValue)."
+                "You are Lumio, a supportive pet friend. Keep answers concise, empathetic, and tailor to the current weather: \(weather.rawValue)."
         }
 
         private func fallbackReply(for text: String, weather: WeatherType, history: [ChatMessage]) -> String {
@@ -62,14 +62,14 @@ struct ChatService {
                 case .cloudy: weatherLine = "有点阴天，但我在听着你。"
                 case .windy: weatherLine = "今天有风，把烦恼吹散吧。"
                 }
-                return "\(weatherLine) 我记得上次我们聊到：\(lastContext)。你说的\(text)，我都听见了。"
+                return "\(weatherLine) 你说的\(text)，我都听见了。"
         }
 }
 
 private struct ChatRequest: Codable {
         let model: String
         let messages: [ChatService.ChatMessage]
-        let temperature: Double = 0.7
+		var temperature: Double = 1
 }
 
 private struct ChatCompletionResponse: Codable {
