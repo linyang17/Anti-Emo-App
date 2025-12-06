@@ -138,7 +138,14 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
                 let content = UNMutableNotificationContent().apply {
                         $0.title = "New tasks are ready!"
                         $0.body = slotNotificationMessage(for: slot)
-			$0.sound = .default
+                        $0.sound = .default
+                }
+
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                let identifier = "LumioPet.task-unlock.\(slot.rawValue).\(UUID().uuidString)"
+
+                let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+                center.add(request)
         }
 
         /// Pre-schedules unlock notifications for the provided slot schedule so they fire even when the app is closed.
@@ -163,13 +170,6 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
                         center.add(request)
                 }
         }
-
-		let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-		let identifier = "LumioPet.task-unlock.\(UUID().uuidString)"
-
-		let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-		center.add(request)
-	}
 
 	/// Returns the appropriate notification message for a given time slot.
 	private func slotNotificationMessage(for slot: TimeSlot) -> String {
