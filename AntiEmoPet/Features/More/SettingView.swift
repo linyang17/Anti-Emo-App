@@ -29,12 +29,17 @@ struct SettingView: View {
                                         ))
 
                                         ForEach([TimeSlot.morning, .afternoon, .evening], id: \.self) { slot in
-                                                Toggle(slot.rawValue.capitalized, isOn: Binding(
+                                                Toggle(isOn: Binding(
                                                         get: { appModel.slotNotificationPreferences[slot] ?? true },
                                                         set: { newValue in
                                                                 appModel.updateSlotNotificationPreference(slot, enabled: newValue)
                                                         }
-                                                ))
+                                                )) {
+                                                        Text(slot.rawValue.capitalized)
+                                                                .font(.subheadline)
+                                                                .foregroundStyle(.secondary)
+                                                }
+                                                .padding(.leading, 12)
                                                 .disabled(!stats.notificationsEnabled)
                                         }
                                 }

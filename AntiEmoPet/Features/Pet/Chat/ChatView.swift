@@ -39,6 +39,9 @@ struct ChatView: View {
                                 TextField("Text here…", text: $viewModel.currentInput)
                                         .textFieldStyle(.roundedBorder)
                                         .focused($isInputFocused)
+                                        .onTapGesture { isInputFocused = true }
+                                        .submitLabel(.send)
+                                        .onSubmit { viewModel.sendCurrentMessage() }
                                 Button("Send") {
                                         viewModel.sendCurrentMessage()
                                         isInputFocused = true

@@ -134,21 +134,29 @@ struct ShopView: View {
 				.foregroundStyle(.white)
 				.lineLimit(1)
 
-			if isOwned {
-				HStack(spacing: 6) {
-					Image(systemName: isEquipped ? "checkmark.circle.fill" : "circle")
-						.foregroundStyle(isEquipped ? Color.accentColor : .white.opacity(0.7))
-				}
-			} else {
-				HStack(spacing: 4) {
-					Image(systemName: "star.fill")
-						.foregroundStyle(.yellow)
-					Text("\(item.costEnergy)")
-						.font(.caption2.weight(.semibold))
-						.foregroundStyle(.white)
-				}
-			}
-		}
+                        if item.type == .snack {
+                                HStack(spacing: 6) {
+                                        Image(systemName: "bag.fill")
+                                                .foregroundStyle(.white)
+                                        Text("x \(snackQuantity(for: item))")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                }
+                        } else if isOwned {
+                                HStack(spacing: 6) {
+                                        Image(systemName: isEquipped ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(isEquipped ? Color.accentColor : .white.opacity(0.7))
+                                }
+                        } else {
+                                HStack(spacing: 4) {
+                                        Image(systemName: "star.fill")
+                                                .foregroundStyle(.yellow)
+                                        Text("\(item.costEnergy)")
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                }
+                        }
+                }
 		.padding(12)
 		.frame(maxWidth: .infinity)
 		.frame(height: 150)
@@ -309,6 +317,10 @@ struct ShopView: View {
 
         private func isOwned(_ item: Item) -> Bool {
                 appModel.inventory.first(where: { $0.sku == item.sku })?.quantity ?? 0 > 0
+        }
+
+        private func snackQuantity(for item: Item) -> Int {
+                appModel.inventory.first(where: { $0.sku == item.sku })?.quantity ?? 0
         }
 
 	@ViewBuilder

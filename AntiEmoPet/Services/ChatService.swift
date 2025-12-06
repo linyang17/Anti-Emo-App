@@ -21,7 +21,7 @@ struct ChatService {
         private let model = "gpt-4o-mini"
 
         func reply(to text: String, weather: WeatherType, history: [ChatMessage]) async throws -> String {
-                guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
+                guard let apiKey = resolveAPIKey() else {
                         return fallbackReply(for: text, weather: weather, history: history)
                 }
 
@@ -50,6 +50,18 @@ struct ChatService {
 
         private func systemPrompt(for weather: WeatherType) -> String {
                 "You are Lumio, a supportive pet friend. Keep answers concise, empathetic, and tailor to the current weather: \(weather.rawValue)."
+        }
+
+        private func resolveAPIKey() -> String? {
+                if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
+                        return envKey
+                }
+
+                if let plistKey = Bundle.main.infoDictionary?["OPENAI_API_KEY"] as? String, !plistKey.isEmpty {
+                        return plistKey
+                }
+
+                return nil
         }
 
         private func fallbackReply(for text: String, weather: WeatherType, history: [ChatMessage]) -> String {
