@@ -1,33 +1,33 @@
 {
-	"version": 1,
+	"version": 2,
 	"items": [
 		{
 			"sku": "clothing.heart.bag",
 			"type": "clothing",
 			"assetName": "heartbag",
 			"costEnergy": 60,
-			"bondingBoost": 15
+			"bondingBoost": 10
 		},
 		{
-			"sku": "clothing.sunrise.pack",
-			"type": "clothing",
+			"sku": "clothing.heart.backpack",
+			"type": "decor",
 			"assetName": "backpack",
-			"costEnergy": 150,
+			"costEnergy": 120,
 			"bondingBoost": 15
 		},
 		{
-			"sku": "shoes.bloom.suitcase",
+			"sku": "shoes.heart.suitcase",
 			"type": "decor",
 			"assetName": "suitcase",
 			"costEnergy": 100,
-			"bondingBoost": 10
+			"bondingBoost": 15
 		},
 		{
-			"sku": "shoes.moon.mailbox",
+			"sku": "shoes.heart.mailbox",
 			"type": "decor",
 			"assetName": "mailbox",
 			"costEnergy": 100,
-			"bondingBoost": 10
+			"bondingBoost": 15
 		}
 	]
 }
