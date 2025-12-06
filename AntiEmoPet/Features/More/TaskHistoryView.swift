@@ -36,13 +36,13 @@ struct TaskHistoryView: View {
                                         Label("Import .xls/.xlsx", systemImage: "square.and.arrow.down")
                                 }
                         }
-
+					#if !DEBUG
                         ForEach(sections) { section in
                                 Section(header: Text(dateLabel(for: section.date))) {
                                         ForEach(section.tasks) { task in
                                                 VStack(alignment: .leading, spacing: 6) {
                                                         Text(task.title)
-                                                                .font(.headline)
+                                                                .font(.body)
                                                         HStack(spacing: 10) {
                                                                 TagView(text: task.category.localizedTitle)
                                                                 TagView(text: task.status.rawValue.capitalized)
@@ -59,6 +59,7 @@ struct TaskHistoryView: View {
                                         }
                                 }
                         }
+					#endif
                 }
                 .navigationTitle("History")
                 .onAppear { loadHistory() }
@@ -129,7 +130,7 @@ private struct TagView: View {
 
         var body: some View {
                 Text(text)
-                        .font(.caption.weight(.semibold))
+                        .font(.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(Color.gray.opacity(0.15)))

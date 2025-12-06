@@ -1,6 +1,6 @@
 import Foundation
 
-struct TaskHistoryRecord: Codable {
+struct TaskHistoryRecord: Codable, Sendable {
         let id: UUID
         let title: String
         let category: String
@@ -13,7 +13,7 @@ struct TaskHistoryRecord: Codable {
         let isOnboarding: Bool
 }
 
-struct MoodHistoryRecord: Codable {
+struct MoodHistoryRecord: Codable, Sendable {
         let id: UUID
         let date: Date
         let value: Int
@@ -23,14 +23,14 @@ struct MoodHistoryRecord: Codable {
         let relatedWeather: String?
 }
 
-struct EnergyEventRecord: Codable {
+struct EnergyEventRecord: Codable, Sendable {
         let id: UUID
         let date: Date
         let delta: Int
         let relatedTaskId: UUID?
 }
 
-struct TaskHistoryExport: Codable {
+struct TaskHistoryExport: Codable, Sendable {
         let exportedAt: Date
         let rangeStart: Date
         let rangeEnd: Date
@@ -174,9 +174,19 @@ struct HistoryExportService {
                 guard let idIndex = sheet.headers.firstIndex(of: "id") else { return [] }
                 let lookup: [String: Int] = Dictionary(uniqueKeysWithValues: sheet.headers.enumerated().map { ($1, $0) })
 
-                return sheet.rows.compactMap { row in
+                return sheet.rows.compactMap { row -> TaskHistoryRecord? in
+                        // Ensure the row has at least the id column
                         guard row.count > idIndex else { return nil }
-                        let completed = row[safe: lookup["completedAt"]]?.flatMap(dateFormatter.date(from:))
+
+                        // Safely parse optional completedAt date
+                        let completed: Date?
+                        if let completedString = row[safe: lookup["completedAt"]], let date = dateFormatter.date(from: completedString) {
+                                completed = date
+                        } else {
+                                completed = nil
+                        }
+
+                        // Build the record using safe lookups and sensible defaults
                         return TaskHistoryRecord(
                                 id: UUID(uuidString: row[idIndex]) ?? UUID(),
                                 title: row[safe: lookup["title"]] ?? "",

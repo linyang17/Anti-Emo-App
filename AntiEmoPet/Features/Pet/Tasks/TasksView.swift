@@ -115,7 +115,7 @@ private struct TaskRow: View {
 				Text(task.title)
 					.appFont(FontTheme.body)
 				HStack {
-                                    Text(task.category.localizedTitle)
+					Text(task.category.localizedTitle)
 						.appFont(FontTheme.caption)
 						.foregroundStyle(.secondary)
 					Text(viewModel.badge(for: task))
