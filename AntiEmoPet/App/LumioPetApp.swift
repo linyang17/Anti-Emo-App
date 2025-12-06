@@ -15,6 +15,7 @@ struct LumioPetApp: App {
                         InventoryEntry.self,
                         MoodEntry.self,
                         EnergyEvent.self,
+                        EnergyHistoryEntry.self,
                         SunTimesRecord.self
                 ])
 

@@ -102,8 +102,8 @@ struct ShopView: View {
 	}
 
 	private var gridSection: some View {
-		let items = viewModel.items(for: selectedCategory, in: appModel.shopItems, limit: viewModel.gridCapacity)
-		let placeholders = max(0, viewModel.gridCapacity - items.count)
+                let items = viewModel.items(for: selectedCategory, in: appModel.shopItems)
+                let placeholders = viewModel.placeholderCount(for: items)
 
 		return LazyVGrid(columns: columns, spacing: 18) {
 			ForEach(items) { item in

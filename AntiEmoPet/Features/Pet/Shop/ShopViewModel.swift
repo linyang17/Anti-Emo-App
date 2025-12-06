@@ -12,10 +12,12 @@ final class ShopViewModel: ObservableObject {
         return filtered.isEmpty ? ordered : filtered
     }
 
-    func items(for type: ItemType, in items: [Item], limit: Int) -> [Item] {
-        let filtered = items.filter { $0.type == type }
-        guard limit < filtered.count else { return filtered }
-        return Array(filtered.prefix(limit))
+    func items(for type: ItemType, in items: [Item]) -> [Item] {
+        items.filter { $0.type == type }
+    }
+
+    func placeholderCount(for items: [Item]) -> Int {
+        max(0, 3 - items.count)
     }
 
     func defaultCategory(in items: [Item]) -> ItemType {

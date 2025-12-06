@@ -161,9 +161,13 @@ final class AppViewModel: ObservableObject {
                 }
 
                 // Load stored energy history (for daily totalEnergy snapshots)
-                if let data = UserDefaults.standard.data(forKey: "energyHistory"),
-                   let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
+                let storedEnergyHistory = storage.fetchEnergyHistory()
+                if !storedEnergyHistory.isEmpty {
+                        energyHistory = storedEnergyHistory
+                } else if let data = UserDefaults.standard.data(forKey: "energyHistory"),
+                          let decoded = try? JSONDecoder().decode([EnergyHistoryEntry].self, from: data) {
                         energyHistory = decoded
+                        decoded.forEach { storage.addEnergyHistoryEntry($0) }
                 }
 
                 energyEvents = storage.fetchEnergyEvents()
@@ -676,13 +680,8 @@ final class AppViewModel: ObservableObject {
                 _ = TimeZoneManager.shared.calendar
                 // Always append a new entry with exact timestamp Date()
                 let entry = EnergyHistoryEntry(date: Date(), totalEnergy: totalEnergy)
-                energyHistory.append(entry)
-
-                energyHistory.sort { $0.date < $1.date }
-
-                if let data = try? JSONEncoder().encode(energyHistory) {
-                        UserDefaults.standard.set(data, forKey: "energyHistory")
-                }
+                storage.addEnergyHistoryEntry(entry)
+                energyHistory = storage.fetchEnergyHistory()
         }
 
         func updateSlotNotificationPreference(_ slot: TimeSlot, enabled: Bool) {
@@ -963,10 +962,26 @@ final class AppViewModel: ObservableObject {
 	        }
 	    }
 
-	    // Otherwise, show current slot tasks (non-onboarding)
-	    let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
-	    todayTasks = slotTasks
-	}
+            // Otherwise, show current slot tasks (non-onboarding)
+            let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+            if slotTasks.isEmpty, !hasGeneratedSlotTasks(slot, on: date), let previous = previousSlot(for: slot) {
+                    let previousSlotTasks = storage.fetchTasks(in: previous, on: date, includeOnboarding: false)
+                    if !previousSlotTasks.isEmpty {
+                            todayTasks = previousSlotTasks
+                            return
+                    }
+            }
+            todayTasks = slotTasks
+        }
+
+        private func previousSlot(for slot: TimeSlot) -> TimeSlot? {
+                switch slot {
+                case .morning: return .night
+                case .afternoon: return .morning
+                case .evening: return .afternoon
+                case .night: return .evening
+                }
+        }
 
 	private func hasGeneratedSlotTasks(_ slot: TimeSlot, on date: Date = Date()) -> Bool {
 		let map = loadSlotGenerationRecords()

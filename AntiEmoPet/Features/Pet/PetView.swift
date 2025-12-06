@@ -14,9 +14,13 @@ struct PetView: View {
 		@State private var pettingEffectTask: Task<Void, Never>?
 		@State private var activeReward: RewardEvent?
 		@State private var rewardOpacity: Double = 0
-		@State private var bannerTask: Task<Void, Never>?
-		@State private var showMoodFeedback = false
-		@State private var appearOpacity: Double = 0
+                @State private var bannerTask: Task<Void, Never>?
+                @State private var showMoodFeedback = false
+                @State private var appearOpacity: Double = 0
+
+        private var isInteractionLocked: Bool {
+                (appModel.showMoodCapture && !appModel.showOnboarding) || activeReward != nil || showMoodFeedback
+        }
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -239,11 +243,13 @@ struct PetView: View {
 			}
 
 			decorationStack(for: pet.decorations)
-		}
-		.frame(maxWidth: .infinity)
-		.onDisappear {
-			pettingEffectTask?.cancel()
-			showPettingHearts = false
+                }
+                .frame(maxWidth: .infinity)
+                .offset(y: activeSheet == .shop ? -UIScreen.main.bounds.height * 0.18 : 0)
+                .animation(.spring(response: 0.6, dampingFraction: 0.85), value: activeSheet)
+                .onDisappear {
+                        pettingEffectTask?.cancel()
+                        showPettingHearts = false
 		}
 	}
 
@@ -430,16 +436,22 @@ struct PetView: View {
 				.zIndex(1)
 
 				// Base UI: bottom-left shop button
-				shopButton
-					.offset(x: .w(0.1), y: -.h(0.15))
-					.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-					.zIndex(1)
+                                shopButton
+                                        .offset(x: .w(0.1), y: -.h(0.15))
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                                        .zIndex(1)
 
-				// Overlays ABOVE the buttons
-				if appModel.showMoodCapture && !appModel.showOnboarding {
-					MoodCaptureOverlayView() { value in
-						appModel.recordMoodOnLaunch(value: value)
-					}
+                                if isInteractionLocked {
+                                        Color.black.opacity(0.001)
+                                                .ignoresSafeArea()
+                                                .zIndex(5)
+                                }
+
+                                // Overlays ABOVE the buttons
+                                if appModel.showMoodCapture && !appModel.showOnboarding {
+                                        MoodCaptureOverlayView() { value in
+                                                appModel.recordMoodOnLaunch(value: value)
+                                        }
 					.frame(maxWidth: 360)
 					.offset(y: -UIScreen.main.bounds.height * 0.1)
 					.transition(.scale(scale: 0.92).combined(with: .opacity))
