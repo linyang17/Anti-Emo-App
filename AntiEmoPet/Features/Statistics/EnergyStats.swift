@@ -77,18 +77,22 @@ struct EnergyStatsSection: View {
                         .foregroundStyle(.secondary)
 					
 					let theme = ChartTheme.shared
-					let sortedCategories = energy.taskTypeCounts.keys.sorted { $0.title < $1.title }
-                    Chart(energy.taskTypeCounts.sorted(by: { $0.value > $1.value }), id: \.key) { item in
+					let sortedCategories: [TaskCategory] = Array(energy.taskTypeCounts.keys).sorted { (lhs: TaskCategory, rhs: TaskCategory) in
+						lhs.localizedTitle < rhs.localizedTitle
+                    }
+                    Chart(Array(energy.taskTypeCounts).sorted { (lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
+                        lhs.value > rhs.value
+                    }, id: \.key) { item in
                         SectorMark(
                             angle: .value("Count", item.value),
                             innerRadius: .ratio(0.5),
                             angularInset: 1
                         )
-                                            .foregroundStyle(by: .value("Category", item.key.localizedTitle))
+						.foregroundStyle(by: .value("Category", item.key.localizedTitle))
                         .cornerRadius(4)
                     }
 					.chartForegroundStyleScale(
-						domain: sortedCategories.map { $0.title },
+						domain: sortedCategories.map { $0.localizedTitle },
 						range: sortedCategories.map { theme.gradient(for: $0) }
 					)
                     .frame(height: 200)

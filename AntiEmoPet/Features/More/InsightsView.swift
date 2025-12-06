@@ -17,15 +17,6 @@ struct InsightsView: View {
 				StatsInsightsSection(mood: moodSummary, energy: energySummary)
 					.environmentObject(appModel)
 				
-				NavigationLink {
-					AdvancedInsightsView()
-				} label: {
-					DashboardCard(title: "Advanced Insights", icon: "chart.xyaxis.line") {
-						Text("View detailed analysis and correlations")
-							.foregroundStyle(.secondary)
-							.padding()
-					}
-				}
 			}
 			.padding()
 		}

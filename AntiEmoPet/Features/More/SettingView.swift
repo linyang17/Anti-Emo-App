@@ -27,7 +27,6 @@ struct SettingView: View {
 				Section("Language") {
 					Picker("Language", selection: $selectedLanguage) {
 						Text("English").tag("en")
-						Text("中文").tag("zh")
 					}
 					// TODO: complete language switch and support to 中文（zh）
 				}

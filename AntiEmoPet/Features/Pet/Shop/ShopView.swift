@@ -54,12 +54,7 @@ struct ShopView: View {
 					gridSection
 						.padding(.bottom, 80) // Spacing for confirm button
 					
-					if let pendingItem, !isOwned(pendingItem) {
-						// Button is sticky or inside scroll? 
-						// If we want it fixed at bottom, it should be outside ScrollView.
-						// But original design had it in ZStack.
-						// Let's move button OUTSIDE ScrollView for better UX
-					}
+					if let pendingItem, !isOwned(pendingItem) { }
 				}
 			}
 			
@@ -79,7 +74,7 @@ struct ShopView: View {
 
 	private var categoryPicker: some View {
                 let options = viewModel.availableCategories(in: appModel.shopItems)
-                HStack(spacing: 8) {
+		return HStack(spacing: 8) {
                         ForEach(options, id: \.self) { type in
 				Button {
 					selectedCategory = type

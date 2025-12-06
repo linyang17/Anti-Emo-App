@@ -3,7 +3,7 @@ import Combine
 
 @MainActor
 final class ShopViewModel: ObservableObject {
-    let gridCapacity = 100 // Show all items (effectively no limit for MVP)
+    let gridCapacity = 6
 
     func availableCategories(in items: [Item]) -> [ItemType] {
         let types = Set(items.map(\.type))

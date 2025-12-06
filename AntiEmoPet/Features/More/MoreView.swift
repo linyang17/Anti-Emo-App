@@ -19,14 +19,15 @@ struct MoreView: View {
                                 ) {
                                         Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
                                 }
-
+								
+								NavigationLink(destination: InsightsView().environmentObject(appModel)) {
+										Label("Insights", systemImage: "lightbulb.max")
+								}
+				
                                 NavigationLink(destination: TaskHistoryView().environmentObject(appModel)) {
                                         Label("History", systemImage: "clock.arrow.circlepath")
                                 }
 
-                                NavigationLink(destination: InsightsView().environmentObject(appModel)) {
-                                        Label("Insights", systemImage: "lightbulb.max")
-                                }
 			}
 			Section(header: Text("User")) {
 				NavigationLink(destination: ProfileView().environmentObject(appModel)) {

@@ -22,7 +22,7 @@ final class DataUploadService {
     func processQueue(sharingEnabled: Bool, uploader: SummaryUploader = SummaryUploader()) async {
         guard sharingEnabled else { return }
 
-        var queue = loadQueue()
+		let queue = loadQueue()
         guard !queue.isEmpty else { return }
 
         var retained: [QueuedSummary] = []
