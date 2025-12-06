@@ -1,12 +1,18 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TaskHistoryView: View {
         @EnvironmentObject private var appModel: AppViewModel
         @State private var sections: [TaskHistorySection] = []
         @State private var exportURL: URL?
         @State private var errorMessage: String?
+        @State private var isImporting = false
+        @State private var importMessage: String?
 
         private let historyDays = 30
+        private var excelTypes: [UTType] {
+                [UTType(filenameExtension: "xls"), UTType(filenameExtension: "xlsx")].compactMap { $0 }
+        }
 
         var body: some View {
                 List {
@@ -22,6 +28,12 @@ struct TaskHistoryView: View {
                                         ShareLink(item: exportURL) {
                                                 Label("Share export file", systemImage: "arrow.up.forward.app")
                                         }
+                                }
+
+                                Button {
+                                        isImporting = true
+                                } label: {
+                                        Label("Import .xls/.xlsx", systemImage: "square.and.arrow.down")
                                 }
                         }
 
@@ -50,13 +62,38 @@ struct TaskHistoryView: View {
                 }
                 .navigationTitle("History")
                 .onAppear { loadHistory() }
-                .alert("Export failed", isPresented: Binding(
+                .alert("Error", isPresented: Binding(
                         get: { errorMessage != nil },
                         set: { newValue in if !newValue { errorMessage = nil } }
                 )) {
                         Button("OK", role: .cancel) { }
                 } message: {
                         Text(errorMessage ?? "Unknown error")
+                }
+                .alert("Import", isPresented: Binding(
+                        get: { importMessage != nil },
+                        set: { newValue in if !newValue { importMessage = nil } }
+                )) {
+                        Button("OK", role: .cancel) { }
+                } message: {
+                        Text(importMessage ?? "")
+                }
+                .fileImporter(
+                        isPresented: $isImporting,
+                        allowedContentTypes: excelTypes + [.data]
+                ) { result in
+                        switch result {
+                        case .success(let url):
+                                let success = appModel.importTaskHistory(from: url)
+                                if success {
+                                        loadHistory()
+                                        importMessage = "Import succeeded."
+                                } else {
+                                        errorMessage = "Import failed."
+                                }
+                        case .failure(let error):
+                                errorMessage = error.localizedDescription
+                        }
                 }
         }
 

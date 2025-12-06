@@ -52,19 +52,25 @@ final class OnboardingViewModel: NSObject, ObservableObject {
 	@Published var hasWeatherPermission: Bool = false
 	@Published var selectedGender: GenderOption?
 	@Published var birthday: Date
-	@Published var selectedAccountProvider: AccountProvider?
-	@Published var accountEmail: String = ""
+        @Published var selectedAccountProvider: AccountProvider?
+        @Published var accountEmail: String = ""
 
 
-	var canSubmit: Bool {
-		accountEmail != "" &&
-		!nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-		selectedGender != nil &&
-		enableLocationAndWeather &&
-		hasLocationPermission &&
-		hasWeatherPermission &&
-		birthday <= Date()
-	}
+        var canSubmit: Bool {
+                accountEmail != "" &&
+                isNicknameValid &&
+                selectedGender != nil &&
+                enableLocationAndWeather &&
+                hasLocationPermission &&
+                hasWeatherPermission &&
+                birthday <= Date()
+        }
+
+        var isNicknameValid: Bool {
+                let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+                let pattern = "^[A-Za-z0-9_-]{2,30}$"
+                return trimmed.range(of: pattern, options: .regularExpression) != nil
+        }
 
 
 

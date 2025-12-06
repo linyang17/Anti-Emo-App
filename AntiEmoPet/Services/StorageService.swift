@@ -445,22 +445,94 @@ final class StorageService {
 	}
 
 
-		func addInventory(forSKU sku: String) {
-		 do {
-				 let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
-				 let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
-				 let existing = try context.fetch(descriptor).first
-				 if let entry = existing {
-						 entry.quantity += 1
-				 } else {
-						 let entry = InventoryEntry(sku: sku, quantity: 1)
-						 context.insert(entry)
-				 }
-				 saveContext(reason: "increment inventory")
-		 } catch {
-		 logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
-	 }
+                func addInventory(forSKU sku: String) {
+                 do {
+                                 let predicate = #Predicate<InventoryEntry> { $0.sku == sku }
+                                 let descriptor = FetchDescriptor<InventoryEntry>(predicate: predicate)
+                                 let existing = try context.fetch(descriptor).first
+                                 if let entry = existing {
+                                                 entry.quantity += 1
+                                 } else {
+                                                 let entry = InventoryEntry(sku: sku, quantity: 1)
+                                                 context.insert(entry)
+                                 }
+                                 saveContext(reason: "increment inventory")
+                 } catch {
+                 logger.error("Failed to increment inventory for sku \(sku, privacy: .public): \(error.localizedDescription, privacy: .public)")
+         }
  }
+
+        func importHistory(_ export: TaskHistoryExport) {
+                upsert(tasks: export.tasks)
+                upsert(moods: export.moods)
+                upsert(events: export.energyEvents)
+                saveContext(reason: "import history")
+        }
+
+        private func upsert(tasks: [TaskHistoryRecord]) {
+                for record in tasks {
+                        let predicate = #Predicate<UserTask> { $0.id == record.id }
+                        var descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+                        descriptor.fetchLimit = 1
+                        let existing = (try? context.fetch(descriptor))?.first
+
+                        let task = existing ?? UserTask(
+                                id: record.id,
+                                title: record.title,
+                                weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
+                                category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
+                                energyReward: record.energyReward,
+                                date: record.date
+                        )
+
+                        task.title = record.title
+                        task.category = TaskCategory(rawValue: record.category) ?? task.category
+                        task.status = TaskStatus(rawValue: record.status) ?? task.status
+                        task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
+                        task.energyReward = record.energyReward
+                        task.date = record.date
+                        task.completedAt = record.completedAt
+                        task.isArchived = record.isArchived
+                        task.isOnboarding = record.isOnboarding
+
+                        if existing == nil { context.insert(task) }
+                }
+        }
+
+        private func upsert(moods: [MoodHistoryRecord]) {
+                for record in moods {
+                        let predicate = #Predicate<MoodEntry> { $0.id == record.id }
+                        var descriptor = FetchDescriptor<MoodEntry>(predicate: predicate)
+                        descriptor.fetchLimit = 1
+                        let existing = (try? context.fetch(descriptor))?.first
+
+                        let entry = existing ?? MoodEntry(id: record.id, date: record.date, value: record.value, source: record.source)
+                        entry.date = record.date
+                        entry.value = record.value
+                        entry.source = record.source
+                        entry.delta = record.delta
+                        entry.relatedTaskCategory = record.relatedTaskCategory
+                        entry.relatedWeather = record.relatedWeather
+
+                        if existing == nil { context.insert(entry) }
+                }
+        }
+
+        private func upsert(events: [EnergyEventRecord]) {
+                for record in events {
+                        let predicate = #Predicate<EnergyEvent> { $0.id == record.id }
+                        var descriptor = FetchDescriptor<EnergyEvent>(predicate: predicate)
+                        descriptor.fetchLimit = 1
+                        let existing = (try? context.fetch(descriptor))?.first
+
+                        let event = existing ?? EnergyEvent(id: record.id, delta: record.delta, relatedTaskId: record.relatedTaskId)
+                        event.date = record.date
+                        event.delta = record.delta
+                        event.relatedTaskId = record.relatedTaskId
+
+                        if existing == nil { context.insert(event) }
+                }
+        }
 	
 	// MARK: - SunTimes Persistence
 	/// 保存日照时间数据（用于统计分析）

@@ -28,15 +28,16 @@ final class AppViewModel: ObservableObject {
 	@Published var energyEvents: [EnergyEvent] = []
 	@Published var inventory: [InventoryEntry] = []
 	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
-	@Published var showSleepReminder = false
-	@Published var rewardBanner: RewardEvent?
-	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-	@Published var shouldShowNotificationSettingsPrompt = false
-	@Published private(set) var hasLoggedMoodThisSlot = false
-	@Published var showMoodCapture = false
-	@Published var shouldForceMoodCapture = false
-	@Published var pendingMoodFeedbackTask: UserTask?
-	@Published private(set) var canRefreshCurrentSlot = false
+        @Published var showSleepReminder = false
+        @Published var rewardBanner: RewardEvent?
+        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+        @Published var shouldShowNotificationSettingsPrompt = false
+        @Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
+        @Published private(set) var hasLoggedMoodThisSlot = false
+        @Published var showMoodCapture = false
+        @Published var shouldForceMoodCapture = false
+        @Published var pendingMoodFeedbackTask: UserTask?
+        @Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
 	@Published var pettingNotice: String?
 	lazy var petEngine = PetEngine(pet: nil)
@@ -55,11 +56,13 @@ final class AppViewModel: ObservableObject {
 	private let sleepReminderService = SleepReminderService()
 	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
 	private let refreshRecordsKey = "taskRefreshRecords"
-	private let slotScheduleKey = "taskSlotSchedule"
-	private let slotGenerationKey = "taskSlotGenerationRecords"
-	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
-	private let pettingLimitKey = "dailyPettingLimit"
-	private var lastObservedSlot: TimeSlot?
+        private let slotScheduleKey = "taskSlotSchedule"
+        private let slotGenerationKey = "taskSlotGenerationRecords"
+        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+        private let pettingLimitKey = "dailyPettingLimit"
+        private let slotNotificationPreferenceKey = "slotNotificationPreferences"
+        private let streakAwardedKey = "streak.lastAwardedDay"
+        private var lastObservedSlot: TimeSlot?
 	private var isLoadingData = false
 	private var awaitingLocationWeatherRefresh = false
 	private typealias RefreshRecordMap = [String: [String: Double]]
@@ -78,14 +81,15 @@ final class AppViewModel: ObservableObject {
 	// New private property added as per instructions
 	private var pendingGenerationConfigUpdate = false
 
-	// MARK: - Initialization
-	init(modelContext: ModelContext) {
-		storage = StorageService(context: modelContext)
-		taskGenerator = TaskGeneratorService(storage: storage)
-		bindLocationUpdates()
-		bindSleepReminder()
-		configureSleepReminderMonitoring()
-	}
+        // MARK: - Initialization
+        init(modelContext: ModelContext) {
+                storage = StorageService(context: modelContext)
+                taskGenerator = TaskGeneratorService(storage: storage)
+                slotNotificationPreferences = loadSlotNotificationPreferences()
+                bindLocationUpdates()
+                bindSleepReminder()
+                configureSleepReminderMonitoring()
+        }
 
 	deinit {
 		slotMonitorTask?.cancel()
@@ -384,15 +388,13 @@ final class AppViewModel: ObservableObject {
                         analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
                 }
 
-		analytics.log(event: "task_completed", metadata: ["title": task.title])
-                let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+                analytics.log(event: "task_completed", metadata: ["title": task.title])
+                let slot = TimeSlot.from(date: task.date, using: TimeZoneManager.shared.calendar)
                 incrementTaskCompletion(for: Date(), timeSlot: slot)
-                if rewardEngine.evaluateAllClear(tasks: todayTasks, stats: stats) {
-                        analytics.log(event: "streak_up", metadata: ["streak": "\(stats.totalDays)"])
-                }
+                updateStreakIfEligible(for: slot, on: task.date)
                 rewardBanner = RewardEvent(energy: rewards.energy, xp: 1, snackName: snackName)
-		logTodayEnergySnapshot()
-		dailyMetricsCache = makeDailyActivityMetrics()
+                logTodayEnergySnapshot()
+                dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
 		refreshDisplayedTasks(for: slot, on: Date())
 				
@@ -476,16 +478,16 @@ final class AppViewModel: ObservableObject {
 		return true
 	}
 
-	func updateProfile(
-		nickname: String,
-		region: String,
-		shareLocation: Bool,
-		gender: String,
-		birthday: Date?,
-		accountEmail: String,
-		isOnboard: Bool
+        func updateProfile(
+                nickname: String,
+                region: String,
+                shareLocation: Bool,
+                gender: String,
+                birthday: Date?,
+                accountEmail: String,
+                isOnboard: Bool
         ) async {
-		userStats?.nickname = nickname
+                userStats?.nickname = sanitizedNickname(nickname)
 		
 		// Ensure region is populated - wait for location service if needed
 		var finalRegion = region
@@ -542,20 +544,21 @@ final class AppViewModel: ObservableObject {
 	}
 
 	// MARK: Notifications
-	func requestNotifications() {
-		shouldShowNotificationSettingsPrompt = false
-		notificationService.requestNotiAuth { [weak self] result in
-			guard let self, let stats = self.userStats else { return }
-			switch result {
-			case .granted:
-				stats.notificationsEnabled = true
-				self.notificationService.scheduleDailyReminders()
-				self.scheduleTaskNotifications()
-			case .denied:
-				stats.notificationsEnabled = false
-			case .requiresSettings:
-				stats.notificationsEnabled = false
-				self.shouldShowNotificationSettingsPrompt = true
+        func requestNotifications() {
+                shouldShowNotificationSettingsPrompt = false
+                notificationService.requestNotiAuth { [weak self] result in
+                        guard let self, let stats = self.userStats else { return }
+                        switch result {
+                        case .granted:
+                                stats.notificationsEnabled = true
+                                self.notificationService.scheduleDailyReminders()
+                                self.scheduleTaskNotifications()
+                                self.rescheduleSlotUnlocks()
+                        case .denied:
+                                stats.notificationsEnabled = false
+                        case .requiresSettings:
+                                stats.notificationsEnabled = false
+                                self.shouldShowNotificationSettingsPrompt = true
 			}
 			self.storage.persist()
 		}
@@ -682,6 +685,25 @@ final class AppViewModel: ObservableObject {
                 }
         }
 
+        func updateSlotNotificationPreference(_ slot: TimeSlot, enabled: Bool) {
+                slotNotificationPreferences[slot] = enabled
+                persistSlotNotificationPreferences(slotNotificationPreferences)
+                rescheduleSlotUnlocks()
+                scheduleTaskNotifications()
+        }
+
+        func updateAllSlotNotifications(enabled: Bool) {
+                for slot in activeTaskSlots { slotNotificationPreferences[slot] = enabled }
+                persistSlotNotificationPreferences(slotNotificationPreferences)
+                rescheduleSlotUnlocks()
+                scheduleTaskNotifications()
+        }
+
+        private func rescheduleSlotUnlocks(reference date: Date = Date()) {
+                guard userStats?.notificationsEnabled == true else { return }
+                notificationService.scheduleSlotUnlocks(for: slotSchedule(for: date), allowedSlots: enabledNotificationSlots)
+        }
+
         private func recordEnergyEvent(delta: Int, relatedTask: UserTask) {
                 guard delta > 0 else { return }
                 let event = EnergyEvent(delta: delta, relatedTaskId: relatedTask.id)
@@ -692,11 +714,39 @@ final class AppViewModel: ObservableObject {
 	private var interactionsKey: String { "dailyPetInteractions" }
 	private var timeSlotKey: String { "dailyTaskTimeSlots" }
 
-	private func dayKey(for date: Date) -> String {
-		let cal = TimeZoneManager.shared.calendar
-		let day = cal.startOfDay(for: date)
-		return isoDayFormatter.string(from: day)
-	}
+        private func dayKey(for date: Date) -> String {
+                let cal = TimeZoneManager.shared.calendar
+                let day = cal.startOfDay(for: date)
+                return isoDayFormatter.string(from: day)
+        }
+
+        private func loadSlotNotificationPreferences() -> [TimeSlot: Bool] {
+                let stored = (UserDefaults.standard.dictionary(forKey: slotNotificationPreferenceKey) as? [String: Bool]) ?? [:]
+                var merged: [TimeSlot: Bool] = Dictionary(uniqueKeysWithValues: activeTaskSlots.map { ($0, true) })
+
+                for (rawKey, value) in stored {
+                        if let slot = TimeSlot(rawValue: rawKey) {
+                                merged[slot] = value
+                        }
+                }
+                return merged
+        }
+
+        private func persistSlotNotificationPreferences(_ preferences: [TimeSlot: Bool]) {
+                let raw = Dictionary(uniqueKeysWithValues: preferences.map { ($0.rawValue, $1) })
+                UserDefaults.standard.set(raw, forKey: slotNotificationPreferenceKey)
+        }
+
+        private var enabledNotificationSlots: Set<TimeSlot> {
+                Set(slotNotificationPreferences.filter { $0.value }.keys)
+        }
+
+        private func sanitizedNickname(_ raw: String) -> String {
+                let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                let filtered = String(trimmed.unicodeScalars.filter { allowed.contains($0) })
+                return String(filtered.prefix(30))
+        }
 
 	private func incrementPetInteractionCount(on date: Date = Date()) {
 		var dict = (UserDefaults.standard.dictionary(forKey: interactionsKey) as? [String: Int]) ?? [:]
@@ -705,14 +755,31 @@ final class AppViewModel: ObservableObject {
 		UserDefaults.standard.set(dict, forKey: interactionsKey)
 	}
 
-	private func incrementTaskCompletion(for date: Date = Date(), timeSlot: TimeSlot) {
-		var outer = (UserDefaults.standard.dictionary(forKey: timeSlotKey) as? [String: [String: Int]]) ?? [:]
-		let dkey = dayKey(for: date)
-		var inner = outer[dkey] ?? [:]
-		inner[timeSlot.rawValue, default: 0] += 1
-		outer[dkey] = inner
-		UserDefaults.standard.set(outer, forKey: timeSlotKey)
-	}
+        private func incrementTaskCompletion(for date: Date = Date(), timeSlot: TimeSlot) {
+                var outer = (UserDefaults.standard.dictionary(forKey: timeSlotKey) as? [String: [String: Int]]) ?? [:]
+                let dkey = dayKey(for: date)
+                var inner = outer[dkey] ?? [:]
+                inner[timeSlot.rawValue, default: 0] += 1
+                outer[dkey] = inner
+                UserDefaults.standard.set(outer, forKey: timeSlotKey)
+        }
+
+        private func updateStreakIfEligible(for slot: TimeSlot, on date: Date) {
+                guard let stats = userStats else { return }
+                let dkey = dayKey(for: date)
+                guard UserDefaults.standard.string(forKey: streakAwardedKey) != dkey else { return }
+
+                let calendar = TimeZoneManager.shared.calendar
+                let tasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+                guard !tasks.isEmpty else { return }
+                let completed = tasks.allSatisfy { $0.status == .completed }
+                guard completed else { return }
+
+                stats.totalDays += 1
+                stats.lastActiveDate = calendar.startOfDay(for: date)
+                UserDefaults.standard.set(dkey, forKey: streakAwardedKey)
+                analytics.log(event: "streak_up", metadata: ["streak": "\(stats.totalDays)", "slot": slot.rawValue])
+        }
 
 	private func updateTaskRefreshEligibility(reference date: Date = Date()) {
 		let calendar = TimeZoneManager.shared.calendar
@@ -765,8 +832,8 @@ final class AppViewModel: ObservableObject {
 		return filtered
 	}
 
-	// MARK: - Slot Schedule Preparation
-	/// 确保当天任务时段生成调度表存在。仅在跨日或首次启动时生成，防止重复重建。
+        // MARK: - Slot Schedule Preparation
+        /// 确保当天任务时段生成调度表存在。仅在跨日或首次启动时生成，防止重复重建。
         private func ensureSlotScheduleExists(for date: Date, slot: TimeSlot? = nil) {
                 let dkey = dayKey(for: date)
                 var schedule = loadSlotSchedule()
@@ -787,9 +854,21 @@ final class AppViewModel: ObservableObject {
                 saveSlotSchedule(schedule)
                 logger.info("[Schedule] Schedule prepared for \(dkey): \(readableSchedule)")
 
+                rescheduleSlotUnlocks(reference: date)
+
                 // 清理旧的生成记录，仅保留当天
                 let generation = purgeSlotGenerationRecords(loadSlotGenerationRecords(), keepingDay: dkey)
                 saveSlotGenerationRecords(generation)
+        }
+
+        private func slotSchedule(for date: Date = Date()) -> [TimeSlot: Date] {
+                let dkey = dayKey(for: date)
+                let schedule = loadSlotSchedule()
+                guard let slotMap = schedule[dkey] else { return [:] }
+                return Dictionary(uniqueKeysWithValues: slotMap.compactMap { raw, epoch in
+                        guard let slot = TimeSlot(rawValue: raw) else { return nil }
+                        return (slot, Date(timeIntervalSince1970: epoch))
+                })
         }
 	
 	private func scheduleFormatter(slotmap: [String: Double]) -> [String: String] {
@@ -806,31 +885,27 @@ final class AppViewModel: ObservableObject {
 	}
 	
 
-	private func checkSlotGenerationTrigger(reference date: Date = Date()) {
-		let schedule = loadSlotSchedule()
-		let dkey = dayKey(for: date)
-		guard let slotMap = schedule[dkey] else { return }
-		let currentSlot = TimeSlot.from(date: date, using: TimeZoneManager.shared.calendar)
+        private func checkSlotGenerationTrigger(reference date: Date = Date()) {
+                let schedule = loadSlotSchedule()
+                let dkey = dayKey(for: date)
+                guard let slotMap = schedule[dkey] else { return }
+                _ = scheduleFormatter(slotmap: slotMap)
 
-		let readableSchedule = scheduleFormatter(slotmap: slotMap)
-		
-		// Only check current slot, not past slots
-		guard let epoch = slotMap[currentSlot.rawValue] else { return }
-		let triggerDate = Date(timeIntervalSince1970: epoch)
-		
-		guard date >= triggerDate else {
-			logger.info("[checkSlotGenerationTrigger]: next task generation time is \(triggerDate)")
-			return }
-		guard !hasGeneratedSlotTasks(currentSlot, on: date) else {
-			logger.info("[checkSlotGenerationTrigger]: tasks already generated for \(currentSlot.rawValue)")
-			return }
-		
-		generateTasksForSlot(currentSlot, reference: date, notify: false)  //TODO: 检查app不管是否运行都照常生成任务，以及在是的情况下还是否需要这一行
-	}
+                let pendingSlots: [(TimeSlot, Date)] = slotMap.compactMap { raw, epoch in
+                        guard let slot = TimeSlot(rawValue: raw) else { return nil }
+                        return (slot, Date(timeIntervalSince1970: epoch))
+                }
+                .sorted { $0.1 < $1.1 }
 
-	private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
-		// 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
-		let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+                for (slot, triggerDate) in pendingSlots where date >= triggerDate && !hasGeneratedSlotTasks(slot, on: date) {
+                        logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed at \(triggerDate)")
+                        generateTasksForSlot(slot, reference: date, notify: shouldNotify(for: slot))
+                }
+        }
+
+        private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
+                // 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
+                let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
 
 		guard existingTasks.isEmpty else {
 			logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
@@ -846,24 +921,29 @@ final class AppViewModel: ObservableObject {
 			return
 		}
 
-		storage.save(tasks: generated)
+                storage.save(tasks: generated)
 
-		refreshDisplayedTasks(for: slot, on: date)
-		markSlotTasksGenerated(slot, on: date)
+                refreshDisplayedTasks(for: slot, on: date)
+                markSlotTasksGenerated(slot, on: date)
 
-		if notify, userStats?.notificationsEnabled == true {
-				notificationService.notifyTasksUnlocked(for: slot)
-		}
-		scheduleTaskNotifications()
-		analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
-		logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
+                if notify, shouldNotify(for: slot) {
+                                notificationService.notifyTasksUnlocked(for: slot, allowedSlots: enabledNotificationSlots)
+                }
+                scheduleTaskNotifications()
+                analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
+                logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
 
 		if slot != .night && !hasLoggedMoodThisSlot && !showOnboarding {
 			checkAndShowMoodCapture()
 		}
-	}
+        }
 
-	private var activeTaskSlots: [TimeSlot] { [.morning, .afternoon, .evening] }
+        private var activeTaskSlots: [TimeSlot] { [.morning, .afternoon, .evening] }
+
+        private func shouldNotify(for slot: TimeSlot) -> Bool {
+                guard userStats?.notificationsEnabled == true else { return false }
+                return slotNotificationPreferences[slot] ?? true
+        }
 	
 	// New helper method inserted as per instructions
 	private func refreshDisplayedTasks(for slot: TimeSlot, on date: Date) {
@@ -1010,8 +1090,8 @@ final class AppViewModel: ObservableObject {
         }
 
         /// Fetch cached tasks for the latest `days` to power analytics without mutating state.
-        func tasksSince(days: Int) -> [UserTask] {
-                storage.fetchTasks(since: days)
+        func tasksSince(days: Int, includeArchived: Bool = true, includeOnboarding: Bool = false) -> [UserTask] {
+                storage.fetchTasks(since: days, includeArchived: includeArchived, includeOnboarding: includeOnboarding)
         }
 
         func taskHistorySections(days: Int = 30) -> [TaskHistorySection] {
@@ -1031,6 +1111,23 @@ final class AppViewModel: ObservableObject {
                 let moods = moodEntries.filter { range.contains($0.date) }
                 let events = energyEvents.filter { range.contains($0.date) }
                 return try? historyExporter.export(tasks: tasks, moods: moods, energyEvents: events, range: range)
+        }
+
+        func importTaskHistory(from url: URL) -> Bool {
+                do {
+                        let export = try historyExporter.importHistory(from: url)
+                        storage.importHistory(export)
+                        moodEntries = storage.fetchMoodEntries()
+                        energyEvents = storage.fetchEnergyEvents()
+                        dailyMetricsCache = makeDailyActivityMetrics()
+
+                        let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+                        todayTasks = storage.fetchTasks(in: slot, on: Date())
+                        return true
+                } catch {
+                        logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
+                        return false
+                }
         }
 
         private func historyRange(forDays days: Int) -> ClosedRange<Date> {
@@ -1161,12 +1258,12 @@ final class AppViewModel: ObservableObject {
 		scheduleTaskNotifications()
 	}
 
-	func scheduleTaskNotifications() {
-		guard userStats?.notificationsEnabled == true else { return }
-		Task {
-			await notificationService.scheduleTaskReminders(for: todayTasks)
-		}
-	}
+        func scheduleTaskNotifications() {
+                guard userStats?.notificationsEnabled == true else { return }
+                Task {
+                        await notificationService.scheduleTaskReminders(for: todayTasks, allowedSlots: enabledNotificationSlots)
+                }
+        }
 
 	private func refreshWeather(using location: CLLocation?) async {
 		let locality = locationService.lastKnownCity
@@ -1422,17 +1519,20 @@ extension AppViewModel {
 	}
 
 	
-	private func nextScheduledTrigger(after date: Date = Date()) -> Date? {
-		let todayKey = dayKey(for: date)
-		let schedule = loadSlotSchedule()
-		guard let slotMap = schedule[todayKey] else { return nil }
+        private func nextScheduledTrigger(after date: Date = Date()) -> Date? {
+                let todayKey = dayKey(for: date)
+                let schedule = loadSlotSchedule()
+                let generated = loadSlotGenerationRecords()[todayKey] ?? [:]
+                guard let slotMap = schedule[todayKey] else { return nil }
 
-		let candidates = slotMap.values
-			.map { Date(timeIntervalSince1970: $0) }
-			.filter { $0 > date }
+                let candidates = slotMap.compactMap { raw, epoch -> Date? in
+                        guard generated[raw] != true else { return nil }
+                        let trigger = Date(timeIntervalSince1970: epoch)
+                        return trigger > date ? trigger : nil
+                }
 
-		return candidates.min()
-	}
+                return candidates.min()
+        }
 	
 	// MARK: - Cached Data Loading
 private func loadCachedData() async {

@@ -34,10 +34,10 @@ struct StatisticsView: View {
 		// Avoid redundant calculation during loading
 		guard !appModel.isLoading else { return }
 		
-		moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
-		energySummary = energyViewModel.energySummary(
-			metrics: appModel.dailyMetricsCache,
-			tasks: appModel.tasksSince(days: 30)
-		) ?? .empty
-	}
+                moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+                energySummary = energyViewModel.energySummary(
+                        metrics: appModel.dailyMetricsCache,
+                        tasks: appModel.tasksSince(days: 30, includeArchived: true, includeOnboarding: false)
+                ) ?? .empty
+        }
 }
