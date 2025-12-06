@@ -23,6 +23,7 @@ final class ChatViewModel: ObservableObject {
 
     @Published var currentInput: String = ""
     @Published var messages: [Message] = []
+    @Published var isSending = false
 
     private let chatService = ChatService()
     private let analytics = AnalyticsService()
@@ -43,11 +44,28 @@ final class ChatViewModel: ObservableObject {
         guard !trimmed.isEmpty, let appModel else { return }
         messages.append(Message(role: .user, content: trimmed))
         currentInput = ""
-        let reply = chatService.reply(
-            to: trimmed,
-            weather: appModel.weather
-        )
-        messages.append(Message(role: .pet, content: reply))
-        analytics.log(event: "chat_message")
+
+        Task { @MainActor in
+                isSending = true
+                do {
+                        let reply = try await chatService.reply(
+                                to: trimmed,
+                                weather: appModel.weather,
+                                history: chatHistory()
+                        )
+                        messages.append(Message(role: .pet, content: reply))
+                } catch {
+                        messages.append(Message(role: .pet, content: "Lumio is having trouble replying right now, but I'm still here."))
+                }
+                analytics.log(event: "chat_message")
+                isSending = false
+        }
+    }
+
+    private func chatHistory() -> [ChatService.ChatMessage] {
+            messages.map { message in
+                    let role: ChatService.ChatMessage.Role = message.role == .user ? .user : .assistant
+                    return ChatService.ChatMessage(role: role, content: message.content)
+            }
     }
 }

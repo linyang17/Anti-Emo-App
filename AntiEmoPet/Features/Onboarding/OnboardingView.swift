@@ -85,16 +85,16 @@ extension OnboardingView {
 		var next: Step? { Step(rawValue: rawValue + 1) }
 	}
 
-	var canAdvance: Bool {
-		switch step {
-		case .intro: return true
-		case .registration: return !viewModel.accountEmail.isEmpty
-		case .name: return !viewModel.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-		case .gender: return viewModel.selectedGender != nil
-		case .birthday: return viewModel.birthday < Date()
-		case .access: return !accessTBD
-		case .celebration: return !isProcessingFinalStep
-		}
+        var canAdvance: Bool {
+                switch step {
+                case .intro: return true
+                case .registration: return !viewModel.accountEmail.isEmpty
+                case .name: return viewModel.isNicknameValid
+                case .gender: return viewModel.selectedGender != nil
+                case .birthday: return viewModel.birthday < Date()
+                case .access: return !accessTBD
+                case .celebration: return !isProcessingFinalStep
+                }
 	}
 
 	// MARK: - Step Handling
