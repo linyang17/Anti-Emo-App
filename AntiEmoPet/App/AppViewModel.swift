@@ -906,11 +906,15 @@ final class AppViewModel: ObservableObject {
                 // 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
                 let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
 
-		guard existingTasks.isEmpty else {
-			logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
-			refreshDisplayedTasks(for: slot, on: date)
-			return
-		}
+                logger.info("[AppViewModel] generateTasksForSlot: preparing \(slot.rawValue) at \(date)")
+
+                guard existingTasks.isEmpty else {
+                        logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
+                        markSlotTasksGenerated(slot, on: date)
+                        scheduleTaskNotifications()
+                        refreshDisplayedTasks(for: slot, on: date)
+                        return
+                }
 		
             storage.archiveUncompletedTasks(before: slot, on: date)
 

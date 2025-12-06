@@ -16,6 +16,11 @@ Lumio Pet is a wellbeing companion app that schedules small tasks, captures your
 ## Chatting with Lumio
 The in-app chat is powered by ChatGPT with short-term memory of your current conversation. Type how you’re feeling or what you need; Lumio responds with weather-aware, supportive replies.
 
+### OpenAI configuration
+- Copy `AntiEmoPet/.env.example` to `AntiEmoPet/.env`.
+- Add your OpenAI key as `OPENAI_API_KEY=YOUR_KEY_HERE`.
+- The app will read this value at runtime (falling back to the environment or Info.plist if the file is absent).
+
 ## Export and import
 - **Export**: Go to **More → History**, tap **Export last 30 days**, then share the generated `.xls` file. The spreadsheet includes tasks, moods, and energy events.
 - **Import**: In the same view, tap **Import .xls/.xlsx** and pick a compatible file to merge historical data back into the app.
