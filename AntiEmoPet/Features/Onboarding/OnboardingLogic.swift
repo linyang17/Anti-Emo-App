@@ -29,11 +29,12 @@ struct StepFactory: View {
 		case .registration:
 			RegistrationStepView(viewModel: viewModel)
 
-		case .name:
-			NameStepView(
-				nickname: $viewModel.nickname,
-				onSubmit: onAdvance
-			)
+                case .name:
+                        NameStepView(
+                                nickname: $viewModel.nickname,
+                                isValid: viewModel.isNicknameValid,
+                                onSubmit: onAdvance
+                        )
 
 		case .gender:
 			GenderStepView(selectedGender: $viewModel.selectedGender)
@@ -118,16 +119,17 @@ struct RegistrationStepView: View, Equatable {
 
 
 struct NameStepView: View, Equatable {
-	@Binding var nickname: String
-	let onSubmit: () -> Void
+        @Binding var nickname: String
+        let isValid: Bool
+        let onSubmit: () -> Void
 
-	static func == (lhs: Self, rhs: Self) -> Bool {
-		lhs.nickname == rhs.nickname
-	}
+        static func == (lhs: Self, rhs: Self) -> Bool {
+                lhs.nickname == rhs.nickname && lhs.isValid == rhs.isValid
+        }
 
-	var body: some View {
-		VStack(spacing: 24) {
-			LumioSay(text: "My lovely new friend,\n what shall I call you?")
+        var body: some View {
+                VStack(spacing: 24) {
+                        LumioSay(text: "My lovely new friend,\n what shall I call you?")
 			TextField("Type here…", text: $nickname)
 				.frame(width: 200, height: 40)
 				.padding(.vertical, 14)
@@ -143,12 +145,18 @@ struct NameStepView: View, Equatable {
 				.foregroundStyle(.white)
 				.tint(.white)
 				.autocorrectionDisabled()
-				.textInputAutocapitalization(.words)
-				.submitLabel(.done)
-				.onSubmit(onSubmit)
-		}
-		.ignoresSafeArea(.keyboard, edges: .bottom)
-	}
+                                .textInputAutocapitalization(.words)
+                                .submitLabel(.done)
+                                .onSubmit(onSubmit)
+
+                        if !isValid {
+                                Text("Only letters, numbers, hyphen or underscore. No spaces.")
+                                        .font(.footnote)
+                                        .foregroundStyle(.white.opacity(0.8))
+                        }
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
 }
 
 

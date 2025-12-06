@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct InsightsView: View {
-	@EnvironmentObject private var appModel: AppViewModel
-	@StateObject private var analysis = AnalysisViewModel()
-	@StateObject private var moodViewModel = MoodStatisticsViewModel()
+        @EnvironmentObject private var appModel: AppViewModel
+        @StateObject private var analysis = AnalysisViewModel()
+        @StateObject private var moodViewModel = MoodStatisticsViewModel()
+        @StateObject private var energyViewModel = EnergyStatisticsViewModel()
 
-	@State private var moodSummary: MoodStatisticsViewModel.MoodSummary = .empty
-	@State private var energySummary: EnergyStatisticsViewModel.EnergySummary = .empty
+        @State private var moodSummary: MoodStatisticsViewModel.MoodSummary = .empty
+        @State private var energySummary: EnergyStatisticsViewModel.EnergySummary = .empty
 
 	var body: some View {
 		ScrollView {
@@ -31,9 +32,13 @@ struct InsightsView: View {
 	}
 
     private func refreshSummaries() {
-		// Avoid redundant calculation during loading
-		guard !appModel.isLoading else { return }
+                // Avoid redundant calculation during loading
+                guard !appModel.isLoading else { return }
 
         moodSummary = moodViewModel.moodSummary(entries: appModel.moodEntries) ?? .empty
+        energySummary = energyViewModel.energySummary(
+                metrics: appModel.dailyMetricsCache,
+                tasks: appModel.tasksSince(days: 30, includeArchived: true, includeOnboarding: false)
+        ) ?? .empty
     }
 }

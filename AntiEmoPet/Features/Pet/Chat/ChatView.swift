@@ -43,7 +43,7 @@ struct ChatView: View {
                                         viewModel.sendCurrentMessage()
                                         isInputFocused = true
                                 }
-                                .disabled(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                .disabled(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSending)
                         }
                         .padding()
                 }
