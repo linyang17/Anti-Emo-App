@@ -19,6 +19,7 @@ struct ChatService {
 
         private let endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
         private let model = "gpt-4o-mini"
+        private let replyPrompt = "Respond in warm, concise English (under 70 words). Encourage small, doable steps, avoid clinical language, and never ask for sensitive personal details."
 
         func reply(to text: String, weather: WeatherType, history: [ChatMessage]) async throws -> String {
                 guard let apiKey = resolveAPIKey() else {
@@ -30,7 +31,10 @@ struct ChatService {
                 request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
-                var messages = [ChatMessage(role: .system, content: systemPrompt(for: weather))]
+                var messages = [
+                        ChatMessage(role: .system, content: systemPrompt(for: weather)),
+                        ChatMessage(role: .system, content: replyPrompt),
+                ]
                 messages.append(contentsOf: history)
                 messages.append(ChatMessage(role: .user, content: text))
 
@@ -53,6 +57,10 @@ struct ChatService {
         }
 
         private func resolveAPIKey() -> String? {
+                if let dotEnvKey = loadAPIKeyFromDotEnv(), !dotEnvKey.isEmpty {
+                        return dotEnvKey
+                }
+
                 if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
                         return envKey
                 }
@@ -64,17 +72,48 @@ struct ChatService {
                 return nil
         }
 
+        private func loadAPIKeyFromDotEnv() -> String? {
+                guard let envURL = Bundle.main.url(forResource: ".env", withExtension: nil) else {
+                        return nil
+                }
+
+                guard let contents = try? String(contentsOf: envURL, encoding: .utf8) else {
+                        return nil
+                }
+
+                for line in contents.split(whereSeparator: \.isNewline) {
+                        let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+                        guard !trimmedLine.isEmpty, !trimmedLine.hasPrefix("#") else { continue }
+
+                        let parts = trimmedLine.split(separator: "=", maxSplits: 1).map(String.init)
+                        guard parts.count == 2 else { continue }
+
+                        let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                        var value = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                        value = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+
+                        if key == "OPENAI_API_KEY" {
+                                return value
+                        }
+                }
+
+                return nil
+        }
+
         private func fallbackReply(for text: String, weather: WeatherType, history: [ChatMessage]) -> String {
-                let lastContext = history.last { $0.role == .assistant }?.content ?? "I'm here for you."
+                let lastContext = history.last { $0.role == .assistant }?.content
                 let weatherLine: String
                 switch weather {
-                case .sunny: weatherLine = "今天是晴天，阳光会带来一点好心情。"
-                case .rainy: weatherLine = "外面下雨了，我们可以找点室内的小事做。"
-                case .snowy: weatherLine = "飘着雪呢，记得保暖。"
-                case .cloudy: weatherLine = "有点阴天，但我在听着你。"
-                case .windy: weatherLine = "今天有风，把烦恼吹散吧。"
+                case .sunny: weatherLine = "It's sunny today—let the light lift you up a little."
+                case .rainy: weatherLine = "It's raining outside; maybe we can find a cozy indoor activity."
+                case .snowy: weatherLine = "Snow is falling, so stay warm and take it slow."
+                case .cloudy: weatherLine = "It's a bit cloudy, but I'm right here listening."
+                case .windy: weatherLine = "It's windy today; imagine the breeze carrying worries away."
                 }
-                return "\(weatherLine) 你说的\(text)，我都听见了。"
+                let contextLine = lastContext.map { "Earlier I shared: \"\($0)\". That still holds." } ?? "I'm here for you."
+
+                return "\(weatherLine) \(contextLine) You mentioned \"\(text)\"—I hear you, and I'm with you."
         }
 }
 
