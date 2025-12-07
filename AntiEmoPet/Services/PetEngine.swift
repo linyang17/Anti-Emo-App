@@ -3,7 +3,6 @@ import Foundation
 enum PetActionType {
         case pat
         case feed(item: Item)
-        case snackFeed
         case penalty
         case taskComplete
 }
@@ -42,24 +41,26 @@ final class PetEngine {
 		self.pet = newPet
 	}
 
-	// MARK: - 动作处理
+        // MARK: - 动作处理
         func handleAction(_ action: PetActionType) {
                 guard let pet else { return }
 
                 switch action {
                 case .pat:
                         updateBonding(for: pet, bondingAddValue: 1)
-                case .feed:
-                        updateBonding(for: pet, bondingAddValue: 2)
-                        awardXP(2, to: pet)
-                case .snackFeed:
-                        updateBonding(for: pet, bondingAddValue: 1)
-                        awardXP(1, to: pet)
+                case .feed(let item):
+                        if item.type == .snack {
+                                updateBonding(for: pet, bondingAddValue: 1)
+                                awardXP(1, to: pet)
+                        } else {
+                                updateBonding(for: pet, bondingAddValue: 2)
+                                awardXP(2, to: pet)
+                        }
                 case .penalty:
                         updateBonding(for: pet, bondingAddValue: -2)
                                 case .taskComplete:
                                         updateBonding(for: pet, bondingAddValue: 1)
-					awardXP(1, to: pet)
+                                        awardXP(1, to: pet)
 				}
 	}
 

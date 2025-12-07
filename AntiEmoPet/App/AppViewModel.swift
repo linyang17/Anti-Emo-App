@@ -659,11 +659,9 @@ final class AppViewModel: ObservableObject {
                    let item = shopItems.first(where: { $0.sku == sku }) {
                         storage.decrementInventory(forSKU: sku)
                         inventory = storage.fetchInventory()
+                        petEngine.handleAction(.feed(item: item))
                         if item.type == .snack {
-                                petEngine.handleAction(.snackFeed)
                                 rewardBanner = RewardEvent(energy: 0, xp: 1)
-                        } else {
-                                petEngine.handleAction(.feed(item: item))
                         }
                         storage.persist()
                         analytics.log(event: "item_used", metadata: ["sku": sku])
@@ -681,7 +679,7 @@ final class AppViewModel: ObservableObject {
 
                 storage.decrementInventory(forSKU: item.sku)
                 inventory = storage.fetchInventory()
-                petEngine.handleAction(.snackFeed)
+                petEngine.handleAction(.feed(item: item))
                 rewardBanner = RewardEvent(energy: 0, xp: 1)
                 storage.persist()
                 analytics.log(event: "snack_fed", metadata: ["sku": item.sku])
