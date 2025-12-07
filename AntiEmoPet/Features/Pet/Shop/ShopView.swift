@@ -101,16 +101,16 @@ struct ShopView: View {
 	}
 
 	private var gridSection: some View {
-                let items = viewModel.items(for: selectedCategory, in: appModel.shopItems)
+                                let items = viewModel.items(for: selectedCategory, in: appModel.shopItems)
                 let placeholders = viewModel.placeholderCount(for: items)
 
-		return LazyVGrid(columns: columns, spacing: 18) {
-			ForEach(items) { item in
-				Button {
-					handleTap(on: item)
-				} label: {
-					shopCard(
-						for: item,
+                return LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(items) { item in
+                                Button {
+                                        handleTap(on: item)
+                                } label: {
+                                        shopCard(
+                                                for: item,
 						isSelected: pendingItem?.id == item.id,
 						isOwned: isOwned(item),
 						isEquipped: appModel.isEquipped(item)
@@ -121,25 +121,27 @@ struct ShopView: View {
 
 			ForEach(0..<placeholders, id: \.self) { _ in
 				placeholderCard
-			}
-		}
-		.padding(.top, 4)
-	}
+                        }
+                }
+                .padding(.top, 4)
+        }
 
-	private func shopCard(for item: Item, isSelected: Bool, isOwned: Bool, isEquipped: Bool) -> some View {
-		VStack(spacing: 6) {
-			itemImage(for: item)
-			Text(item.assetName)
-				.font(.subheadline.weight(.semibold))
-				.foregroundStyle(.white)
-				.lineLimit(1)
+        private func shopCard(for item: Item, isSelected: Bool, isOwned: Bool, isEquipped: Bool) -> some View {
+                VStack(spacing: 6) {
+                        itemImage(for: item)
+                        Text(item.assetName)
+                                .appFont(FontTheme.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
 
                         if item.type == .snack {
                                 HStack(spacing: 6) {
                                         Image(systemName: "bag.fill")
                                                 .foregroundStyle(.white)
                                         Text("x \(snackQuantity(for: item))")
-                                                .font(.caption.weight(.semibold))
+                                                .appFont(FontTheme.caption)
+                                                .fontWeight(.semibold)
                                                 .foregroundStyle(.white)
                                 }
                         } else if isOwned {
@@ -152,7 +154,8 @@ struct ShopView: View {
                                         Image(systemName: "star.fill")
                                                 .foregroundStyle(.yellow)
                                         Text("\(item.costEnergy)")
-                                                .font(.caption2.weight(.semibold))
+                                                .appFont(FontTheme.footnote)
+                                                .fontWeight(.semibold)
                                                 .foregroundStyle(.white)
                                 }
                         }
@@ -198,47 +201,50 @@ struct ShopView: View {
 		}
 	}
 
-	private var placeholderCard: some View {
-		RoundedRectangle(cornerRadius: 26, style: .continuous)
-			.fill(Color.clear)
-			.frame(height: 150)
-			.overlay(
-				Text("Coming")
-					.font(.caption2.weight(.semibold))
-					.foregroundStyle(.white.opacity(0.6))
-			)
-	}
+        private var placeholderCard: some View {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color.clear)
+                        .frame(height: 150)
+                        .overlay(
+                                Text("Coming")
+                                        .appFont(FontTheme.footnote)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.white.opacity(0.6))
+                        )
+        }
 
-	private func confirmButton(for item: Item) -> some View {
-		Button {
-			confirmPurchase(of: item)
-		} label: {
-			Text("Confirm")
-				.font(.headline.weight(.semibold))
-				.frame(maxWidth: .infinity)
-				.padding(.vertical, 14)
-				.foregroundStyle(.white)
-				.background(Color.brown, in: Capsule())
-		}
+        private func confirmButton(for item: Item) -> some View {
+                Button {
+                        confirmPurchase(of: item)
+                } label: {
+                        Text("Confirm")
+                                .appFont(FontTheme.headline)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundStyle(.white)
+                                .background(Color.brown, in: Capsule())
+                }
 		.buttonStyle(.plain)
 		.padding(.top, 8)
 	}
 
-	private func statusBadge(icon: String, title: String, value: String) -> some View {
-		HStack(spacing: 8) {
-			Image(systemName: icon)
-				.foregroundStyle(.white)
-			VStack(alignment: .leading, spacing: 2) {
-				Text(title)
-					.font(.caption2)
-					.foregroundStyle(.white.opacity(0.8))
-				Text(value)
-					.font(.callout.weight(.semibold))
-					.foregroundStyle(.white)
-			}
-		}
-		.padding(.horizontal, 14)
-		.padding(.vertical, 10)
+        private func statusBadge(icon: String, title: String, value: String) -> some View {
+                HStack(spacing: 8) {
+                        Image(systemName: icon)
+                                .foregroundStyle(.white)
+                        VStack(alignment: .leading, spacing: 2) {
+                                Text(title)
+                                        .appFont(FontTheme.footnote)
+                                .foregroundStyle(.white.opacity(0.8))
+                                Text(value)
+                                        .appFont(FontTheme.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.white)
+                        }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
 		.background(.white.opacity(0.15), in: Capsule())
 	}
 
@@ -262,24 +268,41 @@ struct ShopView: View {
 			.shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 20)
 	}
 
-	private func handleTap(on item: Item) {
-		if isOwned(item) {
-			toggleSelection(for: item)
-		} else {
-			withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-				if pendingItem?.id == item.id {
+        private func handleTap(on item: Item) {
+                guard item.type != .snack else {
+                        handleSnackTap(item)
+                        return
+                }
+
+                if isOwned(item) {
+                        toggleSelection(for: item)
+                } else {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                if pendingItem?.id == item.id {
 					pendingItem = nil
 				} else {
 					pendingItem = item
 				}
 			}
-		}
-	}
+                }
+        }
 
-	private func toggleSelection(for item: Item) {
-		if appModel.isEquipped(item) {
-			appModel.unequip(item: item)
-		} else {
+        private func handleSnackTap(_ item: Item) {
+                guard snackQuantity(for: item) > 0 else {
+                        alertMessage = "You're out of this snack right now."
+                        return
+                }
+
+                let didFeed = appModel.feedSnack(item)
+                if !didFeed {
+                        alertMessage = "Unable to feed Lumio right now."
+                }
+        }
+
+        private func toggleSelection(for item: Item) {
+                if appModel.isEquipped(item) {
+                        appModel.unequip(item: item)
+                } else {
 			appModel.equip(item: item)
 		}
 	}
@@ -325,14 +348,15 @@ struct ShopView: View {
 
 	@ViewBuilder
 	private var toastView: some View {
-		if let toast = purchaseToast {
-			Text(toast.message)
-				.font(.footnote.weight(.semibold))
-				.padding(.horizontal, 20)
-				.padding(.vertical, 10)
-				.background(.ultraThinMaterial, in: Capsule())
-				.padding(.top, 20)
-				.transition(.move(edge: .top).combined(with: .opacity))
+                if let toast = purchaseToast {
+                        Text(toast.message)
+                                .appFont(FontTheme.footnote)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(.ultraThinMaterial, in: Capsule())
+                                .padding(.top, 20)
+                                .transition(.move(edge: .top).combined(with: .opacity))
 		}
 	}
 }

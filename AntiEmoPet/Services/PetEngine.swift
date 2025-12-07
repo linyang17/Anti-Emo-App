@@ -1,10 +1,11 @@
 import Foundation
 
 enum PetActionType {
-	case pat
-	case feed(item: Item)
-	case penalty
-	case taskComplete
+        case pat
+        case feed(item: Item)
+        case snackFeed
+        case penalty
+        case taskComplete
 }
 
 struct XPProgression {
@@ -51,10 +52,13 @@ final class PetEngine {
                 case .feed:
                         updateBonding(for: pet, bondingAddValue: 2)
                         awardXP(2, to: pet)
+                case .snackFeed:
+                        updateBonding(for: pet, bondingAddValue: 1)
+                        awardXP(1, to: pet)
                 case .penalty:
                         updateBonding(for: pet, bondingAddValue: -2)
-				case .taskComplete:
-					updateBonding(for: pet, bondingAddValue: 1)
+                                case .taskComplete:
+                                        updateBonding(for: pet, bondingAddValue: 1)
 					awardXP(1, to: pet)
 				}
 	}
