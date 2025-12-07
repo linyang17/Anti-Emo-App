@@ -85,8 +85,13 @@ final class PetViewModel: ObservableObject {
 
     func updatePetState(pet: Pet?) {
         var state = screenState
-		let bondingState = PetBonding.from(score: pet!.bondingScore)
-		state.petAsset = petAsset(for: bondingState)
+        guard let pet else {
+            screenState = state
+            return
+        }
+
+        let bondingState = PetBonding.from(score: pet.bondingScore)
+        state.petAsset = petAsset(for: bondingState)
         screenState = state
     }
 

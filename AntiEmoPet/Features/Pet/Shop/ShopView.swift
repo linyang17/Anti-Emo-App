@@ -54,14 +54,12 @@ struct ShopView: View {
 		VStack(spacing: 12) {
 			categoryPicker
 			
-			ScrollView {
-				ZStack(alignment: .bottom) {
-					gridSection
-						.padding(.bottom, 80) // Spacing for confirm button
-					
-					if let pendingItem, !isOwned(pendingItem) { }
-				}
-			}
+                        ScrollView {
+                                ZStack(alignment: .bottom) {
+                                        gridSection
+                                                .padding(.bottom, 80) // Spacing for confirm button
+                                }
+                        }
 			
 			if let pendingItem, !isOwned(pendingItem) {
 				confirmButton(for: pendingItem)

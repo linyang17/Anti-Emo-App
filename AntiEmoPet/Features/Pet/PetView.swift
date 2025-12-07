@@ -222,47 +222,47 @@ struct PetView: View {
 		}
 		}
 
-		private func petStage(for pet: Pet) -> some View {
-				ZStack(alignment: .bottomTrailing) {
+        private func petStage(for pet: Pet) -> some View {
+                                ZStack(alignment: .bottomTrailing) {
                                                 Image(petAssetName)
                                                                 .resizable()
                                                                 .scaledToFit()
                                                                 .frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
-								.padding(20)
-				.shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
-				.simultaneousGesture(
-					TapGesture()
-						.onEnded { triggerPettingInteraction() }
-				)
-				.simultaneousGesture(
-					DragGesture(minimumDistance: 30)
-						.onEnded { value in
-							let vertical = abs(value.translation.height)
-							let horizontal = abs(value.translation.width)
-							if vertical > horizontal, vertical > 50 {
-								triggerPettingInteraction()
-							}
-						}
-				)
-				.accessibilityAction(named: Text("Pet Lumio")) {
-					triggerPettingInteraction()
-				}
+                                                                .padding(20)
+                                .shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
+                                .simultaneousGesture(
+                                        TapGesture()
+                                                .onEnded { triggerPettingInteraction() }
+                                )
+                                .simultaneousGesture(
+                                        DragGesture(minimumDistance: 30)
+                                                .onEnded { value in
+                                                        let vertical = abs(value.translation.height)
+                                                        let horizontal = abs(value.translation.width)
+                                                        if vertical > horizontal, vertical > 50 {
+                                                                triggerPettingInteraction()
+                                                        }
+                                                }
+                                )
+                                .accessibilityAction(named: Text("Pet Lumio")) {
+                                        triggerPettingInteraction()
+                                }
 
-			if showPettingHearts {
-				PettingHeartBurst()
-					.transition(.opacity)
-			}
+                        if showPettingHearts {
+                                PettingHeartBurst()
+                                        .transition(.opacity)
+                        }
 
-			decorationStack(for: pet.decorations)
+                        decorationStack(for: pet.decorations)
                 }
                 .frame(maxWidth: .infinity)
-				.offset(y: activeSheet == .shop ? -.h(0.3) : 0)
+                                .offset(y: activeSheet == .shop ? -.h(0.3) : 0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.85), value: activeSheet)
                 .onDisappear {
                         pettingEffectTask?.cancel()
                         showPettingHearts = false
-		}
-	}
+                }
+        }
 
 	private var statusBackground: some View {
 		RoundedRectangle(cornerRadius: 12)
@@ -339,23 +339,28 @@ struct PetView: View {
 		.buttonStyle(.plain)
 	}
 
-	@ViewBuilder
-	private func decorationStack(for decorations: [String]) -> some View {
-		let visible = Array(decorations.filter { !$0.isEmpty }.prefix(3))
-		if !visible.isEmpty {
-			HStack(spacing: -12) {
-				ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
-					Image(asset)
-						.resizable()
-						.scaledToFit()
-						.frame(width: max(80, 120 - CGFloat(index) * 10))
-						.shadow(color: .gray.opacity(0.2), radius: 5, x: 1, y: 1)
-				}
-			}
-			.padding(12)
-			.transition(.opacity.combined(with: .move(edge: .trailing)))
-		}
-	}
+        @ViewBuilder
+        private func decorationStack(for decorations: [String]) -> some View {
+                var layered = decorations.filter { !$0.isEmpty }
+                if let preview = appModel.previewPetAsset, activeSheet == .shop {
+                        layered.append(preview)
+                }
+
+                let visible = Array(layered.prefix(3))
+                if !visible.isEmpty {
+                        HStack(spacing: -12) {
+                                ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
+                                        Image(asset)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: max(80, 120 - CGFloat(index) * 10))
+                                                .shadow(color: .gray.opacity(0.2), radius: 5, x: 1, y: 1)
+                                }
+                        }
+                        .padding(12)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+        }
 
 	private func startTaskFloating() {
 		guard taskFloatTask == nil else { return }
@@ -521,7 +526,7 @@ struct PetView: View {
                 }
 
                 private var petAssetName: String {
-                                appModel.previewPetAsset ?? viewModel.screenState.petAsset
+                                viewModel.screenState.petAsset
                 }
 	
 	
