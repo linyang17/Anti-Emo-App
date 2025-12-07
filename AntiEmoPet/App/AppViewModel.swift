@@ -851,7 +851,7 @@ final class AppViewModel: ObservableObject {
                 let readableSchedule = scheduleFormatter(slotmap: slotMap)
                 schedule[dkey] = slotMap
                 saveSlotSchedule(schedule)
-                logger.info("[Schedule] Schedule prepared for \(dkey): \(readableSchedule)")
+                logger.info("[Schedule] \(dkey): \(readableSchedule)")
 
                 rescheduleSlotUnlocks(reference: date)
 
@@ -906,7 +906,7 @@ final class AppViewModel: ObservableObject {
                 // 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
                 let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
 
-                logger.info("[AppViewModel] generateTasksForSlot: preparing \(slot.rawValue) at \(date)")
+                logger.info("[AppViewModel] generateTasksForSlot: preparing \(slot.rawValue) tasks at \(date)")
 
                 guard existingTasks.isEmpty else {
                         logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")

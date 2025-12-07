@@ -1,17 +1,16 @@
 {
   "images" : [
     {
-      "filename" : "foxsleep.png",
+      "filename" : "foxtired.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "foxtired.png",
+      "filename" : "主题 3.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "主题 3.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
