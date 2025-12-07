@@ -36,7 +36,7 @@ struct SettingView: View {
                                                         }
                                                 )) {
                                                         Text(slot.rawValue.capitalized)
-                                                                .font(.subheadline)
+															.appFont(FontTheme.subheadline)
                                                                 .foregroundStyle(.secondary)
                                                 }
                                                 .padding(.leading, 12)

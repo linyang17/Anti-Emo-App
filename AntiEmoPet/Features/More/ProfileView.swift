@@ -13,18 +13,14 @@ struct ProfileView: View {
                     if !stats.accountEmail.isEmpty {
                         Label("Account：\(stats.accountEmail)", systemImage: "envelope")
                     }
-                    Label("You've met Lumio \(stats.totalDays) days", systemImage: "flame")
+                }
+				
+				Section("Log") {
+					Label("You've met Lumio for: \(stats.totalDays) days", systemImage: "flame")
 					// TODO: add current streak days
-                    Label("Tasks completed：\(stats.completedTasksCount)", systemImage: "list.clipboard")
-                }
-
-                Section("Membership Status") {
-					
-					// TODO: add membership status
-					
-					Label("Basic", systemImage: "questionmark")
-					
-                }
+					Label("Total tasks completed：\(stats.completedTasksCount)", systemImage: "checkmark.circle")
+				}
+				
             }
         }
         .navigationTitle("Profile")

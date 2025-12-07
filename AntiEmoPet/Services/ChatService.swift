@@ -19,8 +19,10 @@ struct ChatService {
 
         private let endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
         private let model = "gpt-4o-mini"
-        private let replyPrompt = "Respond in warm, concise English (under 70 words). Encourage small, doable steps, avoid clinical language, and never ask for sensitive personal details."
 
+		private func systemPrompt(for weather: WeatherType) -> String {
+			 "You are Lumio, an emotionally supportive fox friend, and you're a top professional psychologist and therapist. You live in the same planet as the Little Prince (the character inside the French story written by Antoine de Saint-Exupéry). Reply within 200 words and keep answers warm, empathetic, thoughtful, and tailor to the current weather: \(weather.rawValue). "
+ }
         func reply(to text: String, weather: WeatherType, history: [ChatMessage]) async throws -> String {
                 guard let apiKey = resolveAPIKey() else {
                         return fallbackReply(for: text, weather: weather, history: history)
@@ -33,7 +35,6 @@ struct ChatService {
 
                 var messages = [
                         ChatMessage(role: .system, content: systemPrompt(for: weather)),
-                        ChatMessage(role: .system, content: replyPrompt),
                 ]
                 messages.append(contentsOf: history)
                 messages.append(ChatMessage(role: .user, content: text))
@@ -52,9 +53,6 @@ struct ChatService {
                 return choice.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        private func systemPrompt(for weather: WeatherType) -> String {
-                "You are Lumio, a supportive pet friend. Keep answers concise, empathetic, and tailor to the current weather: \(weather.rawValue)."
-        }
 
         private func resolveAPIKey() -> String? {
                 if let dotEnvKey = loadAPIKeyFromDotEnv(), !dotEnvKey.isEmpty {
@@ -113,7 +111,7 @@ struct ChatService {
                 }
                 let contextLine = lastContext.map { "Earlier I shared: \"\($0)\". That still holds." } ?? "I'm here for you."
 
-                return "\(weatherLine) \(contextLine) You mentioned \"\(text)\"—I hear you, and I'm with you."
+                return "\(weatherLine) \(contextLine) I hear you, and I'm here with you."
         }
 }
 

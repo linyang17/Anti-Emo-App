@@ -9,7 +9,7 @@ struct TaskHistoryView: View {
         @State private var isImporting = false
         @State private var importMessage: String?
 
-        private let historyDays = 30
+        private let historyDays = 90
         private var excelTypes: [UTType] {
                 [UTType(filenameExtension: "xls"), UTType(filenameExtension: "xlsx")].compactMap { $0 }
         }
@@ -33,16 +33,16 @@ struct TaskHistoryView: View {
                                 Button {
                                         isImporting = true
                                 } label: {
-                                        Label("Import .xls/.xlsx", systemImage: "square.and.arrow.down")
+                                        Label("Import data", systemImage: "square.and.arrow.down")
                                 }
                         }
-					#if !DEBUG
+					//#if !DEBUG
                         ForEach(sections) { section in
                                 Section(header: Text(dateLabel(for: section.date))) {
                                         ForEach(section.tasks) { task in
                                                 VStack(alignment: .leading, spacing: 6) {
                                                         Text(task.title)
-                                                                .font(.body)
+															.appFont(FontTheme.body)
                                                         HStack(spacing: 10) {
                                                                 TagView(text: task.category.localizedTitle)
                                                                 TagView(text: task.status.rawValue.capitalized)
@@ -52,14 +52,14 @@ struct TaskHistoryView: View {
                                                         }
                                                         if let completed = task.completedAt {
                                                                 Text("Completed at \(timeLabel(for: completed))")
-                                                                        .font(.caption)
+																		.appFont(FontTheme.caption)
                                                                         .foregroundColor(.secondary)
                                                         }
                                                 }
                                         }
                                 }
                         }
-					#endif
+					//#endif
                 }
                 .navigationTitle("History")
                 .onAppear { loadHistory() }
@@ -130,7 +130,7 @@ private struct TagView: View {
 
         var body: some View {
                 Text(text)
-                        .font(.caption)
+						.appFont(FontTheme.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(Color.gray.opacity(0.15)))

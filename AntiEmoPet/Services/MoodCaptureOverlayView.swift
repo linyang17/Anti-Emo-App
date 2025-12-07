@@ -18,18 +18,18 @@ struct MoodCaptureOverlayView: View {
 
 					VStack(spacing: 24) {
 						Text("How do you feel now?")
-								.font(.headline)
-								.foregroundStyle(.primary)
+							.appFont(FontTheme.headline)
+							.foregroundStyle(.primary)
 
 						VStack(spacing: 12) {
 								HStack {
 										Text("10")
 												.foregroundStyle(.secondary)
-												.font(.body)
+												.appFont(FontTheme.body)
 										Spacer()
 										Text("100")
 												.foregroundStyle(.secondary)
-												.font(.body)
+												.appFont(FontTheme.body)
 								}
 
 								Slider(
@@ -52,7 +52,7 @@ struct MoodCaptureOverlayView: View {
 									}
                                 }) {
 									Text("Save")
-										.font(.headline)
+										.appFont(FontTheme.subheadline)
 										.foregroundStyle(.white)
 										.frame(maxWidth: .infinity)
 										.padding(.vertical, 12)

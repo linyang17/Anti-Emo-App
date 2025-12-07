@@ -151,7 +151,7 @@ struct NameStepView: View, Equatable {
 
                         if !isValid {
                                 Text("Only letters, numbers, hyphen or underscore. No spaces.")
-                                        .font(.footnote)
+										.appFont(FontTheme.footnote)
                                         .foregroundStyle(.white.opacity(0.8))
                         }
                 }
@@ -173,7 +173,7 @@ struct GenderStepView: View, Equatable {
 				ForEach(OnboardingViewModel.GenderOption.allCases) { option in
 					Button { selectedGender = option } label: {
 						Text(option.displayName)
-							.font(.system(size: 15, weight: .medium, design: .rounded))
+							.appFont(FontTheme.subheadline)
 							.frame(width: 70, height: 40)
 							.background(
 								RoundedRectangle(cornerRadius: 18)
@@ -205,7 +205,7 @@ struct BirthdayStepView: View, Equatable {
 	var body: some View {
 		VStack(spacing: 24) {
 			Text("When's your birthday?")
-				.font(.title2.weight(.semibold))
+				.appFont(FontTheme.title2)
 				.foregroundStyle(.white)
 			BirthdayPicker(date: $selectedDate)
 		}
@@ -261,7 +261,7 @@ struct BirthdayPicker: View {
 	private func pickerMenu<Content: View>(display: String, @ViewBuilder content: () -> Content) -> some View {
 		Menu { content() } label: {
 			Text(display)
-				.font(.headline)
+				.appFont(FontTheme.headline)
 				.foregroundStyle(.white)
 				.frame(maxWidth: .infinity)
 				.padding(.vertical, 14)

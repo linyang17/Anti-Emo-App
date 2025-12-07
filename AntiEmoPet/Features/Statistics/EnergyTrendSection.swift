@@ -18,7 +18,7 @@ struct EnergyTrendSection: View {
 				.pickerStyle(.segmented)
 				
 				Text(rangeDescription(for: window))
-					.font(.caption)
+					.appFont(FontTheme.caption)
 					.foregroundStyle(.secondary)
 
 				let data = dailyAdded(windowDays: window)

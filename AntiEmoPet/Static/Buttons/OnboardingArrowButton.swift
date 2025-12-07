@@ -36,7 +36,7 @@ struct OnboardingArrowButton: View {
                         .progressViewStyle(.circular)
                 } else {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 24, weight: .semibold))
+						.appFont(FontTheme.title2)
 						.foregroundStyle(Color.white)
                 }
             }

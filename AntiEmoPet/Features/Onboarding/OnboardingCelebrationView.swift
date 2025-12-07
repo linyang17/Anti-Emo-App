@@ -20,7 +20,7 @@ struct OnboardingCelebrationView: View {
 					onDismiss()
 				} label: {
 					Text("Gooooooo!")
-						.font(.headline)
+						.appFont(FontTheme.headline)
 						.foregroundStyle(.white)
 						.padding()
 						.background(.pink, in: RoundedRectangle(cornerRadius: 12))

@@ -17,7 +17,7 @@ struct MoodTrendSection: View {
 					.pickerStyle(.segmented)
 					
 					Text(rangeDescription(for: window))
-						.font(.caption)
+						.appFont(FontTheme.caption)
 						.foregroundStyle(.secondary)
 					
 					let data = moodAverages(windowDays: window)

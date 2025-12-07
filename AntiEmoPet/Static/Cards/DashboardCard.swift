@@ -8,7 +8,8 @@ struct DashboardCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: icon)
-                .font(.headline)
+				.appFont(FontTheme.subheadline)
+				.bold()
                 .foregroundStyle(.secondary)
             content
         }

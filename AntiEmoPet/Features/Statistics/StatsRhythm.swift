@@ -114,7 +114,7 @@ struct StatsRhythmSection: View {
 						AxisTick()
 						AxisValueLabel {
 							Text(label)
-								.font(.caption)
+								.appFont(FontTheme.caption)
 								.frame(maxWidth: .infinity, alignment: .center) // 水平居中
 						}
 					}
@@ -158,7 +158,7 @@ struct StatsRhythmSection: View {
 					AxisValueLabel {
 						if let label = value.as(String.self) {
 							Text(label)
-								.font(.caption2)
+								.appFont(FontTheme.caption)
 								.multilineTextAlignment(.center)
 								.lineLimit(nil)
 								.fixedSize(horizontal: false, vertical: true)
@@ -246,13 +246,13 @@ struct StatsRhythmSection: View {
 	private func rhythmPlaceholder(systemImage: String) -> some View {
 		VStack(spacing: 12) {
 			Image(systemName: systemImage)
-			.font(.system(size: 28))
+				.appFont(FontTheme.title)
 			.foregroundStyle(.secondary)
 			Text("No Data")
-			.font(.footnote)
+				.appFont(FontTheme.subheadline)
 			.foregroundStyle(.secondary)
 			Text("Unlock when you have more mood records.")
-			.font(.caption2)
+				.appFont(FontTheme.body)
 			.foregroundStyle(.secondary)
 		}
 		.multilineTextAlignment(.center)

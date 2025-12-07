@@ -9,13 +9,15 @@ struct MoodStatsSection: View {
 				
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("Latest：")
-                        .font(.title2.weight(.semibold))
+						.appFont(FontTheme.title3)
                     Text("\(mood.lastMood)")
-						.font(.title2.weight(.semibold))
+						.appFont(FontTheme.title3)
+						.bold()
                     if !mood.trend.rawValue.isEmpty {
                         Image(systemName: mood.trend.rawValue)
-                            .font(.title2)
+							.appFont(FontTheme.title3)
                             .foregroundStyle(.secondary)
+							.bold()
                     }
                 }
 
@@ -25,17 +27,19 @@ struct MoodStatsSection: View {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Avg Today")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(mood.averageToday)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Recorded Days")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(mood.uniqueDayCount)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 					}
 					Spacer()
@@ -43,25 +47,28 @@ struct MoodStatsSection: View {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Avg Past Week")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(mood.averagePastWeek)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Total Decords")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(mood.entriesCount)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 					}
 				}
-					.frame(maxWidth: 280)
+					.frame(maxWidth: .w(0.8))
 					.padding(.bottom, 12)
 				
                 Text(mood.comment.isEmpty ? "Come more often for summary" : mood.comment)
-                    .font(.subheadline)
+					.appFont(FontTheme.subheadline)
+					.bold()
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

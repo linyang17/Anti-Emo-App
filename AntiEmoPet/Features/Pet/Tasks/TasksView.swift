@@ -156,7 +156,7 @@ private struct TaskRow: View {
 				appModel.startTask(task)
 			} label: {
 				Text("Start")
-					.font(.subheadline.weight(.medium))
+					.appFont(FontTheme.subheadline)
 					.foregroundStyle(.white)
 					.padding(.horizontal, 16)
 					.padding(.vertical, 8)
@@ -169,7 +169,7 @@ private struct TaskRow: View {
 				ProgressView()
 					.scaleEffect(0.8)
 				Text("On it...")
-					.font(.caption)
+					.appFont(FontTheme.caption)
 					.foregroundStyle(.secondary)
 			}
 			
@@ -178,7 +178,7 @@ private struct TaskRow: View {
 				appModel.completeTask(task)
 			} label: {
 				Text("Done!")
-					.font(.subheadline.weight(.medium))
+					.appFont(FontTheme.subheadline)
 					.foregroundStyle(.white)
 					.padding(.horizontal, 16)
 					.padding(.vertical, 8)
@@ -188,7 +188,7 @@ private struct TaskRow: View {
 			
 		case .completed:
 			Image(systemName: "checkmark.circle.fill")
-				.font(.subheadline.weight(.medium))
+				.appFont(FontTheme.subheadline)
 				.foregroundStyle(.black.opacity(0.5))
 				.imageScale(.large)
 		}

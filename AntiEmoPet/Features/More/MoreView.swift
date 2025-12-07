@@ -33,7 +33,11 @@ struct MoreView: View {
 				NavigationLink(destination: ProfileView().environmentObject(appModel)) {
 					Label("Profile", systemImage: "person")
 				}
+				NavigationLink(destination: MembershipView().environmentObject(appModel)) {
+					Label("Membership: Basic", systemImage: "crown")  // TODO: replace label text with actual membership status
+				}
 			}
+			
 			Section(header: Text("Settings")) {
 				NavigationLink(destination: SettingView().environmentObject(appModel)) {
 					Label("Settings", systemImage: "gearshape")

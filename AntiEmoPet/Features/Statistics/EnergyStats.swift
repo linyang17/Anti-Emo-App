@@ -9,10 +9,11 @@ struct EnergyStatsSection: View {
 			VStack(alignment: .leading, spacing: 8) {
                 // Top Section: Latest / Today
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("Today Added:")
-                        .font(.title2.weight(.semibold))
+                    Text("Today Added: ")
+						.appFont(FontTheme.title3)
                     Text("\(energy.todayAdd)")
-                        .font(.title2.weight(.semibold))
+						.appFont(FontTheme.title3)
+						.bold()
                 }
 
 				Divider().padding(.vertical, 6)
@@ -22,18 +23,20 @@ struct EnergyStatsSection: View {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Avg Added Past Week")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(energy.averageDailyAddPastWeek)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 						
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Tasks Done Today")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text("\(energy.todayTaskCount)")
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 					}
 					.frame(maxWidth: .w(0.45))
@@ -44,7 +47,7 @@ struct EnergyStatsSection: View {
 						
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Trend")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text(energy.trend.rawValue)
 								.font(.title3.weight(.medium))
@@ -53,19 +56,20 @@ struct EnergyStatsSection: View {
 						
 						VStack(alignment: .leading, spacing: 5) {
 							Text("Avg Tasks Done Past Week")
-								.font(.subheadline)
+								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text(String(format: "%.0f", energy.averageDailyTaskCountPastWeek))
-								.font(.title3.weight(.medium))
+								.appFont(FontTheme.headline)
+								.bold()
 						}
 					}
-					.frame(maxWidth: .w(0.45))
 				}
+				.frame(maxWidth: .w(0.8))
 				.padding(.bottom, 12)
 				
                 // Comment
-				Text(energy.comment.isEmpty ? "Come more often for summary" : energy.comment)
-						.font(.subheadline)
+				Text(energy.comment.isEmpty ? "Come more often for a summary" : energy.comment)
+						.appFont(FontTheme.body)
 						.foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 
@@ -73,7 +77,7 @@ struct EnergyStatsSection: View {
                 if !energy.taskTypeCounts.isEmpty {
                     Divider().padding(.vertical, 8)
                     Text("Completed Tasks by Type")
-                        .font(.caption)
+						.appFont(FontTheme.subheadline)
                         .foregroundStyle(.secondary)
 					
 					let theme = ChartTheme.shared

@@ -135,13 +135,13 @@ struct ShopView: View {
 			itemImage(for: item)
 			
 			Text(item.assetName)
-				.font(.subheadline.weight(.semibold))
+				.appFont(FontTheme.subheadline)
 				.foregroundStyle(.white)
 				.lineLimit(1)
 
 			if item.type == .snack {
 					Text("x \(snackQuantity(for: item))")
-							.font(.caption.weight(.semibold))
+							.appFont(FontTheme.caption)
 							.foregroundStyle(.white)
 			} else if isOwned {
 					HStack(spacing: 6) {
@@ -153,7 +153,7 @@ struct ShopView: View {
 							Image(systemName: "star.fill")
 									.foregroundStyle(.yellow)
 							Text("\(item.costEnergy)")
-									.font(.caption2.weight(.semibold))
+									.appFont(FontTheme.caption)
 									.foregroundStyle(.white)
 					}
 			}

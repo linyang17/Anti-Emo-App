@@ -344,9 +344,9 @@ struct PetView: View {
                 var layered = decorations.filter { !$0.isEmpty }
                 if let preview = appModel.previewPetAsset, activeSheet == .shop {
                         if let lastIndex = layered.indices.last {
-                                layered[lastIndex] = preview
+                                //layered[lastIndex] = preview
                         } else {
-                                layered = [preview]
+                                //layered = [preview]
                         }
                 }
 

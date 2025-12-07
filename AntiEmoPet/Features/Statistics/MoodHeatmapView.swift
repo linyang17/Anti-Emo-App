@@ -19,19 +19,19 @@ struct MoodHeatmapView: View {
                     .frame(width: 60)
                 ForEach(weekdaySymbols, id: \.self) { day in
                     Text(day.prefix(1))
-                        .font(.caption2)
+						.appFont(FontTheme.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
 			}
-			.padding(.vertical, 20)
+			.padding(.vertical, 12)
             
             // Grid
             ForEach(timeSlots, id: \.self) { slot in
                 HStack(spacing: 4) {
                     // Y Axis Label
                     Text(slot.rawValue.capitalized)
-                        .font(.caption2)
+						.appFont(FontTheme.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 60, alignment: .trailing)
                     
@@ -46,6 +46,8 @@ struct MoodHeatmapView: View {
                 }
             }
         }
+		.padding(.bottom, 12)
+		.padding(.trailing, 6)
     }
     
     private struct Cell: View {
@@ -58,7 +60,7 @@ struct MoodHeatmapView: View {
                 .overlay {
                     if let v = value {
                         Text("\(Int(v))")
-                            .font(.system(size: 14, weight: .bold))
+							.appFont(FontTheme.body)
                             .foregroundStyle(.white.opacity(0.8))
                     }
                 }
