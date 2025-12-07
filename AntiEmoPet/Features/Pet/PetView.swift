@@ -343,7 +343,11 @@ struct PetView: View {
         private func decorationStack(for decorations: [String]) -> some View {
                 var layered = decorations.filter { !$0.isEmpty }
                 if let preview = appModel.previewPetAsset, activeSheet == .shop {
-                        layered.append(preview)
+                        if let lastIndex = layered.indices.last {
+                                layered[lastIndex] = preview
+                        } else {
+                                layered = [preview]
+                        }
                 }
 
                 let visible = Array(layered.prefix(3))
