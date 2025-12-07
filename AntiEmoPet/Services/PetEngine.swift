@@ -48,14 +48,9 @@ final class PetEngine {
                 switch action {
                 case .pat:
                         updateBonding(for: pet, bondingAddValue: 1)
-                case .feed(let item):
-                        if item.type == .snack {
-                                updateBonding(for: pet, bondingAddValue: 1)
-                                awardXP(1, to: pet)
-                        } else {
-                                updateBonding(for: pet, bondingAddValue: 2)
-                                awardXP(2, to: pet)
-                        }
+                case .feed:
+                        updateBonding(for: pet, bondingAddValue: 1)
+                        awardXP(1, to: pet)
                 case .penalty:
                         updateBonding(for: pet, bondingAddValue: -2)
                                 case .taskComplete:
