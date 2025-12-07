@@ -11,51 +11,55 @@ struct ShopView: View {
 
 	private let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 14), count: 3)
 
-	var body: some View {
-		ZStack(alignment: .top) {
-			Color.clear.ignoresSafeArea()
-			VStack(spacing: 0) {
-				Spacer(minLength: 0)
+        var body: some View {
+                ZStack(alignment: .top) {
+                        Color.clear.ignoresSafeArea()
+                        VStack(spacing: 0) {
+                                Spacer(minLength: 0)
 				shopPanel
 			}
 		}
 		.overlay(alignment: .top) { toastView }
-		.animation(.spring(response: 0.35, dampingFraction: 0.85), value: pendingItem?.id)
-		.onAppear {
-				selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .snack
-		}
-		.onChange(of: selectedCategory) {
-			pendingItem = nil
-		}
-		.onChange(of: appModel.shopItems) {
-				let options = viewModel.availableCategories(in: appModel.shopItems)
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: pendingItem?.id)
+                .onAppear {
+                                selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .snack
+                }
+                .onDisappear {
+                        appModel.previewPetAsset = nil
+                }
+                .onChange(of: selectedCategory) {
+                        pendingItem = nil
+                }
+                .onChange(of: appModel.shopItems) {
+                                let options = viewModel.availableCategories(in: appModel.shopItems)
 				if !options.contains(selectedCategory) {
 						selectedCategory = options.first ?? .snack
 				}
 		}
-		.alert(
-			"Oh no!",
-			isPresented: Binding(get: { alertMessage != nil }, set: { _ in alertMessage = nil })
-		) {
-			Button("Okay", role: .cancel) { }
-		} message: {
-			Text(alertMessage ?? "")
-		}
-		.toolbar(.hidden, for: .navigationBar)
-	}
+                .alert(
+                        "Oh no!",
+                        isPresented: Binding(get: { alertMessage != nil }, set: { _ in alertMessage = nil })
+                ) {
+                        Button("Okay", role: .cancel) { }
+                } message: {
+                        Text(alertMessage ?? "")
+                }
+                .toolbar(.hidden, for: .navigationBar)
+                .onChange(of: pendingItem) { _, newValue in
+                        appModel.previewPetAsset = previewAsset(for: newValue)
+                }
+        }
 
 	private var shopPanel: some View {
 		VStack(spacing: 12) {
 			categoryPicker
 			
-			ScrollView {
-				ZStack(alignment: .bottom) {
-					gridSection
-						.padding(.bottom, 80) // Spacing for confirm button
-					
-					if let pendingItem, !isOwned(pendingItem) { }
-				}
-			}
+                        ScrollView {
+                                ZStack(alignment: .bottom) {
+                                        gridSection
+                                                .padding(.bottom, 80) // Spacing for confirm button
+                                }
+                        }
 			
 			if let pendingItem, !isOwned(pendingItem) {
 				confirmButton(for: pendingItem)
@@ -270,11 +274,12 @@ struct ShopView: View {
 
                 if isOwned(item) {
                         toggleSelection(for: item)
+                        appModel.previewPetAsset = appModel.isEquipped(item) ? previewAsset(for: item) : nil
                 } else {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 if pendingItem?.id == item.id {
-					pendingItem = nil
-				} else {
+                                        pendingItem = nil
+                                } else {
 					pendingItem = item
 				}
 			}
@@ -316,11 +321,11 @@ struct ShopView: View {
 		}
 	}
 
-	private func showToast(for item: Item) {
-		var msg: String
-		if item.type == .snack {
-			msg = "XP + 1 · Bonding + \(item.bondingBoost)"
-	}
+        private func showToast(for item: Item) {
+                var msg: String
+                if item.type == .snack {
+                        msg = "XP + 1 · Bonding + \(item.bondingBoost)"
+        }
 		else {
 			msg = "Energy -\(item.costEnergy) · XP + 10 · Bonding + \(item.bondingBoost)"
 		}
@@ -346,6 +351,12 @@ struct ShopView: View {
 
         private func snackQuantity(for item: Item) -> Int {
                 appModel.inventory.first(where: { $0.sku == item.sku })?.quantity ?? 0
+        }
+
+        private func previewAsset(for item: Item?) -> String? {
+                guard let item else { return nil }
+                guard item.type == .clothing || item.type == .shoes else { return nil }
+                return item.assetName.isEmpty ? nil : item.assetName
         }
 
 	@ViewBuilder

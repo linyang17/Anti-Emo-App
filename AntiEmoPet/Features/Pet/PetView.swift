@@ -29,102 +29,113 @@ struct PetView: View {
 		var id: Int { hashValue }
 	}
 
-		var body: some View {
-				ZStack {
-						Image(viewModel.screenState.backgroundAsset)
-								.resizable()
-								.scaledToFill()
-								.ignoresSafeArea()
+                var body: some View {
+                                ZStack {
+                                                Image(viewModel.screenState.backgroundAsset)
+                                                                .resizable()
+                                                                .scaledToFill()
+                                                                .ignoresSafeArea()
 
-						content()
-				}
-				.opacity(appearOpacity)
-				.overlay { overlayStack }
-				.sheet(item: $activeSheet) { sheet in
-						switch sheet {
-						case .tasks:
-								sheetStyled(TasksView(lastMood: mood.lastMood))
-						case .shop:
-								sheetStyled(ShopView())
-						}
-				}
-				.toolbar(.hidden, for: .navigationBar)
-				.onAppear {
-						withAnimation(.easeInOut(duration: 0.5)) {
-								appearOpacity = 1
-						}
-						viewModel.sync(with: appModel)
-						if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
-								mood = summary
-						}
-				}
-				.onReceive(appModel.$pet) { pet in
-						viewModel.updateStatus(stats: appModel.userStats, pet: pet)
-						viewModel.updatePetState(pet: pet)
-				}
-				.onReceive(appModel.$userStats) { stats in
-						viewModel.updateStatus(stats: stats, pet: appModel.pet)
-				}
-				.onChange(of: appModel.weather) { _, weather in
-						viewModel.updateScene(weather: weather)
-				}
-				.onReceive(appModel.$moodEntries) { entries in
-						if let summary = moodModel.moodSummary(entries: entries) {
-								mood = summary
-						}
-				}
-				.onReceive(appModel.objectWillChange) { _ in
-						viewModel.updateStatus(stats: appModel.userStats, pet: appModel.pet)
-						viewModel.updatePetState(pet: appModel.pet)
-				}
-				.onChange(of: appModel.rewardBanner) { _, newValue in
-						guard let reward = newValue else { return }
-						if activeSheet == .tasks {
-								activeSheet = nil
-						}
-						activeReward = reward
-						withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
-								rewardOpacity = 1
-						}
-						bannerTask?.cancel()
-						bannerTask = Task { @MainActor in
-								try? await Task.sleep(nanoseconds: 1_500_000_000)
-								withAnimation(.easeInOut(duration: 1.5)) {
-										rewardOpacity = 0
-								}
-								appModel.consumeRewardBanner()
-								activeReward = nil
+                                                content()
+                                                                .zIndex(activeSheet == .shop ? 5 : 0)
 
-								if appModel.pendingMoodFeedbackTask != nil {
-										await MainActor.run {
-												withAnimation(.spring(response: 1, dampingFraction: 0.8)) {
-														showMoodFeedback = true
-												}
-										}
-								}
-						}
-				}
-				.onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
-					if newValue != nil {
-						if activeSheet == .tasks {
-							activeSheet = nil
-						}
-						if activeReward == nil {
-							withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-								showMoodFeedback = true
-							}
-						}
-					} else {
-						withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-							showMoodFeedback = false
-						}
-						appModel.checkAndShowOnboardingCelebration()
-					}
-				}
-				.onDisappear {
-						bannerTask?.cancel()
-				}
-		}
+                                                controlOverlay
+                                                                .zIndex(activeSheet == .shop ? 0 : 3)
+
+                                                overlayLayers
+                                                                .zIndex(10)
+                                }
+                                .opacity(appearOpacity)
+                                .sheet(item: $activeSheet) { sheet in
+                                                switch sheet {
+                                                case .tasks:
+                                                                sheetStyled(TasksView(lastMood: mood.lastMood))
+                                                case .shop:
+                                                                sheetStyled(ShopView())
+                                                }
+                                }
+                                .toolbar(.hidden, for: .navigationBar)
+                                .onAppear {
+                                                withAnimation(.easeInOut(duration: 0.5)) {
+                                                                appearOpacity = 1
+                                                }
+                                                viewModel.sync(with: appModel)
+                                                if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
+                                                                mood = summary
+                                                }
+                                }
+                                .onReceive(appModel.$pet) { pet in
+                                                viewModel.updateStatus(stats: appModel.userStats, pet: pet)
+                                                viewModel.updatePetState(pet: pet)
+                                }
+                                .onReceive(appModel.$userStats) { stats in
+                                                viewModel.updateStatus(stats: stats, pet: appModel.pet)
+                                }
+                                .onChange(of: appModel.weather) { _, weather in
+                                                viewModel.updateScene(weather: weather)
+                                }
+                                .onReceive(appModel.$moodEntries) { entries in
+                                                if let summary = moodModel.moodSummary(entries: entries) {
+                                                                mood = summary
+                                                }
+                                }
+                                .onReceive(appModel.objectWillChange) { _ in
+                                                viewModel.updateStatus(stats: appModel.userStats, pet: appModel.pet)
+                                                viewModel.updatePetState(pet: appModel.pet)
+                                }
+                                .onChange(of: activeSheet) { _, newValue in
+                                                if newValue != .shop {
+                                                                appModel.previewPetAsset = nil
+                                                }
+                                }
+                                .onChange(of: appModel.rewardBanner) { _, newValue in
+                                                guard let reward = newValue else { return }
+                                                if activeSheet == .tasks {
+                                                                activeSheet = nil
+                                                }
+                                                activeReward = reward
+                                                withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
+                                                                rewardOpacity = 1
+                                                }
+                                                bannerTask?.cancel()
+                                                bannerTask = Task { @MainActor in
+                                                                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                                                                withAnimation(.easeInOut(duration: 1.5)) {
+                                                                                rewardOpacity = 0
+                                                                }
+                                                                appModel.consumeRewardBanner()
+                                                                activeReward = nil
+
+                                                                if appModel.pendingMoodFeedbackTask != nil {
+                                                                                await MainActor.run {
+                                                                                                withAnimation(.spring(response: 1, dampingFraction: 0.8)) {
+                                                                                                                showMoodFeedback = true
+                                                                                                }
+                                                                                }
+                                                                }
+                                                }
+                                }
+                                .onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
+                                        if newValue != nil {
+                                                if activeSheet == .tasks {
+                                                        activeSheet = nil
+                                                }
+                                                if activeReward == nil {
+                                                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                                                showMoodFeedback = true
+                                                        }
+                                                }
+                                        } else {
+                                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                                        showMoodFeedback = false
+                                                }
+                                                appModel.checkAndShowOnboardingCelebration()
+                                        }
+                                }
+                                .onDisappear {
+                                                bannerTask?.cancel()
+                                }
+                }
 
 		@ViewBuilder
 		private func sheetStyled<Content: View>(_ content: Content) -> some View {
@@ -211,47 +222,47 @@ struct PetView: View {
 		}
 		}
 
-		private func petStage(for pet: Pet) -> some View {
-				ZStack(alignment: .bottomTrailing) {
-						Image(viewModel.screenState.petAsset)
-								.resizable()
-								.scaledToFit()
-								.frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
-								.padding(20)
-				.shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
-				.simultaneousGesture(
-					TapGesture()
-						.onEnded { triggerPettingInteraction() }
-				)
-				.simultaneousGesture(
-					DragGesture(minimumDistance: 30)
-						.onEnded { value in
-							let vertical = abs(value.translation.height)
-							let horizontal = abs(value.translation.width)
-							if vertical > horizontal, vertical > 50 {
-								triggerPettingInteraction()
-							}
-						}
-				)
-				.accessibilityAction(named: Text("Pet Lumio")) {
-					triggerPettingInteraction()
-				}
+        private func petStage(for pet: Pet) -> some View {
+                                ZStack(alignment: .bottomTrailing) {
+                                                Image(petAssetName)
+                                                                .resizable()
+                                                                .scaledToFit()
+                                                                .frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
+                                                                .padding(20)
+                                .shadow(color: .black.opacity(0.2), radius: 10, x: -5, y: 5)
+                                .simultaneousGesture(
+                                        TapGesture()
+                                                .onEnded { triggerPettingInteraction() }
+                                )
+                                .simultaneousGesture(
+                                        DragGesture(minimumDistance: 30)
+                                                .onEnded { value in
+                                                        let vertical = abs(value.translation.height)
+                                                        let horizontal = abs(value.translation.width)
+                                                        if vertical > horizontal, vertical > 50 {
+                                                                triggerPettingInteraction()
+                                                        }
+                                                }
+                                )
+                                .accessibilityAction(named: Text("Pet Lumio")) {
+                                        triggerPettingInteraction()
+                                }
 
-			if showPettingHearts {
-				PettingHeartBurst()
-					.transition(.opacity)
-			}
+                        if showPettingHearts {
+                                PettingHeartBurst()
+                                        .transition(.opacity)
+                        }
 
-			decorationStack(for: pet.decorations)
+                        decorationStack(for: pet.decorations)
                 }
                 .frame(maxWidth: .infinity)
-				.offset(y: activeSheet == .shop ? -.h(0.3) : 0)
+                                .offset(y: activeSheet == .shop ? -.h(0.3) : 0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.85), value: activeSheet)
                 .onDisappear {
                         pettingEffectTask?.cancel()
                         showPettingHearts = false
-		}
-	}
+                }
+        }
 
 	private var statusBackground: some View {
 		RoundedRectangle(cornerRadius: 12)
@@ -328,23 +339,32 @@ struct PetView: View {
 		.buttonStyle(.plain)
 	}
 
-	@ViewBuilder
-	private func decorationStack(for decorations: [String]) -> some View {
-		let visible = Array(decorations.filter { !$0.isEmpty }.prefix(3))
-		if !visible.isEmpty {
-			HStack(spacing: -12) {
-				ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
-					Image(asset)
-						.resizable()
-						.scaledToFit()
-						.frame(width: max(80, 120 - CGFloat(index) * 10))
-						.shadow(color: .gray.opacity(0.2), radius: 5, x: 1, y: 1)
-				}
-			}
-			.padding(12)
-			.transition(.opacity.combined(with: .move(edge: .trailing)))
-		}
-	}
+        @ViewBuilder
+        private func decorationStack(for decorations: [String]) -> some View {
+                var layered = decorations.filter { !$0.isEmpty }
+                if let preview = appModel.previewPetAsset, activeSheet == .shop {
+                        if let lastIndex = layered.indices.last {
+                                layered[lastIndex] = preview
+                        } else {
+                                layered = [preview]
+                        }
+                }
+
+                let visible = Array(layered.prefix(3))
+                if !visible.isEmpty {
+                        HStack(spacing: -12) {
+                                ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
+                                        Image(asset)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: max(80, 120 - CGFloat(index) * 10))
+                                                .shadow(color: .gray.opacity(0.2), radius: 5, x: 1, y: 1)
+                                }
+                        }
+                        .padding(12)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+        }
 
 	private func startTaskFloating() {
 		guard taskFloatTask == nil else { return }
@@ -421,29 +441,33 @@ struct PetView: View {
 
 	
 		@ViewBuilder
-		private var overlayStack: some View {
-			ZStack {
-				// Base UI: top-right more/tasks buttons
-				VStack(alignment: .trailing, spacing: .h(0.15)) {
-					MoreButton
-						.padding(.trailing, .w(0.1))
-						.padding(.top, .h(0.02))
-					taskButton
-						.padding(.trailing, .w(0.05))
-						.opacity(0.8)
-				}
-				.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-				.zIndex(1)
+                private var controlOverlay: some View {
+                                ZStack {
+                                                // Base UI: top-right more/tasks buttons
+                                                VStack(alignment: .trailing, spacing: .h(0.15)) {
+                                                        MoreButton
+                                                                        .padding(.trailing, .w(0.1))
+                                                                        .padding(.top, .h(0.02))
+                                                        taskButton
+                                                                        .padding(.trailing, .w(0.05))
+                                                                        .opacity(0.8)
+                                                }
+                                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
 
-				// Base UI: bottom-left shop button
-					shopButton
-							.offset(x: .w(0.1), y: -.h(0.15))
-							.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-							.zIndex(1)
+                                                // Base UI: bottom-left shop button
+                                                shopButton
+                                                                .offset(x: .w(0.1), y: -.h(0.15))
+                                                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
 
-					if isInteractionLocked {
-							Color.clear
-								.ignoresSafeArea()
+                @ViewBuilder
+                private var overlayLayers: some View {
+                        ZStack {
+                                        if isInteractionLocked {
+                                                        Color.clear
+                                                                .ignoresSafeArea()
 								.zIndex(5)
 					}
 
@@ -485,11 +509,11 @@ struct PetView: View {
 					.zIndex(30)
 				}
 
-				if appModel.showOnboardingCelebration {
-					Color.black.opacity(0.35)
-						.ignoresSafeArea()
-						.transition(.opacity)
-						.zIndex(39)
+                                if appModel.showOnboardingCelebration {
+                                        Color.black.opacity(0.35)
+                                                .ignoresSafeArea()
+                                                .transition(.opacity)
+                                                .zIndex(39)
 					OnboardingCelebrationView {
 						appModel.dismissOnboardingCelebration()
 					}
@@ -498,12 +522,16 @@ struct PetView: View {
 					.offset(y: UIScreen.main.bounds.height * 0.18)
 					.transition(.scale(scale: 0.9).combined(with: .opacity))
 					.zIndex(40)
-				}
-			}
-			.frame(maxWidth: .infinity, maxHeight: .infinity)
-			.animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
-			.animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.showMoodCapture)
-		}
+                                }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
+                        .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.showMoodCapture)
+                }
+
+                private var petAssetName: String {
+                                viewModel.screenState.petAsset
+                }
 	
 	
 }

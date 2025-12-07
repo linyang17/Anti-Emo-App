@@ -25,13 +25,14 @@ final class AppViewModel: ObservableObject {
 	@Published var showOnboardingCelebration = false
 	@Published var moodEntries: [MoodEntry] = []
 	@Published var energyHistory: [EnergyHistoryEntry] = []
-	@Published var energyEvents: [EnergyEvent] = []
-	@Published var inventory: [InventoryEntry] = []
-	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
-	@Published var showSleepReminder = false
-	@Published var rewardBanner: RewardEvent?
-	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-	@Published var shouldShowNotificationSettingsPrompt = false
+        @Published var energyEvents: [EnergyEvent] = []
+        @Published var inventory: [InventoryEntry] = []
+        @Published var dailyMetricsCache: [DailyActivityMetrics] = []
+        @Published var showSleepReminder = false
+        @Published var rewardBanner: RewardEvent?
+        @Published var previewPetAsset: String?
+        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+        @Published var shouldShowNotificationSettingsPrompt = false
 	@Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
 	@Published private(set) var hasLoggedMoodThisSlot = false
 	@Published var showMoodCapture = false
