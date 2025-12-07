@@ -442,9 +442,9 @@ struct PetView: View {
 							.zIndex(1)
 
 					if isInteractionLocked {
-							Color.black.opacity(0.001)
-									.ignoresSafeArea()
-									.zIndex(5)
+							Color.clear
+								.ignoresSafeArea()
+								.zIndex(5)
 					}
 
 					// Overlays ABOVE the buttons

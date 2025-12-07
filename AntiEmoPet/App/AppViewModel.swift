@@ -28,16 +28,16 @@ final class AppViewModel: ObservableObject {
 	@Published var energyEvents: [EnergyEvent] = []
 	@Published var inventory: [InventoryEntry] = []
 	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
-        @Published var showSleepReminder = false
-        @Published var rewardBanner: RewardEvent?
-        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-        @Published var shouldShowNotificationSettingsPrompt = false
-        @Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
-        @Published private(set) var hasLoggedMoodThisSlot = false
-        @Published var showMoodCapture = false
-        @Published var shouldForceMoodCapture = false
-        @Published var pendingMoodFeedbackTask: UserTask?
-        @Published private(set) var canRefreshCurrentSlot = false
+	@Published var showSleepReminder = false
+	@Published var rewardBanner: RewardEvent?
+	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+	@Published var shouldShowNotificationSettingsPrompt = false
+	@Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
+	@Published private(set) var hasLoggedMoodThisSlot = false
+	@Published var showMoodCapture = false
+	@Published var shouldForceMoodCapture = false
+	@Published var pendingMoodFeedbackTask: UserTask?
+	@Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
 	@Published var pettingNotice: String?
 	lazy var petEngine = PetEngine(pet: nil)
@@ -382,14 +382,14 @@ final class AppViewModel: ObservableObject {
                 petEngine.handleAction(.taskComplete)   // award bonding + xp
 
                 if rewards.energy > 0 {
-                        recordEnergyEvent(delta: rewards.energy, relatedTask: task)
+					recordEnergyEvent(delta: rewards.energy, relatedTask: task)
                 }
 
                 var snackName: String?
                 if let snack = rewards.snack {
-                        incrementInventory(for: snack)
-                        snackName = snackDisplayName(for: snack)
-                        analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
+					incrementInventory(for: snack)
+					snackName = snackDisplayName(for: snack)
+					analytics.log(event: "snack_reward", metadata: ["sku": snack.sku])
                 }
 
                 analytics.log(event: "task_completed", metadata: ["title": task.title])
@@ -653,39 +653,20 @@ final class AppViewModel: ObservableObject {
 		objectWillChange.send()
 	}
 
-        func useItem(sku: String) -> Bool {
-                // Check inventory quantity first
-                if let entry = inventory.first(where: { $0.sku == sku }), entry.quantity > 0,
-                   let item = shopItems.first(where: { $0.sku == sku }) {
-                        storage.decrementInventory(forSKU: sku)
-                        inventory = storage.fetchInventory()
-                        petEngine.handleAction(.feed(item: item))
-                        if item.type == .snack {
-                                rewardBanner = RewardEvent(energy: 0, xp: 1)
-                        }
-                        storage.persist()
-                        analytics.log(event: "item_used", metadata: ["sku": sku])
-                        logTodayEnergySnapshot()
-                        return true
-                } else {
-                        return false
-                }
-        }
+	@discardableResult
+	func feedSnack(_ item: Item) -> Bool {
+		guard item.type == .snack else { return false }
+		guard let entry = inventory.first(where: { $0.sku == item.sku }), entry.quantity > 0 else { return false }
 
-        @discardableResult
-        func feedSnack(_ item: Item) -> Bool {
-                guard item.type == .snack else { return false }
-                guard let entry = inventory.first(where: { $0.sku == item.sku }), entry.quantity > 0 else { return false }
+		storage.decrementInventory(forSKU: item.sku)
+		inventory = storage.fetchInventory()
+		petEngine.handleAction(.feed(item: item))
+		rewardBanner = RewardEvent(energy: 0, xp: 1, bondingBoost: 1)
+		storage.persist()
+		analytics.log(event: "snack_fed", metadata: ["sku": item.sku])
 
-                storage.decrementInventory(forSKU: item.sku)
-                inventory = storage.fetchInventory()
-                petEngine.handleAction(.feed(item: item))
-                rewardBanner = RewardEvent(energy: 0, xp: 1)
-                storage.persist()
-                analytics.log(event: "snack_fed", metadata: ["sku": item.sku])
-
-                return true
-        }
+		return true
+	}
 
 	var completionRate: Double {
 		guard !todayTasks.isEmpty else { return 0 }

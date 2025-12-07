@@ -4,12 +4,14 @@ import Combine
 struct RewardEvent: Identifiable, Equatable {
 	let id = UUID()
 	let energy: Int
+	let bondingBoost: Int?
 	let xp: Int
 	let snackName: String?
 
-	init(energy: Int, xp: Int, snackName: String? = nil) {
+	init(energy: Int, xp: Int, bondingBoost: Int? = nil, snackName: String? = nil) {
 		self.energy = energy
 		self.xp = xp
+		self.bondingBoost = bondingBoost
 		self.snackName = snackName
 	}
 }
@@ -211,18 +213,16 @@ private struct TaskRow: View {
 		let event: RewardEvent
 		
 		var body: some View {
-			HStack(spacing: 4) {
-				Image(systemName: "sparkles")
-					.foregroundStyle(.yellow)
-				
+			
 				VStack(alignment: .leading, spacing: 2) {
-					LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp) \n", style: FontTheme.body)
+					if let bondingBoost = event.bondingBoost {
+						LumioSay(text: "Bonding +\(bondingBoost)  Xp +\(event.xp) \n", style: FontTheme.body)
+					} else {
+						LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp) \n", style: FontTheme.body)
+					}
 					if let snack = event.snackName {
 						LumioSay(text: "You got a \(snack) in the bag!", style: FontTheme.body)
 					}
 				}
 			}
-			.padding(12)
-			.shadow(radius: 6)
-		}
 	}
