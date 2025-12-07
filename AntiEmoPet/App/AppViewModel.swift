@@ -657,17 +657,35 @@ final class AppViewModel: ObservableObject {
                 // Check inventory quantity first
                 if let entry = inventory.first(where: { $0.sku == sku }), entry.quantity > 0,
                    let item = shopItems.first(where: { $0.sku == sku }) {
-			storage.decrementInventory(forSKU: sku)
-			inventory = storage.fetchInventory()
-			petEngine.handleAction(.feed(item: item))
-			storage.persist()
-			analytics.log(event: "item_used", metadata: ["sku": sku])
-			logTodayEnergySnapshot()
-			return true
-		} else {
-			return false
-		}
-	}
+                        storage.decrementInventory(forSKU: sku)
+                        inventory = storage.fetchInventory()
+                        petEngine.handleAction(.feed(item: item))
+                        if item.type == .snack {
+                                rewardBanner = RewardEvent(energy: 0, xp: 1)
+                        }
+                        storage.persist()
+                        analytics.log(event: "item_used", metadata: ["sku": sku])
+                        logTodayEnergySnapshot()
+                        return true
+                } else {
+                        return false
+                }
+        }
+
+        @discardableResult
+        func feedSnack(_ item: Item) -> Bool {
+                guard item.type == .snack else { return false }
+                guard let entry = inventory.first(where: { $0.sku == item.sku }), entry.quantity > 0 else { return false }
+
+                storage.decrementInventory(forSKU: item.sku)
+                inventory = storage.fetchInventory()
+                petEngine.handleAction(.feed(item: item))
+                rewardBanner = RewardEvent(energy: 0, xp: 1)
+                storage.persist()
+                analytics.log(event: "snack_fed", metadata: ["sku": item.sku])
+
+                return true
+        }
 
 	var completionRate: Double {
 		guard !todayTasks.isEmpty else { return 0 }

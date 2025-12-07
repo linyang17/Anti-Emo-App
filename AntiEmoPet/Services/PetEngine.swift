@@ -1,10 +1,10 @@
 import Foundation
 
 enum PetActionType {
-	case pat
-	case feed(item: Item)
-	case penalty
-	case taskComplete
+        case pat
+        case feed(item: Item)
+        case penalty
+        case taskComplete
 }
 
 struct XPProgression {
@@ -41,7 +41,7 @@ final class PetEngine {
 		self.pet = newPet
 	}
 
-	// MARK: - 动作处理
+        // MARK: - 动作处理
         func handleAction(_ action: PetActionType) {
                 guard let pet else { return }
 
@@ -53,9 +53,9 @@ final class PetEngine {
                         awardXP(1, to: pet)
                 case .penalty:
                         updateBonding(for: pet, bondingAddValue: -2)
-				case .taskComplete:
-					updateBonding(for: pet, bondingAddValue: 1)
-					awardXP(1, to: pet)
+                                case .taskComplete:
+                                        updateBonding(for: pet, bondingAddValue: 1)
+                                        awardXP(1, to: pet)
 				}
 	}
 
