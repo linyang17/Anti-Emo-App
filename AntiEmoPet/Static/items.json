@@ -65,9 +65,9 @@
 			"bondingBoost": 1
 	},
 	{
-			"sku": "snack.grapes",
+			"sku": "snack.grape",
 			"type": "snack",
-			"assetName": "grapes",
+			"assetName": "grape",
 			"costEnergy": 0,
 			"bondingBoost": 1
 	},

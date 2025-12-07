@@ -216,9 +216,9 @@ private struct TaskRow: View {
 					.foregroundStyle(.yellow)
 				
 				VStack(alignment: .leading, spacing: 2) {
-					LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp) \n")
+					LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp) \n", style: FontTheme.body)
 					if let snack = event.snackName {
-						LumioSay(text: "You got some \(snack) in the bag!")
+						LumioSay(text: "You got a \(snack) in the bag!", style: FontTheme.body)
 					}
 				}
 			}

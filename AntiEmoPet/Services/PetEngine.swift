@@ -49,8 +49,8 @@ final class PetEngine {
                 case .pat:
                         updateBonding(for: pet, bondingAddValue: 1)
                 case .feed:
-                        updateBonding(for: pet, bondingAddValue: 2)
-                        awardXP(2, to: pet)
+                        updateBonding(for: pet, bondingAddValue: 1)
+                        awardXP(1, to: pet)
                 case .penalty:
                         updateBonding(for: pet, bondingAddValue: -2)
 				case .taskComplete:

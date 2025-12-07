@@ -129,34 +129,31 @@ struct ShopView: View {
 	private func shopCard(for item: Item, isSelected: Bool, isOwned: Bool, isEquipped: Bool) -> some View {
 		VStack(spacing: 6) {
 			itemImage(for: item)
+			
 			Text(item.assetName)
 				.font(.subheadline.weight(.semibold))
 				.foregroundStyle(.white)
 				.lineLimit(1)
 
-                        if item.type == .snack {
-                                HStack(spacing: 6) {
-                                        Image(systemName: "bag.fill")
-                                                .foregroundStyle(.white)
-                                        Text("x \(snackQuantity(for: item))")
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(.white)
-                                }
-                        } else if isOwned {
-                                HStack(spacing: 6) {
-                                        Image(systemName: isEquipped ? "checkmark.circle.fill" : "circle")
-                                                .foregroundStyle(isEquipped ? Color.accentColor : .white.opacity(0.7))
-                                }
-                        } else {
-                                HStack(spacing: 4) {
-                                        Image(systemName: "star.fill")
-                                                .foregroundStyle(.yellow)
-                                        Text("\(item.costEnergy)")
-                                                .font(.caption2.weight(.semibold))
-                                                .foregroundStyle(.white)
-                                }
-                        }
-                }
+			if item.type == .snack {
+					Text("x \(snackQuantity(for: item))")
+							.font(.caption.weight(.semibold))
+							.foregroundStyle(.white)
+			} else if isOwned {
+					HStack(spacing: 6) {
+							Image(systemName: isEquipped ? "checkmark.circle.fill" : "circle")
+									.foregroundStyle(isEquipped ? Color.accentColor : .white.opacity(0.7))
+					}
+			} else {
+					HStack(spacing: 4) {
+							Image(systemName: "star.fill")
+									.foregroundStyle(.yellow)
+							Text("\(item.costEnergy)")
+									.font(.caption2.weight(.semibold))
+									.foregroundStyle(.white)
+					}
+			}
+		}
 		.padding(12)
 		.frame(maxWidth: .infinity)
 		.frame(height: 150)
@@ -185,7 +182,7 @@ struct ShopView: View {
 			Image(item.assetName)
 				.resizable()
 				.scaledToFit()
-				.frame(width: 80, height: 80)
+				.frame(width: 60, height: 60)
 				.shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 6)
 		} else {
 			Image(systemName: "sparkles")
