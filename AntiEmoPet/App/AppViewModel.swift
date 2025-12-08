@@ -25,14 +25,14 @@ final class AppViewModel: ObservableObject {
 	@Published var showOnboardingCelebration = false
 	@Published var moodEntries: [MoodEntry] = []
 	@Published var energyHistory: [EnergyHistoryEntry] = []
-        @Published var energyEvents: [EnergyEvent] = []
-        @Published var inventory: [InventoryEntry] = []
-        @Published var dailyMetricsCache: [DailyActivityMetrics] = []
-        @Published var showSleepReminder = false
-        @Published var rewardBanner: RewardEvent?
-        @Published var previewPetAsset: String?
-        @Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-        @Published var shouldShowNotificationSettingsPrompt = false
+	@Published var energyEvents: [EnergyEvent] = []
+	@Published var inventory: [InventoryEntry] = []
+	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
+	@Published var showSleepReminder = false
+	@Published var rewardBanner: RewardEvent?
+	@Published var previewPetAsset: String?
+	@Published var currentLanguage: String = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
+	@Published var shouldShowNotificationSettingsPrompt = false
 	@Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
 	@Published private(set) var hasLoggedMoodThisSlot = false
 	@Published var showMoodCapture = false
@@ -57,13 +57,13 @@ final class AppViewModel: ObservableObject {
 	private let sleepReminderService = SleepReminderService()
 	private let logger = Logger(subsystem: "com.Lumio.pet", category: "AppViewModel")
 	private let refreshRecordsKey = "taskRefreshRecords"
-        private let slotScheduleKey = "taskSlotSchedule"
-        private let slotGenerationKey = "taskSlotGenerationRecords"
-        private let penaltyRecordsKey = "taskSlotPenaltyRecords"
-        private let pettingLimitKey = "dailyPettingLimit"
-        private let slotNotificationPreferenceKey = "slotNotificationPreferences"
-        private let streakAwardedKey = "streak.lastAwardedDay"
-        private var lastObservedSlot: TimeSlot?
+	private let slotScheduleKey = "taskSlotSchedule"
+	private let slotGenerationKey = "taskSlotGenerationRecords"
+	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
+	private let pettingLimitKey = "dailyPettingLimit"
+	private let slotNotificationPreferenceKey = "slotNotificationPreferences"
+	private let streakAwardedKey = "streak.lastAwardedDay"
+	private var lastObservedSlot: TimeSlot?
 	private var isLoadingData = false
 	private var awaitingLocationWeatherRefresh = false
 	private typealias RefreshRecordMap = [String: [String: Double]]

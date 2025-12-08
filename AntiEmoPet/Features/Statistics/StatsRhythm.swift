@@ -114,8 +114,7 @@ struct StatsRhythmSection: View {
 						AxisTick()
 						AxisValueLabel {
 							Text(label)
-								.appFont(FontTheme.caption)
-								.frame(maxWidth: .infinity, alignment: .center) // 水平居中
+								.frame(maxWidth: .infinity, alignment: .center)
 						}
 					}
 				}
@@ -158,7 +157,6 @@ struct StatsRhythmSection: View {
 					AxisValueLabel {
 						if let label = value.as(String.self) {
 							Text(label)
-								.appFont(FontTheme.caption)
 								.multilineTextAlignment(.center)
 								.lineLimit(nil)
 								.fixedSize(horizontal: false, vertical: true)

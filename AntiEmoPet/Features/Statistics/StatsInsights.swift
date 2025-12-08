@@ -12,7 +12,6 @@ struct StatsInsightsSection: View {
 					Text("Summary:")
 						.appFont(FontTheme.subheadline)
 					Text(mood.comment.isEmpty ? "Not enough data." : "\(mood.comment)")
-						.appFont(FontTheme.body)
 				}
 
 				Divider()
@@ -26,7 +25,6 @@ struct StatsInsightsSection: View {
 
 					// 任务完成率与情绪改善效果
 					Text(taskEffectPlaceholderText())
-						.appFont(FontTheme.body)
 						.foregroundStyle(.secondary)
 
 					// TODO: 睡眠 / 活动 等扩展信号（未来可对接health数据源）
@@ -39,7 +37,6 @@ struct StatsInsightsSection: View {
 					Text("Tips:")
 						.appFont(FontTheme.subheadline)
 					Text("\(combined)")
-						.appFont(FontTheme.body)
 						.foregroundStyle(.secondary)
 				}
 			}

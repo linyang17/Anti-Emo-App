@@ -23,6 +23,7 @@ struct MoodStatsSection: View {
 
 				
 				Divider().padding(.vertical, 6)
+				
 				HStack(spacing: 20){
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
@@ -67,7 +68,6 @@ struct MoodStatsSection: View {
 					.padding(.bottom, 12)
 				
                 Text(mood.comment.isEmpty ? "Come more often for summary" : mood.comment)
-					.appFont(FontTheme.subheadline)
 					.bold()
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -18,7 +18,6 @@ struct EnergyStatsSection: View {
 
 				Divider().padding(.vertical, 6)
 
-                // Stats Grid
 				HStack(spacing: 20) {
 					VStack(alignment: .leading, spacing: 12) {
 						VStack(alignment: .leading, spacing: 5) {
@@ -39,9 +38,8 @@ struct EnergyStatsSection: View {
 								.bold()
 						}
 					}
-					.frame(maxWidth: .w(0.45))
 					
-					Spacer()
+					Spacer(minLength: 0)
 					
 					VStack(alignment: .leading, spacing: 12) {
 						
@@ -55,7 +53,7 @@ struct EnergyStatsSection: View {
 						}
 						
 						VStack(alignment: .leading, spacing: 5) {
-							Text("Avg Tasks Done Past Week")
+							Text("Avg Done Past Week")
 								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
 							Text(String(format: "%.0f", energy.averageDailyTaskCountPastWeek))
@@ -64,12 +62,10 @@ struct EnergyStatsSection: View {
 						}
 					}
 				}
-				.frame(maxWidth: .w(0.8))
 				.padding(.bottom, 12)
 				
                 // Comment
 				Text(energy.comment.isEmpty ? "Come more often for a summary" : energy.comment)
-						.appFont(FontTheme.body)
 						.foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 
