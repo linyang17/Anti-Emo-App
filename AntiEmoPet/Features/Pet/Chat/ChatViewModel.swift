@@ -90,6 +90,22 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    func insertComfortMessage(for moodValue: Int) {
+        let message = Message(role: .pet, content: comfortMessage(for: moodValue), isSystem: true)
+        messages.append(message)
+    }
+
+    private func comfortMessage(for moodValue: Int) -> String {
+        switch moodValue {
+        case ..<35:
+            return "That sounds really tough. I'm here with you. Even tiny steps, like a deep breath or stretching, can be a start."
+        case 35..<70:
+            return "Thanks for sharing how you feel. I'm here to listen if you want to unpack it more, or we can take a gentle break together."
+        default:
+            return "I'm glad you're feeling lighter. Let's keep this good rhythm going—anything you'd like to talk about or celebrate?"
+        }
+    }
+
     private func startThinkingAnimation() {
         thinkingTask?.cancel()
         thinkingTask = Task { @MainActor in

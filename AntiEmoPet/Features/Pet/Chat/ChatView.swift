@@ -5,69 +5,78 @@ struct ChatView: View {
         @StateObject private var viewModel = ChatViewModel()
         @FocusState private var isInputFocused: Bool
         @State private var inputHeight: CGFloat = UIFont.preferredFont(forTextStyle: .body).lineHeight + 16
+        @State private var hasInjectedComfortMessage = false
+
+        let initialComfortMood: Int?
+
+        init(initialComfortMood: Int? = nil) {
+                self.initialComfortMood = initialComfortMood
+        }
 
         var body: some View {
-                VStack(spacing: 0) {
-                        ScrollViewReader { proxy in
-                                ScrollView {
-                                        LazyVStack(alignment: .leading, spacing: 12) {
-                                                ForEach(viewModel.messages) { message in
-                                                        let isUser = message.role == .user
-                                                        HStack {
-                                                                if isUser { Spacer() }
-                                                                Text(message.content)
-                                                                        .padding(12)
-                                                                        .background(
-                                                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                                                        .fill(isUser ? Color.accentColor.opacity(0.2) : Color.green.opacity(0.2))
+                ZStack {
+                        LinearGradient(
+                                colors: [Color(red: 0.07, green: 0.09, blue: 0.13), Color(red: 0.12, green: 0.15, blue: 0.18)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                        )
+                        .ignoresSafeArea()
+
+                        VStack(spacing: 0) {
+                                ScrollViewReader { proxy in
+                                        ScrollView {
+                                                LazyVStack(alignment: .leading, spacing: 16) {
+                                                        ForEach(viewModel.messages) { message in
+                                                                MessageBubble(message: message)
+                                                        }
+
+                                                        if viewModel.isSending, !viewModel.thinkingDots.isEmpty {
+                                                                HStack(alignment: .bottom) {
+                                                                        MessageBubble(
+                                                                                message: .init(role: .pet, content: viewModel.thinkingDots, isSystem: true)
                                                                         )
-                                                                        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
-                                                                if !isUser { Spacer() }
+                                                                        .id("thinking")
+                                                                        Spacer()
+                                                                }
                                                         }
                                                 }
-
-                                                if viewModel.isSending, !viewModel.thinkingDots.isEmpty {
-                                                        HStack {
-                                                                Text(viewModel.thinkingDots)
-                                                                        .appFont(FontTheme.body)
-                                                                        .padding(.horizontal, 12)
-                                                                        .padding(.vertical, 10)
-                                                                        .background(
-                                                                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                                                        .fill(Color.green.opacity(0.15))
-                                                                        )
-                                                                Spacer()
-                                                        }
-                                                        .id("thinking")
+                                                .padding(.horizontal)
+                                                .padding(.top, 12)
+                                                .padding(.bottom, 8)
+                                        }
+                                        .onChange(of: viewModel.messages.count) { oldValue, newValue in
+                                                guard newValue != oldValue else { return }
+                                                if let last = viewModel.messages.last {
+                                                        proxy.scrollTo(last.id, anchor: .bottom)
                                                 }
                                         }
-                                        .padding()
-                                }
-                                .onChange(of: viewModel.messages.count) { oldValue, newValue in
-                                        guard newValue != oldValue else { return }
-                                        if let last = viewModel.messages.last {
+                                        .onChange(of: viewModel.isSending) { _, isSending in
+                                                guard isSending, let last = viewModel.messages.last else { return }
                                                 proxy.scrollTo(last.id, anchor: .bottom)
                                         }
+                                        .onChange(of: viewModel.thinkingDots) { _, _ in
+                                                guard viewModel.isSending else { return }
+                                                proxy.scrollTo("thinking", anchor: .bottom)
+                                        }
                                 }
-                                .onChange(of: viewModel.isSending) { _, isSending in
-                                        guard isSending, let last = viewModel.messages.last else { return }
-                                        proxy.scrollTo(last.id, anchor: .bottom)
-                                }
-                                .onChange(of: viewModel.thinkingDots) { _, _ in
-                                        guard viewModel.isSending else { return }
-                                        proxy.scrollTo("thinking", anchor: .bottom)
-                                }
-                        }
 
-                        inputBar
-                                .padding(.horizontal)
-                                .padding(.vertical, 12)
-                                .background(.ultraThinMaterial)
+                                inputBar
+                                        .padding(.horizontal)
+                                        .padding(.vertical, 14)
+                                        .background(.ultraThinMaterial)
+                        }
                 }
                 .navigationTitle("Chat")
                 .task {
                         await viewModel.configureIfNeeded(appModel: appModel)
-                        isInputFocused = true
+                        if let comfort = initialComfortMood, !hasInjectedComfortMessage {
+                                viewModel.insertComfortMessage(for: comfort)
+                                hasInjectedComfortMessage = true
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                isInputFocused = true
+                        }
                 }
         }
 
@@ -99,11 +108,11 @@ struct ChatView: View {
                                 .padding(2)
 
                                 if viewModel.currentInput.isEmpty {
-                                        Text("Text here…")
+                                        Text("Write back")
                                                 .foregroundStyle(.secondary)
                                                 .padding(.horizontal, 18)
                                                 .padding(.vertical, 16)
-												.allowsHitTesting(false)
+                                                                                                .allowsHitTesting(false)
                                 }
                         }
                         .onTapGesture { isInputFocused = true }
@@ -118,11 +127,57 @@ struct ChatView: View {
                                         .padding(12)
                                         .background(
                                                 Circle()
-                                                        .fill(viewModel.canSend ? Color.accentColor : Color.gray)
+                                                        .fill(viewModel.canSend ? Color.accentColor : Color.gray.opacity(0.5))
                                         )
                         }
                         .disabled(!viewModel.canSend)
                 }
+        }
+}
+
+private struct MessageBubble: View {
+        let message: ChatViewModel.Message
+
+        private var isUser: Bool { message.role == .user }
+
+        var body: some View {
+                HStack(alignment: .bottom, spacing: 10) {
+                        if isUser { Spacer() }
+
+                        if !isUser {
+                                avatar
+                        }
+
+                        VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                                Text(message.content)
+                                        .appFont(FontTheme.body)
+                                        .foregroundStyle(isUser ? .white : .black.opacity(0.9))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                        .fill(isUser ? Color.accentColor : Color.white.opacity(0.9))
+                                                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
+                                        )
+                                        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+                        }
+
+                        if isUser {
+                                avatar
+                        }
+                }
+                .frame(maxWidth: .infinity)
+        }
+
+        private var avatar: some View {
+                Circle()
+                        .fill(isUser ? Color.accentColor : Color.white.opacity(0.92))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                                Image(systemName: isUser ? "person.fill" : "leaf.fill")
+                                        .foregroundStyle(isUser ? Color.white : Color.green)
+                                        .font(.footnote.weight(.bold))
+                        )
         }
 }
 
