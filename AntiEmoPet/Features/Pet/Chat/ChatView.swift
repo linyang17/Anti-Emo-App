@@ -86,7 +86,10 @@ struct ChatView: View {
                                 GrowingTextView(
                                         text: $viewModel.currentInput,
                                         calculatedHeight: $inputHeight,
-                                        isFocused: $isInputFocused,
+                                        isFocused: Binding<Bool>(
+                                                get: { isInputFocused },
+                                                set: { isInputFocused = $0 }
+                                        ),
                                         maxHeight: maxHeight
                                 ) {
                                         viewModel.sendCurrentMessage()

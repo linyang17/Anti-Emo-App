@@ -35,7 +35,6 @@ struct LumioPetApp: App {
                 let container = LumioPetApp.sharedModelContainer
                 // Use the main context from the container to avoid repetitive initialization/errors
                 let context = container.mainContext
-                UIAppearance.setupGlobalFonts()
                 _appModel = StateObject(wrappedValue: AppViewModel(modelContext: context))
         }
 

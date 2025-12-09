@@ -10,13 +10,13 @@ struct MoodStatsSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("Latest：")
 						.appFont(FontTheme.title3)
-                    Text("\(mood.lastMood)")
+                    Text("\(mood.lastMood) ")
 						.appFont(FontTheme.title3)
 						.bold()
                     if !mood.trend.rawValue.isEmpty {
                         Image(systemName: mood.trend.rawValue)
 							.appFont(FontTheme.headline)
-                            .foregroundStyle(.secondary)
+							.foregroundStyle(mood.trend == .up ? .green : (mood.trend == .down ? .red : .primary))
 							.bold()
                     }
                 }

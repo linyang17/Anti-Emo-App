@@ -55,7 +55,7 @@ struct MoodHeatmapView: View {
         
         var body: some View {
             RoundedRectangle(cornerRadius: 4)
-                .fill(color(for: value))
+                .fill(cellcolor(for: value))
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
                     if let v = value {
@@ -66,11 +66,11 @@ struct MoodHeatmapView: View {
                 }
         }
         
-        private func color(for value: Double?) -> Color {
+        private func cellcolor(for value: Double?) -> Color {
             guard let v = value else { return Color.gray.opacity(0.1) }
             
             if v < 40 {
-                return Color.blue.opacity(0.3 + (v / 40.0) * 0.4)
+                return Color.blue.opacity(0.8 - (v / 40.0) * 0.4)
             } else if v < 70 {
                 return Color.yellow.opacity(0.3 + ((v - 40) / 30.0) * 0.4)
             } else {

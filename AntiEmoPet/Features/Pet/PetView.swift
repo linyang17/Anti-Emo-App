@@ -143,7 +143,6 @@ struct PetView: View {
                                                 .presentationDetents([.fraction(0.55)])
                                                 .presentationBackground { sheetBackground }
                                                 .presentationDragIndicator(.hidden)
-                                                .presentationTransition(.opacity)
                 }
 
 		@ViewBuilder
@@ -346,29 +345,26 @@ struct PetView: View {
                                 appModel.showMoodCapture = true
                         } label: {
                                 Image(systemName: "plus")
-                                        .font(.title3.weight(.bold))
+								.appFont(FontTheme.title3)
                                         .foregroundStyle(.white)
-                                        .padding(14)
+                                        .padding(4)
                                         .background(frostedCircle)
                         }
                         .buttonStyle(.plain)
 
                         NavigationLink {
-                                ChatView()
-                                        .environmentObject(appModel)
+							ChatView()
+									.environmentObject(appModel)
                         } label: {
                                 HStack(alignment: .center, spacing: 12) {
                                         VStack(alignment: .leading, spacing: 4) {
-                                                Text("Write back")
-                                                        .appFont(FontTheme.subheadline)
-                                                        .foregroundStyle(.white)
-                                                Text("Share how you're feeling today")
+                                                Text("Share your thoughts with Lumio")
                                                         .appFont(FontTheme.caption)
                                                         .foregroundStyle(.white.opacity(0.8))
                                         }
                                         Spacer()
-                                        Image(systemName: "arrow.up.right")
-                                                .font(.title3.weight(.semibold))
+                                        Image(systemName: "paperplane.fill")
+												.appFont(FontTheme.title3)
                                                 .foregroundStyle(.white.opacity(0.9))
                                 }
                                 .padding(.vertical, 12)
@@ -499,8 +495,8 @@ struct PetView: View {
 				ForEach(0..<3) { index in
 					Image(systemName: "heart.fill")
 						.appFont(FontTheme.title)
-						.foregroundStyle(Color.pink.opacity(0.85 - Double(index) * 0.2))
-						.offset(x: CGFloat(index * 5), y: CGFloat(-240 - index * 10))
+						.foregroundStyle(Color.pink.opacity(0.85 - Double(index) * 0.25))
+						.offset(x: CGFloat(index * 5), y: CGFloat(-240 - index * 5))
 						.scaleEffect(1 + CGFloat(index) * 0.2)
 				}
 			}
@@ -549,10 +545,10 @@ struct PetView: View {
 
                 @ViewBuilder
                 private var overlayLayers: some View {
-                        ZStack {
-                                        if isInteractionLocked {
-                                                        Color.clear
-                                                                .ignoresSafeArea()
+					ZStack {
+							if isInteractionLocked {
+								Color.clear
+								.ignoresSafeArea()
 								.zIndex(5)
 					}
 
@@ -594,11 +590,11 @@ struct PetView: View {
 					.zIndex(30)
 				}
 
-                                if appModel.showOnboardingCelebration {
-                                        Color.black.opacity(0.35)
-                                                .ignoresSafeArea()
-                                                .transition(.opacity)
-                                                .zIndex(39)
+				if appModel.showOnboardingCelebration {
+						Color.black.opacity(0.35)
+								.ignoresSafeArea()
+								.transition(.opacity)
+								.zIndex(39)
 					OnboardingCelebrationView {
 						appModel.dismissOnboardingCelebration()
 					}
@@ -607,11 +603,11 @@ struct PetView: View {
 					.offset(y: UIScreen.main.bounds.height * 0.18)
 					.transition(.scale(scale: 0.9).combined(with: .opacity))
 					.zIndex(40)
-                                }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
-                        .animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.showMoodCapture)
+				}
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+				.animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.pendingMoodFeedbackTask)
+				.animation(.spring(response: 1, dampingFraction: 0.8), value: appModel.showMoodCapture)
                 }
 
                 private var petAssetName: String {

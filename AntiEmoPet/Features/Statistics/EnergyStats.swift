@@ -91,18 +91,18 @@ struct EnergyStatsSection: View {
 						.foregroundStyle(by: .value("Category", item.key.localizedTitle))
                         .cornerRadius(4)
                     }
-                                        .chartForegroundStyleScale(
-                                                domain: sortedCategories.map { $0.localizedTitle },
-                                                range: sortedCategories.map { theme.gradient(for: $0) }
-                                        )
+                    .chartForegroundStyleScale(
+                        domain: sortedCategories.map { $0.localizedTitle },
+                        range: sortedCategories.map { theme.gradient(for: $0) }
+                    )
                     .frame(height: 200)
-                                        .chartLegend(position: .bottom, alignment: .center, spacing: 24) { legend in
-                                                legend.frame(maxWidth: .w(0.8))
-                                        }
+                    .chartLegend(position: .bottom, alignment: .center, spacing: 24) {
+                        HStack { }
+							.frame(maxWidth: .w(0.8))
+                    }
                 }
-                        }
+            }
             .padding(.vertical, 6)
-                }
         }
+    }
 }
-
