@@ -31,12 +31,13 @@ struct LumioPetApp: App {
 	// MARK: - App ViewModel
 	@StateObject private var appModel: AppViewModel
 
-	init() {
-		let container = LumioPetApp.sharedModelContainer
-		// Use the main context from the container to avoid repetitive initialization/errors
-		let context = container.mainContext
-		_appModel = StateObject(wrappedValue: AppViewModel(modelContext: context))
-	}
+        init() {
+                let container = LumioPetApp.sharedModelContainer
+                // Use the main context from the container to avoid repetitive initialization/errors
+                let context = container.mainContext
+                UIAppearance.setupGlobalFonts()
+                _appModel = StateObject(wrappedValue: AppViewModel(modelContext: context))
+        }
 
 	// MARK: - Scene Definition
 	var body: some Scene {

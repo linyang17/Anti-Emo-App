@@ -137,13 +137,14 @@ struct PetView: View {
                                 }
                 }
 
-		@ViewBuilder
-		private func sheetStyled<Content: View>(_ content: Content) -> some View {
-				content
-						.presentationDetents([.fraction(0.55)])
-						.presentationBackground { sheetBackground }
-						.presentationDragIndicator(.hidden)
-		}
+                @ViewBuilder
+                private func sheetStyled<Content: View>(_ content: Content) -> some View {
+                                content
+                                                .presentationDetents([.fraction(0.55)])
+                                                .presentationBackground { sheetBackground }
+                                                .presentationDragIndicator(.hidden)
+                                                .presentationTransition(.opacity)
+                }
 
 		@ViewBuilder
 		private var sheetBackground: some View {
@@ -326,31 +327,110 @@ struct PetView: View {
 		.buttonStyle(.borderless)
 	}
 
-	private var MoreButton: some View {
-		NavigationLink(
-			destination: MoreView(energyHistory: appModel.energyHistory)
-				.environmentObject(appModel)
-		) {
+        private var MoreButton: some View {
+                NavigationLink(
+                        destination: MoreView(energyHistory: appModel.energyHistory)
+                                .environmentObject(appModel)
+                ) {
 			Image(systemName: "ellipsis.circle")
 				.appFont(FontTheme.title)
 				.padding(12)
-				.foregroundStyle(.white)
-		}
-		.buttonStyle(.plain)
-	}
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+        }
+
+        private var chatEntryBar: some View {
+                HStack(spacing: 12) {
+                        Button {
+                                appModel.showMoodCapture = true
+                        } label: {
+                                Image(systemName: "plus")
+                                        .font(.title3.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .padding(14)
+                                        .background(frostedCircle)
+                        }
+                        .buttonStyle(.plain)
+
+                        NavigationLink {
+                                ChatView()
+                                        .environmentObject(appModel)
+                        } label: {
+                                HStack(alignment: .center, spacing: 12) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                                Text("Write back")
+                                                        .appFont(FontTheme.subheadline)
+                                                        .foregroundStyle(.white)
+                                                Text("Share how you're feeling today")
+                                                        .appFont(FontTheme.caption)
+                                                        .foregroundStyle(.white.opacity(0.8))
+                                        }
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                                .font(.title3.weight(.semibold))
+                                                .foregroundStyle(.white.opacity(0.9))
+                                }
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 14)
+                                .background(frostedCapsule)
+                        }
+                        .buttonStyle(.plain)
+                }
+                .padding(12)
+                .background(frostedCapsule)
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                                .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 12)
+        }
+
+        private var frostedCapsule: some View {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                                LinearGradient(
+                                        colors: [Color.white.opacity(0.28), Color.white.opacity(0.12)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                )
+                        )
+                        .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+        }
+
+        private var frostedCircle: some View {
+                Circle()
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                                LinearGradient(
+                                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                )
+                        )
+                        .overlay(
+                                Circle()
+                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+        }
 
         @ViewBuilder
         private func decorationStack(for decorations: [String]) -> some View {
-                var layered = decorations.filter { !$0.isEmpty }
-                if let preview = appModel.previewPetAsset, activeSheet == .shop {
-                        if let lastIndex = layered.indices.last {
-                                //layered[lastIndex] = preview
-                        } else {
-                                //layered = [preview]
-                        }
-                }
+                let catalog = Dictionary(uniqueKeysWithValues: appModel.shopItems.map { ($0.assetName, $0.type) })
+                let layered = decorations.filter { !$0.isEmpty }
 
-                let visible = Array(layered.prefix(3))
+                let uniqueByType = layered.reversed().reduce(into: [(String, ItemType?)]()) { result, asset in
+                        let type = catalog[asset]
+                        guard !result.contains(where: { $0.1 == type }) else { return }
+                        result.append((asset, type))
+                }.reversed().map { $0.0 }
+
+                let visible = Array(uniqueByType.prefix(3))
                 if !visible.isEmpty {
                         HStack(spacing: -12) {
                                 ForEach(Array(visible.enumerated()), id: \.offset) { index, asset in
@@ -440,7 +520,7 @@ struct PetView: View {
 	}
 
 	
-		@ViewBuilder
+                @ViewBuilder
                 private var controlOverlay: some View {
                                 ZStack {
                                                 // Base UI: top-right more/tasks buttons
@@ -458,6 +538,11 @@ struct PetView: View {
                                                 shopButton
                                                                 .offset(x: .w(0.1), y: -.h(0.15))
                                                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+
+                                                chatEntryBar
+                                                                .padding(.horizontal, .w(0.08))
+                                                                .padding(.bottom, .h(0.04))
+                                                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                                 }
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

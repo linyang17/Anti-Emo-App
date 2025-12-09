@@ -50,7 +50,7 @@ struct TasksView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             if let report = appModel.weatherReport {
                 HStack(spacing: 8) {
                     Text(report.currentWeather.rawValue.capitalized)
@@ -70,36 +70,61 @@ struct TasksView: View {
             }
 
             Spacer()
-			
-#if !DEBUG
-            if viewModel.isRefreshing {
-                ProgressView()
-            } else if appModel.canRefreshCurrentSlot {
-                Button {
-                    Task(priority: .userInitiated) {
-                        await viewModel.forceRefresh(appModel: appModel)
-                    }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
-                        .padding(12)
+
+            VStack(alignment: .trailing, spacing: 6) {
+                if let nextTime = appModel.nextTaskGenerationTime {
+                    Text("Next tasks at \(formattedTime(nextTime))")
+                        .appFont(FontTheme.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Today's tasks are ready")
+                        .appFont(FontTheme.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .appFont(FontTheme.body)
-            } else if allTasksCompleted {
-                Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, \n come back in the next session" : "All completed!")
-                    .appFont(FontTheme.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Refresh")
-                    .appFont(FontTheme.body)
-                    .foregroundStyle(.secondary)
-                    .padding(12)
-            }
+
+#if !DEBUG
+                refreshControl
 #endif
+            }
         }
     }
+
+#if !DEBUG
+    @ViewBuilder
+    private var refreshControl: some View {
+        if viewModel.isRefreshing {
+            ProgressView()
+        } else if appModel.canRefreshCurrentSlot {
+            Button {
+                Task(priority: .userInitiated) {
+                    await viewModel.forceRefresh(appModel: appModel)
+                }
+            } label: {
+                Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+                    .padding(12)
+            }
+            .appFont(FontTheme.body)
+        } else if allTasksCompleted {
+            Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, \n come back in the next session" : "All completed!")
+                .appFont(FontTheme.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            Text("Refresh")
+                .appFont(FontTheme.body)
+                .foregroundStyle(.secondary)
+                .padding(12)
+        }
+    }
+#endif
     
     private var allTasksCompleted: Bool {
         !appModel.todayTasks.isEmpty && appModel.todayTasks.allSatisfy { $0.status == .completed }
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 

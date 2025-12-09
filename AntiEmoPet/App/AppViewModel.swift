@@ -98,9 +98,13 @@ final class AppViewModel: ObservableObject {
 	}
 
 	// MARK: - Core Properties
-	var totalEnergy: Int {
-		userStats?.totalEnergy ?? 0
-	}
+        var totalEnergy: Int {
+                userStats?.totalEnergy ?? 0
+        }
+
+        var nextTaskGenerationTime: Date? {
+                nextScheduledTrigger(after: Date())
+        }
 	
 	// MARK: - Load data
 	
@@ -631,28 +635,35 @@ final class AppViewModel: ObservableObject {
 		}
 	}
 
-	func isEquipped(_ item: Item) -> Bool {
-		guard let pet else { return false }
-		return pet.decorations.contains(item.assetName)
-	}
+    func isEquipped(_ item: Item) -> Bool {
+        guard let pet else { return false }
+        return pet.decorations.contains(item.assetName)
+    }
 
-	func equip(item: Item) {
-		guard let pet, !item.assetName.isEmpty else { return }
-		if !pet.decorations.contains(item.assetName) {
-			pet.decorations.append(item.assetName)
-			storage.persist()
-			objectWillChange.send()
-		}
-	}
+    func equip(item: Item) {
+        guard let pet, !item.assetName.isEmpty else { return }
 
-	func unequip(item: Item) {
-		guard let pet else { return }
-		let countBefore = pet.decorations.count
-		pet.decorations.removeAll { $0 == item.assetName }
-		guard pet.decorations.count != countBefore else { return }
-		storage.persist()
-		objectWillChange.send()
-	}
+        // Ensure only one item per category by removing other decorations of the same type
+        let sameCategoryAssets = shopItems.filter { $0.type == item.type }.map(\.assetName)
+        if !sameCategoryAssets.isEmpty {
+            pet.decorations.removeAll { sameCategoryAssets.contains($0) && $0 != item.assetName }
+        }
+
+        if !pet.decorations.contains(item.assetName) {
+            pet.decorations.append(item.assetName)
+            storage.persist()
+            objectWillChange.send()
+        }
+    }
+
+    func unequip(item: Item) {
+        guard let pet else { return }
+        let countBefore = pet.decorations.count
+        pet.decorations.removeAll { $0 == item.assetName }
+        guard pet.decorations.count != countBefore else { return }
+        storage.persist()
+        objectWillChange.send()
+    }
 
 	@discardableResult
 	func feedSnack(_ item: Item) -> Bool {
@@ -669,11 +680,32 @@ final class AppViewModel: ObservableObject {
 		return true
 	}
 
-	var completionRate: Double {
-		guard !todayTasks.isEmpty else { return 0 }
-		let completed = todayTasks.filter { $0.status == .completed }.count
-		return Double(completed) / Double(todayTasks.count)
-	}
+        var completionRate: Double {
+                guard !todayTasks.isEmpty else { return 0 }
+                let completed = todayTasks.filter { $0.status == .completed }.count
+                return Double(completed) / Double(todayTasks.count)
+        }
+
+        func currentTaskStreak(on date: Date = Date()) -> Int {
+                let calendar = TimeZoneManager.shared.calendar
+                let recentTasks = storage.fetchTasks(since: 30, excludingCompleted: false, includeArchived: true, includeOnboarding: false)
+                let grouped = Dictionary(grouping: recentTasks) { calendar.startOfDay(for: $0.date) }
+                let sortedDays = grouped.keys.sorted(by: >)
+                guard var cursor = sortedDays.first else { return 0 }
+
+                var streak = 0
+                for day in sortedDays {
+                        guard calendar.isDate(day, inSameDayAs: cursor) else { break }
+                        guard let tasksForDay = grouped[day], !tasksForDay.isEmpty else { break }
+                        let allCompleted = tasksForDay.allSatisfy { $0.status == .completed }
+                        guard allCompleted else { break }
+                        streak += 1
+                        guard let previousDay = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+                        cursor = previousDay
+                }
+
+                return streak
+        }
 
         func logTodayEnergySnapshot() {
                 guard userStats != nil else { return }
