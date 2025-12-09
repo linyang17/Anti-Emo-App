@@ -241,12 +241,19 @@ private struct TaskRow: View {
 			
 				VStack(alignment: .leading, spacing: 2) {
 					if let bondingBoost = event.bondingBoost {
-						LumioSay(text: "Bonding +\(bondingBoost)  Xp +\(event.xp) \n", style: FontTheme.body)
+						LumioSay(
+							text: "Bonding +\(bondingBoost)  Xp +\(event.xp) \n",
+							style: FontTheme.subheadline
+						)
 					} else {
-						LumioSay(text: "Energy +\(event.energy)  Xp +\(event.xp) \n", style: FontTheme.body)
+						LumioSay(
+							text: "Energy +\(event.energy)  Xp +\(event.xp) \n",
+							style: FontTheme.subheadline)
 					}
 					if let snack = event.snackName {
-						LumioSay(text: "You got a \(snack) in the bag!", style: FontTheme.body)
+						LumioSay(
+							text: "You got a \(snack) in the bag!",
+							style: FontTheme.subheadline)
 					}
 				}
 			}

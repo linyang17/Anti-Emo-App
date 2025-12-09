@@ -14,20 +14,21 @@ struct MoodCaptureOverlayView: View {
 
         // MARK: - Body
         var body: some View {
-                VStack(spacing: 24) {
+                VStack(spacing: 18) {
                         Text("How do you feel now?")
-                                .appFont(FontTheme.headline)
+							.appFont(FontTheme.headline)
+								.bold()
                                 .foregroundStyle(.white)
 
-                        VStack(spacing: 12) {
+                        VStack(spacing: 4) {
                                 HStack {
                                         Text("10")
-                                                .foregroundStyle(.white.opacity(0.7))
-                                                .appFont(FontTheme.body)
+												.appFont(FontTheme.subheadline)
+                                                .foregroundStyle(.white)
                                         Spacer()
                                         Text("100")
-                                                .foregroundStyle(.white.opacity(0.7))
-                                                .appFont(FontTheme.body)
+												.appFont(FontTheme.subheadline)
+                                                .foregroundStyle(.white)
                                 }
 
                                 Slider(
@@ -50,42 +51,26 @@ struct MoodCaptureOverlayView: View {
                                         onSave(value)
                                 }
                         }) {
-                                Text("Save")
-                                        .appFont(FontTheme.subheadline)
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(
-                                                LinearGradient(
-                                                        colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.7)],
-                                                        startPoint: .leading,
-                                                        endPoint: .trailing
-                                                ),
-                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        )
+							Text("Save")
+									.appFont(FontTheme.subheadline)
+									.bold()
+									.foregroundStyle(.white)
+									.frame(maxWidth: .w(0.5))
+									.padding(.vertical, 8)
+									.background(
+											LinearGradient(
+												colors: [Color.indigo.opacity(0.8), Color.pink.opacity(0.7)],
+													startPoint: .leading,
+													endPoint: .trailing
+											),
+											in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+									)
                         }
                         .disabled(value == nil)
                         .opacity(value == nil ? 0.7 : 1)
                 }
-                .padding(26)
-                .background(glassSurface)
-                .padding(32)
-        }
-
-        private var glassSurface: some View {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                                LinearGradient(
-                                        colors: [Color.white.opacity(0.3), Color.white.opacity(0.1)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                )
-                        )
-                        .overlay(
-                                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 16)
+                .padding(24)
+				.background(FrostedCapsule(opacity: 0.95))
+				.frame(maxWidth: .w(0.7))
         }
 }

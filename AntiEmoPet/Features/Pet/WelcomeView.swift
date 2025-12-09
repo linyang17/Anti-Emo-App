@@ -10,8 +10,10 @@ struct WelcomeView: View {
 	private var welcomeText: some View {
                 if appModel.userStats?.isOnboard == true {
 			LumioSay(text: greeting)
+				.shadow(color: .black.opacity(0.15), radius: 12, x: 1, y: 3)
 		} else {
 			LumioSay(text: "Now we know each other.\n Our Journey has begun!")
+				.shadow(color: .black.opacity(0.15), radius: 12, x: 1, y: 3)
 		}
 	}
 	

@@ -103,6 +103,7 @@ struct ChatView: View {
                                                 .foregroundStyle(.secondary)
                                                 .padding(.horizontal, 18)
                                                 .padding(.vertical, 16)
+												.allowsHitTesting(false)
                                 }
                         }
                         .onTapGesture { isInputFocused = true }
