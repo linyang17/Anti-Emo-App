@@ -15,11 +15,11 @@ struct ProfileView: View {
                     }
                 }
 				
-				Section("Log") {
-					Label("You've met Lumio for: \(stats.totalDays) days", systemImage: "flame")
-					// TODO: add current streak days
-					Label("Total tasks completed：\(stats.completedTasksCount)", systemImage: "checkmark.circle")
-				}
+                Section("Log") {
+                        Label("You've met Lumio for: \(stats.totalDays) days", systemImage: "flame")
+                        Label("Current streak: \(appModel.currentTaskStreak()) days", systemImage: "calendar")
+                        Label("Total tasks completed：\(stats.completedTasksCount)", systemImage: "checkmark.circle")
+                }
 				
             }
         }

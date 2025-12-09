@@ -55,20 +55,27 @@ extension Text {
 
 
 extension UIAppearance {
-	static func setupGlobalFonts() {
-		let logger = Logger(subsystem: "com.Lumio.pet", category: "FontTheme")
-		guard let abeezee16 = UIFont(name: "ABeeZee-Regular", size: 16) else {
-			logger.error("Failed to load ABeeZee-Regular font.")
-			return
-		}
+        static func setupGlobalFonts() {
+                let logger = Logger(subsystem: "com.Lumio.pet", category: "FontTheme")
+                guard let abeezee16 = UIFont(name: "ABeeZee-Regular", size: 16) else {
+                        logger.error("Failed to load ABeeZee-Regular font.")
+                        return
+                }
 
-		UINavigationBar.appearance().titleTextAttributes = [
-			.font: UIFont(name: "ABeeZee-Regular", size: 24)!
-		]
+                let titleFont = UIFont(name: "ABeeZee-Regular", size: 24) ?? abeezee16
+                let largeTitleFont = UIFont(name: "ABeeZee-Regular", size: 32) ?? abeezee16
 
-		UIBarButtonItem.appearance().setTitleTextAttributes([
-			.font: UIFont(name: "ABeeZee-Regular", size: 16)!
-		], for: .normal)
+                UINavigationBar.appearance().titleTextAttributes = [
+                        .font: titleFont
+                ]
+
+                UINavigationBar.appearance().largeTitleTextAttributes = [
+                        .font: largeTitleFont
+                ]
+
+                UIBarButtonItem.appearance().setTitleTextAttributes([
+                        .font: UIFont(name: "ABeeZee-Regular", size: 16)!
+                ], for: .normal)
 
 		UITextField.appearance().defaultTextAttributes = [
 			.font: abeezee16
