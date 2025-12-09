@@ -11,16 +11,18 @@ struct PetView: View {
 		@State private var taskBreathUp: Bool = false
 		@State private var taskFloatTask: Task<Void, Never>?
 		@State private var showPettingHearts = false
-		@State private var pettingEffectTask: Task<Void, Never>?
-		@State private var activeReward: RewardEvent?
-		@State private var rewardOpacity: Double = 0
-				@State private var bannerTask: Task<Void, Never>?
-				@State private var showMoodFeedback = false
-				@State private var appearOpacity: Double = 0
+                @State private var pettingEffectTask: Task<Void, Never>?
+                @State private var activeReward: RewardEvent?
+                @State private var rewardOpacity: Double = 0
+                                @State private var bannerTask: Task<Void, Never>?
+                                @State private var showMoodFeedback = false
+                                @State private var appearOpacity: Double = 0
+                                @State private var navigateToChatFromPrompt = false
+                                @State private var promptComfortValue: Int?
 
-		private var isInteractionLocked: Bool {
-				(appModel.showMoodCapture && !appModel.showOnboarding) || activeReward != nil || showMoodFeedback
-		}
+                private var isInteractionLocked: Bool {
+                                (appModel.showMoodCapture && !appModel.showOnboarding) || activeReward != nil || showMoodFeedback || appModel.showMoodChatPrompt
+                }
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -39,13 +41,22 @@ struct PetView: View {
 												content()
 																.zIndex(activeSheet == .shop ? 5 : 0)
 
-												controlOverlay
-																.zIndex(activeSheet == .shop ? 0 : 3)
+                                                                                                controlOverlay
+                                                                                                                               .zIndex(activeSheet == .shop ? 0 : 3)
 
-												overlayLayers
-																.zIndex(10)
-								}
-								.opacity(appearOpacity)
+                                                                                                overlayLayers
+                                                                                                                               .zIndex(10)
+
+                                                                                                NavigationLink(isActive: $navigateToChatFromPrompt) {
+                                                                                                                               ChatView(initialComfortMood: promptComfortValue)
+                                                                                                                               .environmentObject(appModel)
+                                                                                                } label: {
+                                                                                                                               EmptyView()
+                                                                                                }
+                                                                                                .buttonStyle(.plain)
+                                                                                                .hidden()
+                                                                }
+                                                                .opacity(appearOpacity)
 								.sheet(item: $activeSheet) { sheet in
 												switch sheet {
 												case .tasks:
@@ -335,12 +346,12 @@ struct PetView: View {
 	}
 
 	private var chatEntryBar: some View {
-			HStack(spacing: 12) {
-					Button {
-							appModel.showMoodCapture = true
-					} label: {
-							Image(systemName: "plus")
-									.appFont(FontTheme.title2)
+                        HStack(spacing: 12) {
+                                        Button {
+                                                        appModel.startManualMoodCapture()
+                                        } label: {
+                                                        Image(systemName: "plus")
+                                                                        .appFont(FontTheme.title2)
 									.bold()
 									.foregroundStyle(.white)
 									.padding(10)
@@ -502,28 +513,50 @@ struct PetView: View {
 		}
 
 		@ViewBuilder
-		private var overlayLayers: some View {
-			ZStack {
-					if isInteractionLocked {
-						Color.clear
-						.ignoresSafeArea()
-						.zIndex(5)
-			}
+                private var overlayLayers: some View {
+                        ZStack {
+                                        if isInteractionLocked {
+                                                Color.clear
+                                                .ignoresSafeArea()
+                                                .zIndex(5)
+                        }
 
-			// Overlays ABOVE the buttons
-			if appModel.showMoodCapture && !appModel.showOnboarding {
-					MoodCaptureOverlayView() { value in
-							appModel.recordMoodOnLaunch(value: value)
-								}
-			.frame(maxWidth: 360)
-			.offset(y: -UIScreen.main.bounds.height * 0.1)
-			.transition(.scale(scale: 0.92).combined(with: .opacity))
-			.zIndex(10)
-		}
+                        // Overlays ABOVE the buttons
+                        if appModel.showMoodCapture && !appModel.showOnboarding {
+                                        MoodCaptureOverlayView() { value in
+                                                        appModel.recordMoodOnLaunch(value: value)
+                                                                }
+                        .frame(maxWidth: 360)
+                        .offset(y: -UIScreen.main.bounds.height * 0.1)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        .zIndex(10)
+                }
 
-		if let reward = activeReward {
-			Color.clear
-				.ignoresSafeArea()
+                if appModel.showMoodChatPrompt {
+                        Color.black.opacity(0.15)
+                                .ignoresSafeArea()
+                                .zIndex(14)
+
+                        MoodChatPromptView(
+                                onMaybeLater: {
+                                        appModel.dismissMoodChatPrompt(clearValue: true)
+                                },
+                                onConfirm: {
+                                        promptComfortValue = promptComfortValue ?? appModel.consumeComfortMoodValue()
+                                        appModel.dismissMoodChatPrompt()
+                                        navigateToChatFromPrompt = true
+                                }
+                        )
+                        .frame(maxWidth: 320)
+                        .padding(.horizontal)
+                        .offset(y: UIScreen.main.bounds.height * 0.14)
+                        .transition(.scale(scale: 0.95).combined(with: .opacity))
+                        .zIndex(15)
+                }
+
+                if let reward = activeReward {
+                        Color.clear
+                                .ignoresSafeArea()
 				.zIndex(19)
 			RewardToastView(event: reward)
 				.opacity(rewardOpacity)

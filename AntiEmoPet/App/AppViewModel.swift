@@ -21,11 +21,12 @@ final class AppViewModel: ObservableObject {
 	var weather: WeatherType { weatherReport?.currentWeather ?? .sunny }
 	@Published var sunEvents: [Date: SunTimes] = [:]
 	@Published var isLoading = true
-	@Published var showOnboarding = true
-	@Published var showOnboardingCelebration = false
-	@Published var moodEntries: [MoodEntry] = []
-	@Published var energyHistory: [EnergyHistoryEntry] = []
-	@Published var energyEvents: [EnergyEvent] = []
+        @Published var showOnboarding = true
+        @Published var showOnboardingCelebration = false
+        @Published var showMoodChatPrompt = false
+        @Published var moodEntries: [MoodEntry] = []
+        @Published var energyHistory: [EnergyHistoryEntry] = []
+        @Published var energyEvents: [EnergyEvent] = []
 	@Published var inventory: [InventoryEntry] = []
 	@Published var dailyMetricsCache: [DailyActivityMetrics] = []
 	@Published var showSleepReminder = false
@@ -35,9 +36,11 @@ final class AppViewModel: ObservableObject {
 	@Published var shouldShowNotificationSettingsPrompt = false
 	@Published var slotNotificationPreferences: [TimeSlot: Bool] = [:]
 	@Published private(set) var hasLoggedMoodThisSlot = false
-	@Published var showMoodCapture = false
-	@Published var shouldForceMoodCapture = false
-	@Published var pendingMoodFeedbackTask: UserTask?
+        @Published var showMoodCapture = false
+        @Published var shouldForceMoodCapture = false
+        @Published var pendingMoodFeedbackTask: UserTask?
+        @Published var pendingComfortMoodValue: Int?
+        @Published var moodCaptureSource: MoodEntry.MoodSource = .appOpen
 	@Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
 	@Published var pettingNotice: String?
@@ -227,25 +230,26 @@ final class AppViewModel: ObservableObject {
 		
 	}
 
-	func refreshIfNeeded() async {
-		logger.info("Refreshing app data…")
-		await load()
-		// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
-		if !showOnboarding && !showSleepReminder {
-			checkAndShowMoodCapture()
-		}
-	}
-	
-	// MARK: - Task Management
+        func refreshIfNeeded() async {
+                logger.info("Refreshing app data…")
+                await load()
+                // 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
+                if !showOnboarding && !showSleepReminder {
+                        checkAndShowMoodCapture()
+                }
+        }
 
-		/// 检查当前时段是否已记录情绪，如果没有则显示弹窗
-		func checkAndShowMoodCapture() {
-			refreshMoodLoggingState()
-			let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-			// Night 时段不需要强制情绪记录
-			guard currentSlot != .night else {
-				showMoodCapture = false
-				shouldForceMoodCapture = false
+        // MARK: - Task Management
+
+                /// 检查当前时段是否已记录情绪，如果没有则显示弹窗
+                func checkAndShowMoodCapture() {
+                        refreshMoodLoggingState()
+                        moodCaptureSource = .appOpen
+                        let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+                        // Night 时段不需要强制情绪记录
+                        guard currentSlot != .night else {
+                                showMoodCapture = false
+                                shouldForceMoodCapture = false
 				return
 			}
 			guard !hasLoggedMoodThisSlot else {
@@ -264,10 +268,36 @@ final class AppViewModel: ObservableObject {
                         showMoodCapture = shouldForceMoodCapture
                         return
                 }
-                addMoodEntry(value: value, source: .appOpen)
+                let source = moodCaptureSource
+                addMoodEntry(value: value, source: source)
                 showMoodCapture = false
                 shouldForceMoodCapture = false
-				hasLoggedMoodThisSlot = true
+                                hasLoggedMoodThisSlot = true
+
+                if source == .manual {
+                        pendingComfortMoodValue = value
+                        showMoodChatPrompt = true
+                }
+
+                moodCaptureSource = .appOpen
+        }
+
+        func startManualMoodCapture() {
+                moodCaptureSource = .manual
+                shouldForceMoodCapture = false
+                showMoodCapture = true
+        }
+
+        func consumeComfortMoodValue() -> Int? {
+                defer { pendingComfortMoodValue = nil }
+                return pendingComfortMoodValue
+        }
+
+        func dismissMoodChatPrompt(clearValue: Bool = false) {
+                showMoodChatPrompt = false
+                if clearValue {
+                        pendingComfortMoodValue = nil
+                }
         }
 
 		// MARK: - Task Status Update
