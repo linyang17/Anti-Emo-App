@@ -47,7 +47,7 @@ struct EnergyStatsSection: View {
 							Text("Trend")
 								.appFont(FontTheme.subheadline)
 								.foregroundStyle(.secondary)
-							Text(energy.trend.rawValue)
+							Text(Image(systemName: energy.trend.rawValue))
 								.font(.title3.weight(.medium))
 								.foregroundStyle(energy.trend == .up ? .green : (energy.trend == .down ? .red : .primary))
 						}

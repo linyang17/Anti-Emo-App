@@ -15,7 +15,7 @@ struct MoodStatsSection: View {
 						.bold()
                     if !mood.trend.rawValue.isEmpty {
                         Image(systemName: mood.trend.rawValue)
-							.appFont(FontTheme.title3)
+							.appFont(FontTheme.headline)
                             .foregroundStyle(.secondary)
 							.bold()
                     }
