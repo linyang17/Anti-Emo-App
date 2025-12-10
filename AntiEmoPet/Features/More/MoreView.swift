@@ -6,29 +6,18 @@ struct MoreView: View {
 
 	var body: some View {
 		List {
-			Section(header: Text("Chat")) {
-				NavigationLink(destination: ChatView().environmentObject(appModel)) {
-					Label("Chat", systemImage: "message")
-				}
-			}
 
 			Section(header: Text("Statistics")) {
-                                NavigationLink(
-                                        destination: StatisticsView()
-                                                .environmentObject(appModel)
-                                ) {
-                                        Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
-                                }
-								
-								NavigationLink(destination: InsightsView().environmentObject(appModel)) {
-										Label("Insights", systemImage: "lightbulb.max")
-								}
+				NavigationLink(
+					destination: StatisticsView().environmentObject(appModel)) {
+					Label("Statistics", systemImage: "chart.line.uptrend.xyaxis")
+				}
 				
-                                NavigationLink(destination: TaskHistoryView().environmentObject(appModel)) {
-                                        Label("History", systemImage: "clock.arrow.circlepath")
-                                }
-
+				NavigationLink(destination: InsightsView().environmentObject(appModel)) {
+					Label("Insights", systemImage: "lightbulb.max")
+				}
 			}
+			
 			Section(header: Text("User")) {
 				NavigationLink(destination: ProfileView().environmentObject(appModel)) {
 					Label("Profile", systemImage: "person")

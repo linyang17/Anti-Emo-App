@@ -9,10 +9,9 @@ struct TaskHistoryView: View {
         @State private var errorMessage: String?
         @State private var isImporting = false
         @State private var importMessage: String?
-        @State private var isSharingExport = false
 
         private let historyDays = 90
-        private var excelTypes: [UTType] {
+        private var importTypes: [UTType] {
                 [UTType(filenameExtension: "xls"), UTType(filenameExtension: "xlsx")].compactMap { $0 }
         }
 
@@ -25,6 +24,12 @@ struct TaskHistoryView: View {
                                         Label("Export last \(historyDays) days", systemImage: "square.and.arrow.up")
                                 }
                                 .disabled(appModel.taskHistorySections(days: historyDays).isEmpty)
+							
+								if let exportURL {
+										ShareLink(item: exportURL) {
+												Label("Share export file", systemImage: "arrow.up.forward.app")
+										}
+								}
 
                                 Button {
                                         isImporting = true
@@ -77,7 +82,7 @@ struct TaskHistoryView: View {
                 }
                 .fileImporter(
                         isPresented: $isImporting,
-                        allowedContentTypes: excelTypes + [.data]
+                        allowedContentTypes: importTypes + [.data]
                 ) { result in
                         switch result {
                         case .success(let url):
@@ -92,11 +97,6 @@ struct TaskHistoryView: View {
                                 errorMessage = error.localizedDescription
                         }
                 }
-                .sheet(isPresented: $isSharingExport) {
-                        if let exportURL {
-                                ShareSheet(activityItems: [exportURL])
-                        }
-                }
         }
 
         private func loadHistory() {
@@ -109,7 +109,6 @@ struct TaskHistoryView: View {
                         return
                 }
                 exportURL = url
-                isSharingExport = true
         }
 
         private func dateLabel(for date: Date) -> String {
@@ -127,15 +126,7 @@ struct TaskHistoryView: View {
         }
 }
 
-private struct ShareSheet: UIViewControllerRepresentable {
-        let activityItems: [Any]
 
-        func makeUIViewController(context: Context) -> UIActivityViewController {
-                UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-        }
-
-        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) { }
-}
 
 private struct TagView: View {
         let text: String

@@ -35,13 +35,13 @@ struct OnboardingView: View {
 					.transition(.opacity)
 			} else {
 				VStack {
-					Spacer(minLength: 30)
+					Spacer(minLength: 50)
 					StepFactory(step: step, viewModel: viewModel, onAdvance: handleAdvance)
-						.padding(.bottom, 24)
 						.id(step.rawValue)
 						.animation(.easeInOut(duration: 0.3), value: step)
 					Spacer(minLength: 500)
 				}
+				.frame(maxHeight: .infinity, alignment: .topLeading)
 
 				VStack(spacing: 24) {
 					Spacer(minLength: 300)
@@ -51,11 +51,14 @@ struct OnboardingView: View {
 						isLoading: accessTBD,
 						action: handleAdvance
 					)
+					
 					FoxCharacterLayer()
 				}
 				.padding(.bottom, 50)
+				.frame(maxHeight: .infinity, alignment: .bottomLeading)
 			}
 		}
+		.ignoresSafeArea(.keyboard, edges: .leading)
 		// MARK: - Alerts
 		.alert("Can't access location and weather.", isPresented: $showLocationDeniedAlert) {
 			Button("Go to settings") {

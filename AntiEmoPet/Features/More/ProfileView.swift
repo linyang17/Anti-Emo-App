@@ -19,8 +19,11 @@ struct ProfileView: View {
                         Label("You've met Lumio for: \(stats.totalDays) days", systemImage: "flame")
                         Label("Current streak: \(appModel.currentTaskStreak()) days", systemImage: "calendar")
                         Label("Total tasks completed：\(stats.completedTasksCount)", systemImage: "checkmark.circle")
+						
+						NavigationLink(destination: TaskHistoryView().environmentObject(appModel)) {
+								Label("History", systemImage: "clock.arrow.circlepath")
+					}
                 }
-				
             }
         }
         .navigationTitle("Profile")

@@ -11,38 +11,38 @@ struct SettingView: View {
 		List {
 			if let stats = appModel.userStats {
 				
-                                Section("Notifications") {
-                                        // TODO: add more detailed notification categories
-                                        Toggle("All", isOn: Binding(
-                                                get: { stats.notificationsEnabled && appModel.slotNotificationPreferences.values.allSatisfy { $0 } },
-                                                set: { newValue in
-                                                        logger.info("[Settings] Notifications toggled to: \(newValue, privacy: .public)")
-                                                        stats.notificationsEnabled = newValue
-                                                        if newValue {
-                                                                appModel.updateAllSlotNotifications(enabled: true)
-                                                                appModel.requestNotifications()
-                                                        } else {
-                                                                appModel.updateAllSlotNotifications(enabled: false)
-                                                                appModel.persistState()
-                                                        }
-                                                }
-                                        ))
+				Section("Notifications") {
+						// TODO: add more detailed notification categories
+						Toggle("All", isOn: Binding(
+								get: { stats.notificationsEnabled && appModel.slotNotificationPreferences.values.allSatisfy { $0 } },
+								set: { newValue in
+										logger.info("[Settings] Notifications toggled to: \(newValue, privacy: .public)")
+										stats.notificationsEnabled = newValue
+										if newValue {
+												appModel.updateAllSlotNotifications(enabled: true)
+												appModel.requestNotifications()
+										} else {
+												appModel.updateAllSlotNotifications(enabled: false)
+												appModel.persistState()
+										}
+								}
+						))
 
-                                        ForEach([TimeSlot.morning, .afternoon, .evening], id: \.self) { slot in
-                                                Toggle(isOn: Binding(
-                                                        get: { appModel.slotNotificationPreferences[slot] ?? true },
-                                                        set: { newValue in
-                                                                appModel.updateSlotNotificationPreference(slot, enabled: newValue)
-                                                        }
-                                                )) {
-                                                        Text(slot.rawValue.capitalized)
-															.appFont(FontTheme.body)
-															.foregroundStyle(.secondary)
-                                                }
-                                                .padding(.leading, 12)
-                                                .disabled(!stats.notificationsEnabled)
-                                        }
-                                }
+						ForEach([TimeSlot.morning, .afternoon, .evening], id: \.self) { slot in
+								Toggle(isOn: Binding(
+										get: { appModel.slotNotificationPreferences[slot] ?? true },
+										set: { newValue in
+												appModel.updateSlotNotificationPreference(slot, enabled: newValue)
+										}
+								)) {
+										Text(slot.rawValue.capitalized)
+											.appFont(FontTheme.body)
+											.foregroundStyle(.secondary)
+								}
+								.padding(.leading, 12)
+								.disabled(!stats.notificationsEnabled)
+						}
+				}
 				
 				Section("Language") {
 					Picker("Language", selection: $selectedLanguage) {

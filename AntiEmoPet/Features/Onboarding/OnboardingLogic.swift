@@ -3,15 +3,11 @@ import SwiftUI
 
 struct FoxCharacterLayer: View {
     var body: some View {
-        VStack {
-            Spacer()
-            Image("foxcurious")
-                .resizable()
-                .scaledToFit()
-				.frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
-                .padding(.bottom, 100)
-        }
-        .transition(.opacity)
+		Image("foxcurious")
+			.resizable()
+			.scaledToFit()
+			.frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
+			.padding(.bottom, 100)
     }
 }
 
@@ -29,12 +25,12 @@ struct StepFactory: View {
 		case .registration:
 			RegistrationStepView(viewModel: viewModel)
 
-                case .name:
-                        NameStepView(
-                                nickname: $viewModel.nickname,
-                                isValid: viewModel.isNicknameValid,
-                                onSubmit: onAdvance
-                        )
+		case .name:
+			NameStepView(
+					nickname: $viewModel.nickname,
+					isValid: viewModel.isNicknameValid,
+					onSubmit: onAdvance
+				)
 
 		case .gender:
 			GenderStepView(selectedGender: $viewModel.selectedGender)
@@ -104,7 +100,7 @@ struct RegistrationStepView: View, Equatable {
 			.frame(maxWidth: .infinity)
 			.background(
 				RoundedRectangle(cornerRadius: 18)
-					.fill(Color.white.opacity(isSelected ? 0.25 : 0.12))
+					.fill(Color.gray.opacity(isSelected ? 0.2 : 0.02))
 			)
 			.overlay(
 				RoundedRectangle(cornerRadius: 18)
@@ -122,7 +118,7 @@ struct NameStepView: View, Equatable {
         @Binding var nickname: String
         let isValid: Bool
         let onSubmit: () -> Void
-
+		@FocusState private var isFieldFocused: Bool
         static func == (lhs: Self, rhs: Self) -> Bool {
                 lhs.nickname == rhs.nickname && lhs.isValid == rhs.isValid
         }
@@ -145,18 +141,24 @@ struct NameStepView: View, Equatable {
 				.foregroundStyle(.white)
 				.tint(.white)
 				.autocorrectionDisabled()
-                                .textInputAutocapitalization(.words)
-                                .submitLabel(.done)
-                                .onSubmit(onSubmit)
+				.textInputAutocapitalization(.words)
+				.focused($isFieldFocused)
+				.submitLabel(.done)
+				.onSubmit(onSubmit)
 
-                        if !isValid {
-                                Text("Only letters, numbers, hyphen or underscore. No spaces.")
-										.appFont(FontTheme.footnote)
-                                        .foregroundStyle(.white.opacity(0.8))
-                        }
-                }
-                .ignoresSafeArea(.keyboard, edges: .bottom)
-        }
+			if !isValid {
+					Text("Only letters, numbers, hyphen \nor underscore, no space.")
+							.appFont(FontTheme.caption)
+							.foregroundStyle(.white.opacity(0.8))
+							.frame(maxWidth: .w(0.7), alignment: .center)
+			}
+		}
+		.onAppear {
+			DispatchQueue.main.async {
+				isFieldFocused = true
+			}
+		}
+	}
 }
 
 
@@ -179,6 +181,7 @@ struct GenderStepView: View, Equatable {
 								RoundedRectangle(cornerRadius: 18)
 									.fill(backgroundColor(for: option))
 							)
+							.padding(.horizontal, 6)
 							.overlay(
 								RoundedRectangle(cornerRadius: 18)
 									.stroke(Color.white.opacity(0.9),

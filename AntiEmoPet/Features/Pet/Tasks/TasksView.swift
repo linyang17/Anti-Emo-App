@@ -74,11 +74,11 @@ struct TasksView: View {
             VStack(alignment: .trailing, spacing: 6) {
                 if let nextTime = appModel.nextTaskGenerationTime {
                     Text("Next tasks at \(formattedTime(nextTime))")
-                        .appFont(FontTheme.caption)
+                        .appFont(FontTheme.body)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Today's tasks are ready")
-                        .appFont(FontTheme.caption)
+                    Text("Treat yourself with some rest")
+                        .appFont(FontTheme.body)
                         .foregroundStyle(.secondary)
                 }
 

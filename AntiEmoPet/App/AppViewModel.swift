@@ -1186,7 +1186,7 @@ final class AppViewModel: ObservableObject {
                         }
         }
 
-        func exportTaskHistory(days: Int = 30) -> URL? {
+        func exportTaskHistory(days: Int = 90) -> URL? {
                 let range = historyRange(forDays: days)
                 let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
                 let moods = moodEntries.filter { range.contains($0.date) }

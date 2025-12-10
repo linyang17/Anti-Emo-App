@@ -2,27 +2,27 @@ import SwiftUI
 import Combine
 
 struct PetView: View {
-		@EnvironmentObject private var appModel: AppViewModel
-		@StateObject private var viewModel = PetViewModel()
-		private let moodModel = MoodStatisticsViewModel()
-		@State private var mood: MoodStatisticsViewModel.MoodSummary = .empty
-		@State private var activeSheet: ActiveSheet?
-		@State private var taskOffset: CGSize = .zero
-		@State private var taskBreathUp: Bool = false
-		@State private var taskFloatTask: Task<Void, Never>?
-		@State private var showPettingHearts = false
-                @State private var pettingEffectTask: Task<Void, Never>?
-                @State private var activeReward: RewardEvent?
-                @State private var rewardOpacity: Double = 0
-                                @State private var bannerTask: Task<Void, Never>?
-                                @State private var showMoodFeedback = false
-                                @State private var appearOpacity: Double = 0
-                                @State private var navigateToChatFromPrompt = false
-                                @State private var promptComfortValue: Int?
+	@EnvironmentObject private var appModel: AppViewModel
+	@StateObject private var viewModel = PetViewModel()
+	private let moodModel = MoodStatisticsViewModel()
+	@State private var mood: MoodStatisticsViewModel.MoodSummary = .empty
+	@State private var activeSheet: ActiveSheet?
+	@State private var taskOffset: CGSize = .zero
+	@State private var taskBreathUp: Bool = false
+	@State private var taskFloatTask: Task<Void, Never>?
+	@State private var showPettingHearts = false
+	@State private var pettingEffectTask: Task<Void, Never>?
+	@State private var activeReward: RewardEvent?
+	@State private var rewardOpacity: Double = 0
+	@State private var bannerTask: Task<Void, Never>?
+	@State private var showMoodFeedback = false
+	@State private var appearOpacity: Double = 0
+	@State private var navigateToChatFromPrompt = false
+	@State private var promptComfortValue: Int?
 
-                private var isInteractionLocked: Bool {
-                                (appModel.showMoodCapture && !appModel.showOnboarding) || activeReward != nil || showMoodFeedback || appModel.showMoodChatPrompt
-                }
+   private var isInteractionLocked: Bool {
+      (appModel.showMoodCapture && !appModel.showOnboarding) || activeReward != nil || showMoodFeedback || appModel.showMoodChatPrompt
+   }
 
 	private enum ActiveSheet: Identifiable {
 		case tasks
@@ -31,130 +31,131 @@ struct PetView: View {
 		var id: Int { hashValue }
 	}
 
-				var body: some View {
-								ZStack {
-												Image(viewModel.screenState.backgroundAsset)
-																.resizable()
-																.scaledToFill()
-																.ignoresSafeArea()
+    var body: some View {
+        ZStack {
+        	Image(viewModel.screenState.backgroundAsset)
+        		.resizable()
+        		.scaledToFill()
+        		.ignoresSafeArea()
 
-												content()
-																.zIndex(activeSheet == .shop ? 5 : 0)
+    		content()
+        		.zIndex(activeSheet == .shop ? 5 : 0)
 
-                                                                                                controlOverlay
-                                                                                                                               .zIndex(activeSheet == .shop ? 0 : 3)
+			controlOverlay
+				   .zIndex(activeSheet == .shop ? 0 : 3)
 
-                                                                                                overlayLayers
-                                                                                                                               .zIndex(10)
+			overlayLayers
+				   .zIndex(10)
 
-                                                                                                NavigationLink(isActive: $navigateToChatFromPrompt) {
-                                                                                                                               ChatView(initialComfortMood: promptComfortValue)
-                                                                                                                               .environmentObject(appModel)
-                                                                                                } label: {
-                                                                                                                               EmptyView()
-                                                                                                }
-                                                                                                .buttonStyle(.plain)
-                                                                                                .hidden()
-                                                                }
-                                                                .opacity(appearOpacity)
-								.sheet(item: $activeSheet) { sheet in
-												switch sheet {
-												case .tasks:
-																sheetStyled(TasksView(lastMood: mood.lastMood))
-												case .shop:
-																sheetStyled(ShopView())
-												}
-								}
-								.toolbar(.hidden, for: .navigationBar)
-								.onAppear {
-												withAnimation(.easeInOut(duration: 0.5)) {
-																appearOpacity = 1
-												}
-												viewModel.sync(with: appModel)
-												if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
-																mood = summary
-												}
-								}
-								.onReceive(appModel.$pet) { pet in
-												viewModel.updateStatus(stats: appModel.userStats, pet: pet)
-												viewModel.updatePetState(pet: pet)
-								}
-								.onReceive(appModel.$userStats) { stats in
-												viewModel.updateStatus(stats: stats, pet: appModel.pet)
-								}
-								.onChange(of: appModel.weather) { _, weather in
-												viewModel.updateScene(weather: weather)
-								}
-								.onReceive(appModel.$moodEntries) { entries in
-												if let summary = moodModel.moodSummary(entries: entries) {
-																mood = summary
-												}
-								}
-								.onReceive(appModel.objectWillChange) { _ in
-												viewModel.updateStatus(stats: appModel.userStats, pet: appModel.pet)
-												viewModel.updatePetState(pet: appModel.pet)
-								}
-								.onChange(of: activeSheet) { _, newValue in
-												if newValue != .shop {
-																appModel.previewPetAsset = nil
-												}
-								}
-								.onChange(of: appModel.rewardBanner) { _, newValue in
-												guard let reward = newValue else { return }
-												if activeSheet == .tasks {
-																activeSheet = nil
-												}
-												activeReward = reward
-												withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
-																rewardOpacity = 1
-												}
-												bannerTask?.cancel()
-												bannerTask = Task { @MainActor in
-																try? await Task.sleep(nanoseconds: 1_500_000_000)
-																withAnimation(.easeInOut(duration: 1.5)) {
-																				rewardOpacity = 0
-																}
-																appModel.consumeRewardBanner()
-																activeReward = nil
-
-																if appModel.pendingMoodFeedbackTask != nil {
-																				await MainActor.run {
-																								withAnimation(.spring(response: 1, dampingFraction: 0.8)) {
-																												showMoodFeedback = true
-																								}
-																				}
-																}
-												}
-								}
-								.onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
-										if newValue != nil {
-												if activeSheet == .tasks {
-														activeSheet = nil
-												}
-												if activeReward == nil {
-														withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-																showMoodFeedback = true
-														}
-												}
-										} else {
-												withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-														showMoodFeedback = false
-												}
-												appModel.checkAndShowOnboardingCelebration()
-										}
-								}
-								.onDisappear {
-												bannerTask?.cancel()
-								}
+			NavigationLink(isActive: $navigateToChatFromPrompt) {
+				   ChatView(initialComfortMood: promptComfortValue)
+				   .environmentObject(appModel)
+				} label: {
+					   EmptyView()
 				}
+				.buttonStyle(.plain)
+				.hidden()
+			}
+            .opacity(appearOpacity)
+		
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .tasks:
+                sheetStyled(TasksView(lastMood: mood.lastMood))
+            case .shop:
+                sheetStyled(ShopView())
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.5)) {
+                appearOpacity = 1
+            }
+            viewModel.sync(with: appModel)
+            if let summary = moodModel.moodSummary(entries: appModel.moodEntries) {
+                mood = summary
+            }
+        }
+        .onReceive(appModel.$pet) { pet in
+            viewModel.updateStatus(stats: appModel.userStats, pet: pet)
+            viewModel.updatePetState(pet: pet)
+        }
+        .onReceive(appModel.$userStats) { stats in
+            viewModel.updateStatus(stats: stats, pet: appModel.pet)
+        }
+        .onChange(of: appModel.weather) { _, weather in
+            viewModel.updateScene(weather: weather)
+        }
+        .onReceive(appModel.$moodEntries) { entries in
+            if let summary = moodModel.moodSummary(entries: entries) {
+                mood = summary
+            }
+        }
+        .onReceive(appModel.objectWillChange) { _ in
+            viewModel.updateStatus(stats: appModel.userStats, pet: appModel.pet)
+            viewModel.updatePetState(pet: appModel.pet)
+        }
+        .onChange(of: activeSheet) { _, newValue in
+            if newValue != .shop {
+                appModel.previewPetAsset = nil
+            }
+        }
+        .onChange(of: appModel.rewardBanner) { _, newValue in
+            guard let reward = newValue else { return }
+            if activeSheet == .tasks {
+                activeSheet = nil
+            }
+            activeReward = reward
+            withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
+                rewardOpacity = 1
+            }
+            bannerTask?.cancel()
+            bannerTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                withAnimation(.easeInOut(duration: 1.5)) {
+                    rewardOpacity = 0
+                }
+                appModel.consumeRewardBanner()
+                activeReward = nil
 
-				@ViewBuilder
-				private func sheetStyled<Content: View>(_ content: Content) -> some View {
-								content
-												.presentationDetents([.fraction(0.55)])
-												.presentationBackground { sheetBackground }
-												.presentationDragIndicator(.hidden)
-				}
+                if appModel.pendingMoodFeedbackTask != nil {
+                    await MainActor.run {
+                        withAnimation(.spring(response: 1, dampingFraction: 0.8)) {
+                            showMoodFeedback = true
+                        }
+                    }
+                }
+            }
+        }
+        .onChange(of: appModel.pendingMoodFeedbackTask) { _, newValue in
+        		if newValue != nil {
+            if activeSheet == .tasks {
+            		activeSheet = nil
+            }
+            if activeReward == nil {
+            		withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                showMoodFeedback = true
+            		}
+            }
+        		} else {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            		showMoodFeedback = false
+            }
+            appModel.checkAndShowOnboardingCelebration()
+        		}
+        }
+        .onDisappear {
+            bannerTask?.cancel()
+        }
+    }
+
+    @ViewBuilder
+    private func sheetStyled<Content: View>(_ content: Content) -> some View {
+        content
+            .presentationDetents([.fraction(0.55)])
+            .presentationBackground { sheetBackground }
+            .presentationDragIndicator(.hidden)
+    }
 
 		@ViewBuilder
 		private var sheetBackground: some View {
@@ -202,7 +203,7 @@ struct PetView: View {
 			VStack(spacing: .h(0.1)) {
 				Image(systemName: "pawprint.circle")
 					.foregroundStyle(.white.opacity(0.85))
-				Text("You'll meet Lumio after onboarding!")
+				Text("You'll meet Lumio after onboarding")
 					.appFont(FontTheme.subheadline)
 					.foregroundStyle(.white.opacity(0.75))
 			}
@@ -267,7 +268,7 @@ struct PetView: View {
 						decorationStack(for: pet.decorations)
 				}
 				.frame(maxWidth: .infinity)
-								.offset(y: activeSheet == .shop ? -.h(0.3) : 0)
+				.offset(y: activeSheet == .shop ? -.h(0.3) : 0)
 				.animation(.spring(response: 0.3, dampingFraction: 0.85), value: activeSheet)
 				.onDisappear {
 						pettingEffectTask?.cancel()
@@ -346,38 +347,36 @@ struct PetView: View {
 	}
 
 	private var chatEntryBar: some View {
-                        HStack(spacing: 12) {
-                                        Button {
-                                                        appModel.startManualMoodCapture()
-                                        } label: {
-                                                        Image(systemName: "plus")
-                                                                        .appFont(FontTheme.title2)
-									.bold()
-									.foregroundStyle(.white)
-									.padding(10)
-									.background(FrostedCircle(opacity: 0.6))
-					}
-					.buttonStyle(.plain)
+		HStack(spacing: 12) {
+			Button {
+				appModel.startManualMoodCapture()
+			} label: {
+				Image(systemName: "plus")
+					.appFont(FontTheme.title3)
+					.bold()
+					.foregroundStyle(.white)
+					.padding(10)
+					.background(FrostedCircle(opacity: 0.5))
+				}
+			.buttonStyle(.plain)
 
-					NavigationLink {
-						ChatView()
-								.environmentObject(appModel)
-					} label: {
-							HStack(alignment: .center, spacing: 12) {
-									VStack(alignment: .leading, spacing: 4) {
-											Text("Chat with Lumio...")
-											.foregroundStyle(.white.opacity(0.75))
-									}
-									Spacer()
-									Image(systemName: "paperplane.fill")
-											.appFont(FontTheme.title3)
-											.foregroundStyle(.white.opacity(0.75))
-							}
-							.padding(.vertical, 8)
-							.padding(.horizontal, 14)
-							.background(FrostedCapsule(opacity: 0.6))
-					}
-					.buttonStyle(.plain)
+			NavigationLink {
+				ChatView()
+					.environmentObject(appModel)
+				} label: {
+						HStack(alignment: .center, spacing: 12) {
+							Text("Talk to Lumio...")
+									.foregroundStyle(.white.opacity(0.75))
+							Spacer(minLength: 0)
+							Image(systemName: "paperplane.fill")
+									.appFont(FontTheme.headline)
+									.foregroundStyle(.white.opacity(0.75))
+								}
+								.padding(.vertical, 10)
+								.padding(.horizontal, 14)
+								.background(FrostedCapsule(opacity: 0.5))
+				}
+				.buttonStyle(.plain)
 			}
 			.padding(12)
 	}
@@ -485,79 +484,77 @@ struct PetView: View {
 	}
 
 	
-		@ViewBuilder
-		private var controlOverlay: some View {
-				ZStack {
-						// Base UI: top-right more/tasks buttons
-						VStack(alignment: .trailing, spacing: .h(0.15)) {
-								MoreButton
-										.padding(.trailing, .w(0.1))
-										.padding(.top, .h(0.02))
-								taskButton
-										.padding(.trailing, .w(0.05))
-										.opacity(0.8)
-						}
-						.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+	@ViewBuilder
+	private var controlOverlay: some View {
+		ZStack {
+				// Base UI: top-right more/tasks buttons
+				VStack(alignment: .trailing, spacing: .h(0.15)) {
+						MoreButton
+								.padding(.trailing, .w(0.1))
+								.padding(.top, .h(0.02))
+						taskButton
+								.padding(.trailing, .w(0.05))
+								.opacity(0.8)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
 
-						// Base UI: bottom-left shop button
-						shopButton
-								.offset(x: .w(0.1), y: -.h(0.15))
-								.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+				// Base UI: bottom-left shop button
+				shopButton
+						.offset(x: .w(0.1), y: -.h(0.15))
+						.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
 
-						chatEntryBar
-								.padding(.horizontal, .w(0.08))
-								.padding(.bottom, .h(0.02))
-								.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-						}
-						.frame(maxWidth: .infinity, maxHeight: .infinity)
+				chatEntryBar
+						.padding(.horizontal, .w(0.08))
+						.padding(.bottom, .h(0.02))
+						.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 		}
 
-		@ViewBuilder
-                private var overlayLayers: some View {
-                        ZStack {
-                                        if isInteractionLocked {
-                                                Color.clear
-                                                .ignoresSafeArea()
-                                                .zIndex(5)
-                        }
+	@ViewBuilder
+	private var overlayLayers: some View {
+           ZStack {
+              if isInteractionLocked {
+				 Color.clear
+				 .ignoresSafeArea()
+				 .zIndex(5)
+           }
 
-                        // Overlays ABOVE the buttons
-                        if appModel.showMoodCapture && !appModel.showOnboarding {
-                                        MoodCaptureOverlayView() { value in
-                                                        appModel.recordMoodOnLaunch(value: value)
-                                                                }
-                        .frame(maxWidth: 360)
-                        .offset(y: -UIScreen.main.bounds.height * 0.1)
-                        .transition(.scale(scale: 0.92).combined(with: .opacity))
-                        .zIndex(10)
-                }
+           // Overlays ABOVE the buttons
+           if appModel.showMoodCapture && !appModel.showOnboarding {
+              MoodCaptureOverlayView() { value in
+				  appModel.recordMoodOnLaunch(value: value)
+            }
+           .frame(maxWidth: 360)
+           .offset(y: -UIScreen.main.bounds.height * 0.1)
+           .transition(.scale(scale: 0.92).combined(with: .opacity))
+           .zIndex(10)
+   }
 
-                if appModel.showMoodChatPrompt {
-                        Color.black.opacity(0.15)
-                                .ignoresSafeArea()
-                                .zIndex(14)
+   if appModel.showMoodChatPrompt {
+           Color.black.opacity(0.15)
+				  .ignoresSafeArea()
+				  .zIndex(14)
 
-                        MoodChatPromptView(
-                                onMaybeLater: {
-                                        appModel.dismissMoodChatPrompt(clearValue: true)
-                                },
-                                onConfirm: {
-                                        promptComfortValue = promptComfortValue ?? appModel.consumeComfortMoodValue()
-                                        appModel.dismissMoodChatPrompt()
-                                        navigateToChatFromPrompt = true
-                                }
-                        )
-                        .frame(maxWidth: 320)
-                        .padding(.horizontal)
-                        .offset(y: UIScreen.main.bounds.height * 0.14)
-                        .transition(.scale(scale: 0.95).combined(with: .opacity))
-                        .zIndex(15)
-                }
+			MoodChatPromptView(
+				onMaybeLater: {appModel.dismissMoodChatPrompt(clearValue: true)},
+			  onConfirm: {
+					  promptComfortValue = promptComfortValue ?? appModel.consumeComfortMoodValue()
+					  appModel.dismissMoodChatPrompt()
+					  navigateToChatFromPrompt = true
+			  }
+           )
+           .frame(maxWidth: 320)
+           .padding(.horizontal)
+           .offset(y: UIScreen.main.bounds.height * 0.14)
+           .transition(.scale(scale: 0.95).combined(with: .opacity))
+           .zIndex(15)
+   }
 
-                if let reward = activeReward {
-                        Color.clear
-                                .ignoresSafeArea()
-				.zIndex(19)
+	   if let reward = activeReward {
+			   Color.clear
+					.ignoresSafeArea()
+					.zIndex(19)
 			RewardToastView(event: reward)
 				.opacity(rewardOpacity)
 				.padding(12)
@@ -602,7 +599,7 @@ struct PetView: View {
 		}
 
 		private var petAssetName: String {
-						viewModel.screenState.petAsset
+    		viewModel.screenState.petAsset
 		}
 
 	

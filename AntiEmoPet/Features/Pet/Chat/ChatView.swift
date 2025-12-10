@@ -15,35 +15,27 @@ struct ChatView: View {
 
         var body: some View {
                 ZStack {
-                        LinearGradient(
-                                colors: [Color(red: 0.07, green: 0.09, blue: 0.13), Color(red: 0.12, green: 0.15, blue: 0.18)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                        )
-                        .ignoresSafeArea()
 
-                        VStack(spacing: 0) {
-                                ScrollViewReader { proxy in
-                                        ScrollView {
-                                                LazyVStack(alignment: .leading, spacing: 16) {
-                                                        ForEach(viewModel.messages) { message in
-                                                                MessageBubble(message: message)
-                                                        }
+					VStack(spacing: 0) {
+						ScrollViewReader { proxy in
+							ScrollView {
+								LazyVStack(alignment: .leading, spacing: 16) {
+									ForEach(viewModel.messages) { message in
+										MessageBubble(message: message)
+										}
 
-                                                        if viewModel.isSending, !viewModel.thinkingDots.isEmpty {
-                                                                HStack(alignment: .bottom) {
-                                                                        MessageBubble(
-                                                                                message: .init(role: .pet, content: viewModel.thinkingDots, isSystem: true)
-                                                                        )
-                                                                        .id("thinking")
-                                                                        Spacer()
-                                                                }
-                                                        }
-                                                }
-                                                .padding(.horizontal)
-                                                .padding(.top, 12)
-                                                .padding(.bottom, 8)
-                                        }
+										if viewModel.isSending, !viewModel.thinkingDots.isEmpty {
+											HStack(alignment: .bottom) {
+												MessageBubble(message: .init(role: .pet, content: viewModel.thinkingDots, isSystem: true))
+													.id("thinking")
+													Spacer()
+												}
+											}
+										}
+										.padding(.horizontal)
+										.padding(.top, 12)
+										.padding(.bottom, 8)
+									}
                                         .onChange(of: viewModel.messages.count) { oldValue, newValue in
                                                 guard newValue != oldValue else { return }
                                                 if let last = viewModel.messages.last {
@@ -81,7 +73,7 @@ struct ChatView: View {
         }
 
         private var inputBar: some View {
-                let maxHeight = UIFont.preferredFont(forTextStyle: .body).lineHeight * 3 + 16
+                let maxHeight = UIFont.preferredFont(forTextStyle: .body).lineHeight * 1
 
                 return HStack(alignment: .bottom, spacing: 12) {
                         ZStack(alignment: .topLeading) {
@@ -108,11 +100,11 @@ struct ChatView: View {
                                 .padding(2)
 
                                 if viewModel.currentInput.isEmpty {
-                                        Text("Write back")
+                                        Text("Text here")
                                                 .foregroundStyle(.secondary)
                                                 .padding(.horizontal, 18)
                                                 .padding(.vertical, 16)
-                                                                                                .allowsHitTesting(false)
+												.allowsHitTesting(false)
                                 }
                         }
                         .onTapGesture { isInputFocused = true }
@@ -144,41 +136,31 @@ private struct MessageBubble: View {
                 HStack(alignment: .bottom, spacing: 10) {
                         if isUser { Spacer() }
 
-                        if !isUser {
-                                avatar
-                        }
+                        if !isUser { avatar }
 
-                        VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                                Text(message.content)
-                                        .appFont(FontTheme.body)
-                                        .foregroundStyle(isUser ? .white : .black.opacity(0.9))
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 12)
-                                        .background(
-                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                        .fill(isUser ? Color.accentColor : Color.white.opacity(0.9))
-                                                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
+						Text(message.content)
+							.padding(.horizontal, 14)
+							.padding(.vertical, 12)
+							.background(
+								RoundedRectangle(cornerRadius: 18, style: .continuous)
+										.fill(isUser ? Color.accentColor : Color.white.opacity(0.9))
+										.shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
                                         )
-                                        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
-                        }
+							.frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
 
-                        if isUser {
-                                avatar
-                        }
+                        if isUser { avatar }
                 }
                 .frame(maxWidth: .infinity)
         }
 
-        private var avatar: some View {
-                Circle()
-                        .fill(isUser ? Color.accentColor : Color.white.opacity(0.92))
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                                Image(systemName: isUser ? "person.fill" : "leaf.fill")
-                                        .foregroundStyle(isUser ? Color.white : Color.green)
-                                        .font(.footnote.weight(.bold))
-                        )
-        }
+	// TODO: let user upload profile picture into avatar
+	private var avatar: some View {
+		Image(systemName: isUser ? "person.circle.fill" : "pawprint.circle.fill")
+			.resizable()
+			.scaledToFit()
+			.frame(width: 30, height: 30)
+			.foregroundStyle(isUser ? Color.gray : Color.brown)
+	}
 }
 
 private extension ChatViewModel {
