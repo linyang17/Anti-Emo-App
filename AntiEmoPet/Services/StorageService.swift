@@ -531,28 +531,38 @@ final class StorageService {
 												}
 										}
 
-										for record in export.energyEvents {
-												let descriptor = FetchDescriptor<EnergyEvent>()
-												let existing = try context.fetch(descriptor).first { $0.id == record.id }
-												if let event = existing {
-														event.date = record.date
-														event.delta = record.delta
-														event.relatedTaskId = record.relatedTaskId
-												} else {
-														let event = EnergyEvent(
-																id: record.id,
-																date: record.date,
-																delta: record.delta,
-																relatedTaskId: record.relatedTaskId
-														)
-														context.insert(event)
-												}
-										}
+for record in export.energyEvents {
+let descriptor = FetchDescriptor<EnergyEvent>()
+let existing = try context.fetch(descriptor).first { $0.id == record.id }
+if let event = existing {
+event.date = record.date
+event.delta = record.delta
+event.relatedTaskId = record.relatedTaskId
+} else {
+let event = EnergyEvent(
+id: record.id,
+date: record.date,
+delta: record.delta,
+relatedTaskId: record.relatedTaskId
+)
+context.insert(event)
+}
+}
 
-										saveContext(reason: "import history")
-								} catch {
-										logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
-								}
+if let stats = fetchStats() {
+let importedTotalEnergy = export.energyEvents.reduce(0) { $0 + $1.delta }
+stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
+stats.completedTasksCount = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
+stats.lastActiveDate = export.rangeEnd
+
+let historySnapshot = EnergyHistoryEntry(date: export.rangeEnd, totalEnergy: stats.totalEnergy)
+addEnergyHistoryEntry(historySnapshot)
+}
+
+saveContext(reason: "import history")
+} catch {
+logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
+}
 				}
 
 	
