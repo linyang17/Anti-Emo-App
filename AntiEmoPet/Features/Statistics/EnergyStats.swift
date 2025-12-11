@@ -82,26 +82,31 @@ struct EnergyStatsSection: View {
 					let sortedCategories: [TaskCategory] = Array(energy.taskTypeCounts.keys).sorted { (lhs: TaskCategory, rhs: TaskCategory) in
 						lhs.localizedTitle < rhs.localizedTitle
 					}
+					let chartHorizontalOffset: CGFloat = 16 
 					
-					Chart(
-						Array(energy.taskTypeCounts).sorted {
-						(lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
-						lhs.value > rhs.value
-					}, id: \.key) { item in
-						SectorMark(
-							angle: .value("Count", item.value),
-							innerRadius: .ratio(0.5),
-							angularInset: 1
+					VStack(alignment: .leading, spacing: 0) {
+						Chart(
+							Array(energy.taskTypeCounts).sorted {
+								(lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
+								lhs.value > rhs.value
+							}, id: \.key
+						) { item in
+							SectorMark(
+								angle: .value("Count", item.value),
+								innerRadius: .ratio(0.5),
+								angularInset: 1
+							)
+							.foregroundStyle(by: .value("Category", item.key.localizedTitle))
+							.cornerRadius(4)
+						}
+						.chartForegroundStyleScale(
+							domain: sortedCategories.map { $0.localizedTitle },
+							range: sortedCategories.map { theme.gradient(for: $0) }
 						)
-						.foregroundStyle(by: .value("Category", item.key.localizedTitle))
-						.cornerRadius(4)
+						.frame(width: .w(0.8), height: 200)
+						.chartLegend(position: .bottom, alignment: .center, spacing: 32)
 					}
-					.chartForegroundStyleScale(
-						domain: sortedCategories.map { $0.localizedTitle },
-						range: sortedCategories.map { theme.gradient(for: $0) }
-					)
-					.frame(width: .w(0.8), height: 200)
-					.chartLegend(position: .bottom, alignment: .center, spacing: 32)
+					.padding(.leading, chartHorizontalOffset)
 				}
 			}
 			.padding(.vertical, 6)
