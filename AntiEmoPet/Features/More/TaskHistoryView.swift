@@ -1,10 +1,10 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct TaskHistoryView: View {
         @EnvironmentObject private var appModel: AppViewModel
         @State private var sections: [TaskHistorySection] = []
-        @State private var exportURL: URL?
         @State private var errorMessage: String?
         @State private var isImporting = false
         @State private var importMessage: String?
@@ -23,12 +23,6 @@ struct TaskHistoryView: View {
                                         Label("Export last \(historyDays) days", systemImage: "square.and.arrow.up")
                                 }
                                 .disabled(appModel.taskHistorySections(days: historyDays).isEmpty)
-
-                                if let exportURL {
-                                        ShareLink(item: exportURL) {
-                                                Label("Share export file", systemImage: "arrow.up.forward.app")
-                                        }
-                                }
 
                                 Button {
                                         isImporting = true
@@ -107,7 +101,7 @@ struct TaskHistoryView: View {
                         errorMessage = "Could not generate export file."
                         return
                 }
-                exportURL = url
+                SharePresenter.shared.present(items: [url])
         }
 
         private func dateLabel(for date: Date) -> String {
@@ -122,6 +116,34 @@ struct TaskHistoryView: View {
                 formatter.dateStyle = .none
                 formatter.timeStyle = .short
                 return formatter.string(from: date)
+        }
+}
+
+private final class SharePresenter {
+        static let shared = SharePresenter()
+
+        func present(items: [Any]) {
+                guard let presenter = Self.topViewController() else { return }
+                let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+                presenter.present(activityVC, animated: true)
+        }
+
+        private static func topViewController(base: UIViewController? = nil) -> UIViewController? {
+                let root = base ??
+                        UIApplication.shared.connectedScenes
+                                .compactMap { $0 as? UIWindowScene }
+                                .flatMap { $0.windows }
+                                .first { $0.isKeyWindow }?.rootViewController
+                if let nav = root as? UINavigationController {
+                        return topViewController(base: nav.visibleViewController)
+                }
+                if let tab = root as? UITabBarController, let selected = tab.selectedViewController {
+                        return topViewController(base: selected)
+                }
+                if let presented = root?.presentedViewController {
+                        return topViewController(base: presented)
+                }
+                return root
         }
 }
 
