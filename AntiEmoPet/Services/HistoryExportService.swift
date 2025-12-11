@@ -37,6 +37,7 @@ struct TaskHistoryExport: Codable, Sendable {
         let tasks: [TaskHistoryRecord]
         let moods: [MoodHistoryRecord]
         let energyEvents: [EnergyEventRecord]
+        let petBondingScore: Int?
 }
 
 struct HistoryExportService {
@@ -66,7 +67,13 @@ struct HistoryExportService {
                 return decoder
         }()
 
-	mutating func export(tasks: [UserTask], moods: [MoodEntry], energyEvents: [EnergyEvent], range: ClosedRange<Date>) throws -> URL {
+        mutating func export(
+                tasks: [UserTask],
+                moods: [MoodEntry],
+                energyEvents: [EnergyEvent],
+                petBondingScore: Int?,
+                range: ClosedRange<Date>
+        ) throws -> URL {
                 let taskRecords = tasks.map { task in
                         TaskHistoryRecord(
                                 id: task.id,
@@ -113,7 +120,8 @@ struct HistoryExportService {
                         rangeEnd: rangeEnd,
                         tasks: taskRecords,
                         moods: moodRecords,
-                        energyEvents: energyRecords
+                        energyEvents: energyRecords,
+                        petBondingScore: petBondingScore
                 )
 
                 let formatter = ISO8601DateFormatter()

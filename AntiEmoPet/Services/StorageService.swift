@@ -475,95 +475,102 @@ final class StorageService {
 		 }
  }
 
-				func importHistory(_ export: TaskHistoryExport) {
-								do {
-										for record in export.tasks {
-												let descriptor = FetchDescriptor<UserTask>()
-												let existing = try context.fetch(descriptor).first { $0.id == record.id }
-												if let task = existing {
-														task.title = record.title
-														task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
-														task.category = TaskCategory(rawValue: record.category) ?? task.category
-														task.energyReward = record.energyReward
-														task.date = record.date
-														task.status = TaskStatus(rawValue: record.status) ?? task.status
-														task.isArchived = record.isArchived
-														task.completedAt = record.completedAt
-														task.isOnboarding = record.isOnboarding
-												} else {
-														let task = UserTask(
-																id: record.id,
-																title: record.title,
-																weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
-																category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
-																energyReward: record.energyReward,
-																date: record.date,
-																status: TaskStatus(rawValue: record.status) ?? .pending,
-																isArchived: record.isArchived,
-																completedAt: record.completedAt,
-																isOnboarding: record.isOnboarding
-														)
-														context.insert(task)
-												}
-										}
+        func importHistory(_ export: TaskHistoryExport) {
+                do {
+                        for record in export.tasks {
+                                let descriptor = FetchDescriptor<UserTask>()
+                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
+                                if let task = existing {
+                                        task.title = record.title
+                                        task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
+                                        task.category = TaskCategory(rawValue: record.category) ?? task.category
+                                        task.energyReward = record.energyReward
+                                        task.date = record.date
+                                        task.status = TaskStatus(rawValue: record.status) ?? task.status
+                                        task.isArchived = record.isArchived
+                                        task.completedAt = record.completedAt
+                                        task.isOnboarding = record.isOnboarding
+                                } else {
+                                        let task = UserTask(
+                                                id: record.id,
+                                                title: record.title,
+                                                weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
+                                                category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
+                                                energyReward: record.energyReward,
+                                                date: record.date,
+                                                status: TaskStatus(rawValue: record.status) ?? .pending,
+                                                isArchived: record.isArchived,
+                                                completedAt: record.completedAt,
+                                                isOnboarding: record.isOnboarding
+                                        )
+                                        context.insert(task)
+                                }
+                        }
 
-										for record in export.moods {
-												let descriptor = FetchDescriptor<MoodEntry>()
-												let existing = try context.fetch(descriptor).first { $0.id == record.id }
-												if let mood = existing {
-														mood.date = record.date
-														mood.value = record.value
-														mood.source = record.source
-														mood.delta = record.delta
-														mood.relatedTaskCategory = record.relatedTaskCategory
-														mood.relatedWeather = record.relatedWeather
-												} else {
-														let mood = MoodEntry(
-																id: record.id,
-																date: record.date,
-																value: record.value,
-																source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
-																delta: record.delta,
-																relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
-																relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
-														)
-														context.insert(mood)
-												}
-										}
+                        for record in export.moods {
+                                let descriptor = FetchDescriptor<MoodEntry>()
+                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
+                                if let mood = existing {
+                                        mood.date = record.date
+                                        mood.value = record.value
+                                        mood.source = record.source
+                                        mood.delta = record.delta
+                                        mood.relatedTaskCategory = record.relatedTaskCategory
+                                        mood.relatedWeather = record.relatedWeather
+                                } else {
+                                        let mood = MoodEntry(
+                                                id: record.id,
+                                                date: record.date,
+                                                value: record.value,
+                                                source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
+                                                delta: record.delta,
+                                                relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
+                                                relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
+                                        )
+                                        context.insert(mood)
+                                }
+                        }
 
-for record in export.energyEvents {
-let descriptor = FetchDescriptor<EnergyEvent>()
-let existing = try context.fetch(descriptor).first { $0.id == record.id }
-if let event = existing {
-event.date = record.date
-event.delta = record.delta
-event.relatedTaskId = record.relatedTaskId
-} else {
-let event = EnergyEvent(
-id: record.id,
-date: record.date,
-delta: record.delta,
-relatedTaskId: record.relatedTaskId
-)
-context.insert(event)
-}
-}
+                        for record in export.energyEvents {
+                                let descriptor = FetchDescriptor<EnergyEvent>()
+                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
+                                if let event = existing {
+                                        event.date = record.date
+                                        event.delta = record.delta
+                                        event.relatedTaskId = record.relatedTaskId
+                                } else {
+                                        let event = EnergyEvent(
+                                                id: record.id,
+                                                date: record.date,
+                                                delta: record.delta,
+                                                relatedTaskId: record.relatedTaskId
+                                        )
+                                        context.insert(event)
+                                }
+                        }
 
-if let stats = fetchStats() {
-let importedTotalEnergy = export.energyEvents.reduce(0) { $0 + $1.delta }
-stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
-stats.completedTasksCount = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
-stats.lastActiveDate = export.rangeEnd
+                        if let stats = fetchStats() {
+                                let importedTotalEnergy = export.energyEvents.reduce(0) { $0 + $1.delta }
+                                stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
+                                stats.completedTasksCount = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
+                                stats.lastActiveDate = export.rangeEnd
 
-let historySnapshot = EnergyHistoryEntry(date: export.rangeEnd, totalEnergy: stats.totalEnergy)
-addEnergyHistoryEntry(historySnapshot)
-}
+                                let historySnapshot = EnergyHistoryEntry(date: export.rangeEnd, totalEnergy: stats.totalEnergy)
+                                addEnergyHistoryEntry(historySnapshot)
+                        }
 
-saveContext(reason: "import history")
-} catch {
-logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
-}
-				}
+                        if let bondingScore = export.petBondingScore {
+                                if let pet = fetchPet() {
+                                        let clamped = min(100, max(15, bondingScore))
+                                        pet.bondingScore = clamped
+                                }
+                        }
+
+                        saveContext(reason: "import history")
+                } catch {
+                        logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
+                }
+        }
 
 	
 	// MARK: - SunTimes Persistence

@@ -1191,18 +1191,25 @@ final class AppViewModel: ObservableObject {
                 let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
                 let moods = moodEntries.filter { range.contains($0.date) }
                 let events = energyEvents.filter { range.contains($0.date) }
-                return try? historyExporter.export(tasks: tasks, moods: moods, energyEvents: events, range: range)
+                return try? historyExporter.export(
+                        tasks: tasks,
+                        moods: moods,
+                        energyEvents: events,
+                        petBondingScore: pet?.bondingScore,
+                        range: range
+                )
         }
 
-func importTaskHistory(from url: URL) -> Bool {
-do {
-let export = try historyExporter.importHistory(from: url)
-storage.importHistory(export)
-userStats = storage.fetchStats()
-moodEntries = storage.fetchMoodEntries()
-energyEvents = storage.fetchEnergyEvents()
-energyHistory = storage.fetchEnergyHistory()
-dailyMetricsCache = makeDailyActivityMetrics()
+        func importTaskHistory(from url: URL) -> Bool {
+                do {
+                        let export = try historyExporter.importHistory(from: url)
+                        storage.importHistory(export)
+                        pet = storage.fetchPet()
+                        userStats = storage.fetchStats()
+                        moodEntries = storage.fetchMoodEntries()
+                        energyEvents = storage.fetchEnergyEvents()
+                        energyHistory = storage.fetchEnergyHistory()
+                        dailyMetricsCache = makeDailyActivityMetrics()
 
                         let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
                         todayTasks = storage.fetchTasks(in: slot, on: Date())
