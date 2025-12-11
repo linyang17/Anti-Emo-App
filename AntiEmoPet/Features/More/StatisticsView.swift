@@ -17,9 +17,13 @@ struct StatisticsView: View {
 					MoodTrendSection().environmentObject(appModel)
 
 					// 能量统计区
-					EnergyStatsSection(energy: energySummary)
-					EnergyTrendSection(energyHistory: appModel.energyHistory, energy: energySummary)
-					}
+                                        EnergyStatsSection(energy: energySummary)
+                                        EnergyTrendSection(
+                                                energyHistory: appModel.energyHistory,
+                                                energyEvents: appModel.energyEvents,
+                                                energy: energySummary
+                                        )
+                                        }
                 }
 		.navigationTitle("Statistics")
 		.task {
