@@ -2,8 +2,9 @@ import SwiftUI
 import Charts
 
 struct EnergyTrendSection: View {
-	let energyHistory: [EnergyHistoryEntry]
-	let energy: EnergyStatisticsViewModel.EnergySummary
+        let energyHistory: [EnergyHistoryEntry]
+        let energyEvents: [EnergyEvent]
+        let energy: EnergyStatisticsViewModel.EnergySummary
 	@State private var window: Int = 7
 
 	var body: some View {
@@ -21,7 +22,7 @@ struct EnergyTrendSection: View {
 					.appFont(FontTheme.caption)
 					.foregroundStyle(.secondary)
 
-				let data = dailyAdded(windowDays: window)
+                                let data = dailyAdded(windowDays: window)
 
 				if data.isEmpty {
 					ContentUnavailableView(
@@ -142,45 +143,62 @@ struct EnergyTrendSection: View {
 	}
 
 	// MARK: - 动态平均值计算
-	private func dailyAdded(windowDays: Int) -> [EnergyTrendPoint] {
-		guard !energyHistory.isEmpty else { return [] }
+        private func dailyAdded(windowDays: Int) -> [EnergyTrendPoint] {
+                let cal = TimeZoneManager.shared.calendar
+                let now = Date()
 
-		let cal = TimeZoneManager.shared.calendar
-		let now = Date()
+                        // 日模式：按小时计算
+                if windowDays == 1 {
+                        let todayEvents = energyEvents.filter { cal.isDate($0.date, inSameDayAs: now) && $0.delta > 0 }
+                        if !todayEvents.isEmpty {
+                                var hourly: [Date: Int] = [:]
+                                for event in todayEvents {
+                                        let hour = cal.dateInterval(of: .hour, for: event.date)!.start
+                                        hourly[hour, default: 0] += event.delta
+                                }
+                                return hourly.map { (key, value) in
+                                        EnergyTrendPoint(date: key, averageTotal: Double(value))
+                                }
+                        }
 
-			// 日模式：按小时计算
-		if windowDays == 1 {
-			let todayEntries = energyHistory.filter { cal.isDate($0.date, inSameDayAs: now) }
-			guard !todayEntries.isEmpty else { return [] }
-			
-			var hourly: [Date: Int] = [:]
-			let startOfDay = cal.startOfDay(for: now)
-			let previousSnapshot = energyHistory
-				.filter { $0.date < startOfDay }
-				.sorted(by: { $0.date < $1.date })
-				.last
-			var prev: EnergyHistoryEntry? = previousSnapshot
-			
-			for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
-				let hour = cal.dateInterval(of: .hour, for: entry.date)!.start
-				if let p = prev {
-					let diff = entry.totalEnergy - p.totalEnergy
-					if diff > 0 {
-						hourly[hour, default: 0] += diff
-					} else {
-							// Still include the hour even if no gain
-						hourly[hour, default: 0] = hourly[hour] ?? 0
-					}
-				} else {
-					hourly[hour] = entry.totalEnergy
-				}
-				prev = entry
-			}
-			
-			return hourly.map { (key, value) in
-				EnergyTrendPoint(date: key, averageTotal: Double(value))
-			}
-		}
+                        guard !energyHistory.isEmpty else { return [] }
+
+                        let todayEntries = energyHistory.filter { cal.isDate($0.date, inSameDayAs: now) }
+                        guard !todayEntries.isEmpty else { return [] }
+
+                        var hourly: [Date: Int] = [:]
+                        let startOfDay = cal.startOfDay(for: now)
+                        let previousSnapshot = energyHistory
+                                .filter { $0.date < startOfDay }
+                                .sorted(by: { $0.date < $1.date })
+                                .last
+                        var prev: EnergyHistoryEntry? = previousSnapshot
+
+                        for entry in todayEntries.sorted(by: { $0.date < $1.date }) {
+                                let hour = cal.dateInterval(of: .hour, for: entry.date)!.start
+                                guard let p = prev else {
+                                        // Use the first entry as baseline to avoid counting imports as gains
+                                        prev = entry
+                                        continue
+                                }
+
+                                let diff = entry.totalEnergy - p.totalEnergy
+                                if diff > 0 {
+                                        hourly[hour, default: 0] += diff
+                                } else {
+                                                // Still include the hour even if no gain
+                                        hourly[hour, default: 0] = hourly[hour] ?? 0
+                                }
+
+                                prev = entry
+                        }
+
+                        return hourly.map { (key, value) in
+                                EnergyTrendPoint(date: key, averageTotal: Double(value))
+                        }
+                }
+
+                guard !energyHistory.isEmpty else { return [] }
 
 		// 其他窗口（周、月、季）
 		let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
