@@ -18,7 +18,7 @@ enum DayPeriod: String, CaseIterable, Identifiable, Sendable {
 enum TrendDirection: String, Codable, Sendable {
 		case up = "arrow.up"
 		case down = "arrow.down"
-		case flat = "-"
+		case flat = "minus"
 }
 
 @MainActor

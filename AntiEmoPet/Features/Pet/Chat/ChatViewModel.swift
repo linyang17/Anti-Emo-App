@@ -39,10 +39,10 @@ final class ChatViewModel: ObservableObject {
     private let historyKey = "chat.history"
     private let usageKey = "chat.usage"
     private let dayFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
+		let formatter = ISO8601DateFormatter()
+			formatter.formatOptions = [.withFullDate]
+			formatter.timeZone = TimeZone(secondsFromGMT: 0)
+		return formatter
     }()
 
     func configureIfNeeded(appModel: AppViewModel) async {

@@ -34,21 +34,29 @@ final class EnergyStatisticsViewModel: ObservableObject {
 	}
 
 	// MARK: - Main Calculation
-        func energySummary(
-                metrics: [DailyActivityMetrics]? = nil,
-                tasks: [UserTask] = [],
-                days: Int = 7
-        ) -> EnergySummary? {
-                guard !tasks.isEmpty else { return nil }
+		func energySummary(
+				metrics: [DailyActivityMetrics]? = nil,
+				tasks: [UserTask] = [],
+				days: Int = 7
+		) -> EnergySummary? {
+				guard !tasks.isEmpty else { return nil }
 
-                let calendar = TimeZoneManager.shared.calendar
-                let now = Date()
-                let startDate = calendar.startOfDay(
-                        for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
-                )
-
-                let dailyEnergyAdds = calculateDailyEnergy(from: tasks, since: startDate, days: days)
-                let todayAdd = dailyEnergyAdds[calendar.startOfDay(for: now)] ?? 0
+				let calendar = TimeZoneManager.shared.calendar
+				let now = Date()
+				let startOfToday = calendar.startOfDay(for: now)
+				let startDate = calendar.startOfDay(
+						for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now)!
+				)
+				// Upper bound is the start of tomorrow, so we only consider events in [startDate, startOfTomorrow)
+				let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
+		
+				let dailyEnergyAdds = calculateDailyEnergy(
+						from: tasks,
+						since: startDate,
+						until: startOfTomorrow,
+						days: days
+				)
+				let todayAdd = dailyEnergyAdds[startOfToday] ?? 0
 
 		let averageAddWeek = {
 			guard !dailyEnergyAdds.isEmpty else { return 0 }
@@ -94,39 +102,53 @@ logger.debug("Today key: \(calendar.startOfDay(for: now), privacy: .public)")
 
 	// MARK: - Subfunctions
 
-	/// 每日任务能量 (sum by day)
-	func calculateDailyEnergy(from tasks: [UserTask], since startDate: Date, days: Int) -> [Date: Int] {
-		let calendar = TimeZoneManager.shared.calendar
-		var energyPerDay: [Date: Int] = [:]
+	/// 每日任务能量 (sum by day)，只统计 [startDate, until) 区间，并补零填满天数
+	func calculateDailyEnergy(from tasks: [UserTask],
+								  since startDate: Date,
+								  until upperBound: Date,
+								  days: Int) -> [Date: Int] {
+				let calendar = TimeZoneManager.shared.calendar
+				var energyPerDay: [Date: Int] = [:]
 
-		for task in tasks {
-			guard task.status == .completed, let completedAt = task.completedAt else { continue }
-			let day = calendar.startOfDay(for: completedAt)
-			if completedAt >= startDate {
-				energyPerDay[day, default: 0] += task.energyReward
-			}
+				// 预填充最近 N 天的日期，确保每天都有 key（包括今天），初始值为 0
+				var currentDay = startDate
+				var filledDays = 0
+				while currentDay < upperBound && filledDays < days {
+						let dayStart = calendar.startOfDay(for: currentDay)
+						energyPerDay[dayStart] = 0
+						guard let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) else { break }
+						currentDay = nextDay
+						filledDays += 1
+				}
+
+				// 累加任务能量，只统计 [startDate, upperBound) 区间内的任务
+				for task in tasks {
+						guard task.status == .completed, let completedAt = task.completedAt else { continue }
+						if completedAt < startDate || completedAt >= upperBound { continue }
+						let day = calendar.startOfDay(for: completedAt)
+						energyPerDay[day, default: 0] += task.energyReward
+				}
+
+				return energyPerDay
 		}
-
-		// 限定最多取最近 N 天
-		let sortedKeys = energyPerDay.keys.sorted(by: <)
-		let limitedKeys = Array(sortedKeys.suffix(days))
-		return Dictionary(uniqueKeysWithValues: limitedKeys.map { ($0, energyPerDay[$0] ?? 0) })
-	}
 
 	/// 任务指标：今日任务数 + 平均任务数
 	func calculateTaskMetrics(_ metrics: [DailyActivityMetrics], since startDate: Date, days: Int) -> (today: Int, average: Double) {
-		let calendar = TimeZoneManager.shared.calendar
-		let now = Date()
-
-		let today = metrics.first(where: { calendar.isDate($0.date, inSameDayAs: now) })?.completedTaskCount ?? 0
-		let weekMetrics = metrics.filter { $0.date >= startDate }
-		let recordedDays = Set(weekMetrics.map { calendar.startOfDay(for: $0.date) }).count
-		let divisor = min(days, max(1, recordedDays))
-		let totalTasksWeek = weekMetrics.reduce(0) { $0 + $1.completedTaskCount }
-		let average = Double(totalTasksWeek) / Double(divisor)
-
-		return (today, average)
-	}
+				let calendar = TimeZoneManager.shared.calendar
+				let now = Date()
+				let startOfToday = calendar.startOfDay(for: now)
+				let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
+		
+				let today = metrics.first(where: { calendar.isDate($0.date, inSameDayAs: now) })?.completedTaskCount ?? 0
+				// 只统计 [startDate, startOfTomorrow) 区间内的指标
+				let weekMetrics = metrics.filter { $0.date >= startDate && $0.date < startOfTomorrow }
+				let recordedDays = Set(weekMetrics.map { calendar.startOfDay(for: $0.date) }).count
+				let divisor = min(days, max(1, recordedDays))
+				let totalTasksWeek = weekMetrics.reduce(0) { $0 + $1.completedTaskCount }
+				let average = Double(totalTasksWeek) / Double(divisor)
+		
+				return (today, average)
+		}
 
 	/// 趋势计算
 	func calculateTrend(from metrics: [DailyActivityMetrics]?, and taskEnergyPerDay: [Date: Int]) -> TrendDirection {

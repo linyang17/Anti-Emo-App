@@ -7,14 +7,14 @@ struct EnergyStatsSection: View {
 	var body: some View {
 		DashboardCard(title: "Energy Added Summary", icon: "bolt.fill") {
 			VStack(alignment: .leading, spacing: 8) {
-                // Top Section: Latest / Today
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("Today Added: ")
+				// Top Section: Latest / Today
+				HStack(alignment: .firstTextBaseline, spacing: 6) {
+					Text("Today Added: ")
 						.appFont(FontTheme.title3)
-                    Text("\(energy.todayAdd)")
+					Text("\(energy.todayAdd)")
 						.appFont(FontTheme.title3)
 						.bold()
-                }
+				}
 
 				Divider().padding(.vertical, 6)
 
@@ -64,45 +64,45 @@ struct EnergyStatsSection: View {
 				}
 				.padding(.bottom, 12)
 				
-                // Comment
+				// Comment
 				Text(energy.comment.isEmpty ? "Come more often for a summary" : energy.comment)
 						.foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                
-                // Pie Chart
-                if !energy.taskTypeCounts.isEmpty {
-                    Divider().padding(.vertical, 8)
-                    Text("Completed Tasks by Type")
+						.fixedSize(horizontal: false, vertical: true)
+				
+				// Pie Chart
+				if !energy.taskTypeCounts.isEmpty {
+					Divider().padding(.vertical, 8)
+					
+					Text("Completed Tasks by Type")
 						.appFont(FontTheme.subheadline)
-                        .foregroundStyle(.secondary)
+						.foregroundStyle(.secondary)
+						.padding(.bottom, 12)
 					
 					let theme = ChartTheme.shared
 					let sortedCategories: [TaskCategory] = Array(energy.taskTypeCounts.keys).sorted { (lhs: TaskCategory, rhs: TaskCategory) in
 						lhs.localizedTitle < rhs.localizedTitle
-                    }
-                    Chart(Array(energy.taskTypeCounts).sorted { (lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
-                        lhs.value > rhs.value
-                    }, id: \.key) { item in
-                        SectorMark(
-                            angle: .value("Count", item.value),
-                            innerRadius: .ratio(0.5),
-                            angularInset: 1
-                        )
+					}
+					
+					Chart(Array(energy.taskTypeCounts).sorted { (lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
+						lhs.value > rhs.value
+					}, id: \.key) { item in
+						SectorMark(
+							angle: .value("Count", item.value),
+							innerRadius: .ratio(0.5),
+							angularInset: 1
+						)
 						.foregroundStyle(by: .value("Category", item.key.localizedTitle))
-                        .cornerRadius(4)
-                    }
-                    .chartForegroundStyleScale(
-                        domain: sortedCategories.map { $0.localizedTitle },
-                        range: sortedCategories.map { theme.gradient(for: $0) }
-                    )
-                    .frame(height: 200)
-                    .chartLegend(position: .bottom, alignment: .center, spacing: 24) {
-                        HStack { }
-							.frame(maxWidth: .w(0.8))
-                    }
-                }
-            }
-            .padding(.vertical, 6)
-        }
-    }
+						.cornerRadius(4)
+					}
+					.chartForegroundStyleScale(
+						domain: sortedCategories.map { $0.localizedTitle },
+						range: sortedCategories.map { theme.gradient(for: $0) }
+					)
+					.frame(width: .w(0.8), height: 200)
+					.chartLegend(position: .bottom, alignment: .center, spacing: 32)
+				}
+			}
+			.padding(.vertical, 6)
+		}
+	}
 }

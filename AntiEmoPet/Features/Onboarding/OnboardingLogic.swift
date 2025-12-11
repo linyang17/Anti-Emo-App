@@ -7,7 +7,6 @@ struct FoxCharacterLayer: View {
 			.resizable()
 			.scaledToFit()
 			.frame(maxWidth: .w(0.4), maxHeight: .h(0.25))
-			.padding(.bottom, 100)
     }
 }
 
@@ -147,10 +146,10 @@ struct NameStepView: View, Equatable {
 				.onSubmit(onSubmit)
 
 			if !isValid {
-					Text("Only letters, numbers, hyphen \nor underscore, no space.")
+					Text("Letters, numbers, hyphen or underscore")
 							.appFont(FontTheme.caption)
 							.foregroundStyle(.white.opacity(0.8))
-							.frame(maxWidth: .w(0.7), alignment: .center)
+							.frame(maxWidth: .w(0.8), alignment: .center)
 			}
 		}
 		.onAppear {
@@ -176,12 +175,11 @@ struct GenderStepView: View, Equatable {
 					Button { selectedGender = option } label: {
 						Text(option.displayName)
 							.appFont(FontTheme.subheadline)
-							.frame(width: 70, height: 40)
+							.frame(width: 80, height: 40)
 							.background(
 								RoundedRectangle(cornerRadius: 18)
 									.fill(backgroundColor(for: option))
 							)
-							.padding(.horizontal, 6)
 							.overlay(
 								RoundedRectangle(cornerRadius: 18)
 									.stroke(Color.white.opacity(0.9),
@@ -196,7 +194,7 @@ struct GenderStepView: View, Equatable {
 	}
 
 	private func backgroundColor(for option: OnboardingViewModel.GenderOption) -> Color {
-		option == selectedGender ? Color.black.opacity(0.2) : Color.white.opacity(0.12)
+		option == selectedGender ? Color.gray.opacity(0.2) : Color.gray.opacity(0.02)
 	}
 }
 

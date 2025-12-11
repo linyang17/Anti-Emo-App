@@ -26,37 +26,45 @@ struct OnboardingView: View {
 
 	// MARK: - Body
 	var body: some View {
-		ZStack {
-			GPUCachedBackground("bg-main")
-
-			if step == .celebration {
-				WelcomeView(onTap: handleAdvance)
-					.id(step.rawValue)
-					.transition(.opacity)
-			} else {
-				VStack {
-					Spacer(minLength: 50)
-					StepFactory(step: step, viewModel: viewModel, onAdvance: handleAdvance)
+		GeometryReader { proxy in
+			// 利用 size.height + safeAreaInsets.bottom，把“被键盘缩短”的高度补回来
+			let fullHeight = proxy.size.height + proxy.safeAreaInsets.bottom
+			
+			ZStack {
+				GPUCachedBackground("bg-main")
+				
+				if step == .celebration {
+					WelcomeView(onTap: handleAdvance)
 						.id(step.rawValue)
-						.animation(.easeInOut(duration: 0.3), value: step)
-					Spacer(minLength: 500)
-				}
-				.frame(maxHeight: .infinity, alignment: .topLeading)
-
-				VStack(spacing: 24) {
-					Spacer(minLength: 300)
+						.transition(.opacity)
+				} else {
+					VStack {
+						//Spacer(minLength: 50)
+						StepFactory(step: step, viewModel: viewModel, onAdvance: handleAdvance)
+							.id(step.rawValue)
+							.animation(.easeInOut(duration: 0.3), value: step)
+						//Spacer(minLength: 500)
+					}
+					.frame(maxHeight: fullHeight, alignment: .topLeading)
+					.padding(.top, .h(0.13))
 					
-					OnboardingArrowButton(
-						isEnabled: canAdvance,
-						isLoading: accessTBD,
-						action: handleAdvance
-					)
-					
-					FoxCharacterLayer()
+					VStack(spacing: 24) {
+						//Spacer(minLength: 300)
+						
+						OnboardingArrowButton(
+							isEnabled: canAdvance,
+							isLoading: accessTBD,
+							action: handleAdvance
+						)
+						
+						FoxCharacterLayer()
+					}
+					.frame(maxHeight: fullHeight, alignment: .bottomTrailing)
+					.padding(.bottom, .h(0.18))
+					.padding(.top, .h(0.35))
 				}
-				.padding(.bottom, 50)
-				.frame(maxHeight: .infinity, alignment: .bottomLeading)
 			}
+			.frame(maxHeight: .infinity, alignment: .bottomLeading)
 		}
 		.ignoresSafeArea(.keyboard, edges: .leading)
 		// MARK: - Alerts
