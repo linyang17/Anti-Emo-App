@@ -83,7 +83,9 @@ struct EnergyStatsSection: View {
 						lhs.localizedTitle < rhs.localizedTitle
 					}
 					
-					Chart(Array(energy.taskTypeCounts).sorted { (lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
+					Chart(
+						Array(energy.taskTypeCounts).sorted {
+						(lhs: (key: TaskCategory, value: Int), rhs: (key: TaskCategory, value: Int)) in
 						lhs.value > rhs.value
 					}, id: \.key) { item in
 						SectorMark(

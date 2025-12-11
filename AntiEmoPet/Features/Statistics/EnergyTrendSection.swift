@@ -5,7 +5,7 @@ struct EnergyTrendSection: View {
         let energyHistory: [EnergyHistoryEntry]
         let energyEvents: [EnergyEvent]
         let energy: EnergyStatisticsViewModel.EnergySummary
-	@State private var window: Int = 7
+		@State private var window: Int = 7
 
 	var body: some View {
 		DashboardCard(title: "Energy Trend", icon: "chart.bar.fill") {
@@ -96,9 +96,10 @@ struct EnergyTrendSection: View {
 			return start...end
 		}
 		else if window >= 45 {
-				// 对于月或3M窗口，改为以“周”为单位的domain
-			let start = cal.date(byAdding: .weekOfYear, value: -13, to: now)! // 3M约12周
-			let end = cal.date(byAdding: .weekOfYear, value: 2, to: now)!
+			// 对于3M窗口，改为以“周”为单位的domain
+			let weekCal = WeekAlignmentService.weeklyCalendar(from: cal)
+			let start = WeekAlignmentService.weekAlignedStart(for: window, now: now, calendar: weekCal)
+			let end = WeekAlignmentService.weekAlignedEnd(for: now, calendar: weekCal)
 			return start...end
 		}
 		else {
@@ -186,7 +187,7 @@ struct EnergyTrendSection: View {
                                 if diff > 0 {
                                         hourly[hour, default: 0] += diff
                                 } else {
-                                                // Still include the hour even if no gain
+										// Still include the hour even if no gain
                                         hourly[hour, default: 0] = hourly[hour] ?? 0
                                 }
 
@@ -200,36 +201,34 @@ struct EnergyTrendSection: View {
 
                 guard !energyHistory.isEmpty else { return [] }
 
-		// 其他窗口（周、月、季）
-		let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
-		let entries = energy.dailyEnergyAdds.filter { $0.key >= start }
-		guard !entries.isEmpty else { return [] }
+			// 其他窗口（周、月、季）
+			let start = cal.date(byAdding: .day, value: -(max(1, windowDays) - 1), to: now) ?? now
+			let entries = energy.dailyEnergyAdds.filter { $0.key >= start }
+			guard !entries.isEmpty else { return [] }
 
-		var daily: [Date: (sum: Int, count: Int)] = [:]
-		for entry in entries {
-			let day = cal.startOfDay(for: entry.key)
-			var item = daily[day] ?? (0, 0)
-			item.sum += entry.value
-			item.count += 1
-			daily[day] = item
-		}
-		
-		// 聚合逻辑
-		if windowDays >= 45 {
-			var weekly: [Date: (sum: Int, count: Int)] = [:]
-			for (day, value) in daily {
-				if let weekStart = cal.dateInterval(of: .weekOfYear, for: day)?.start {
-					let midpoint = cal.date(byAdding: .day, value: 3, to: weekStart)!
-					weekly[midpoint, default: (0, 0)].sum += value.sum / max(1, value.count)
-					weekly[midpoint]!.count += 1
+			var daily: [Date: (sum: Int, count: Int)] = [:]
+			for entry in entries {
+				let day = cal.startOfDay(for: entry.key)
+				var item = daily[day] ?? (0, 0)
+				item.sum += entry.value
+				item.count += 1
+				daily[day] = item
+			}
+			
+			if windowDays >= 45 {
+				let weekCal = WeekAlignmentService.weeklyCalendar(from: cal)
+					var weekly: [Date: (sum: Int, count: Int)] = [:]
+					for (day, value) in daily {
+						let weekStart = WeekAlignmentService.startOfWeek(for: day, calendar: weekCal)
+							weekly[weekStart, default: (0, 0)].sum += value.sum / max(1, value.count)
+							weekly[weekStart]!.count += 1
+					}
+
+				return weekly.map { (key, value) in
+					EnergyTrendPoint(date: key, averageTotal: Double(value.sum))
 				}
+				.sorted(by: { $0.date < $1.date })
 			}
-
-			return weekly.map { (key, value) in
-				EnergyTrendPoint(date: key, averageTotal: Double(value.sum) / Double(max(1, value.count)))
-			}
-			.sorted(by: { $0.date < $1.date })
-		}
 
 		return entries.map { (key, value) in
 			EnergyTrendPoint(date: key, averageTotal: Double(value))

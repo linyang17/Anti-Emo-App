@@ -40,7 +40,13 @@ struct MoodTrendSection: View {
 								y: .value("Avg Mood", point.average)
 							)
 							.interpolationMethod(.catmullRom)
-							.foregroundStyle(LinearGradient(colors: ChartTheme.shared.grad_purple, startPoint: .leading, endPoint: .trailing))
+							.foregroundStyle(
+								LinearGradient(
+									colors: ChartTheme.shared.grad_purple,
+									startPoint: .bottom,
+									endPoint: .top
+								)
+							)
 							
 							PointMark(
 								x: .value("time", point.date, unit: window == 1 ? .hour : window == 91 ? .weekOfYear : .day),
@@ -98,9 +104,10 @@ struct MoodTrendSection: View {
 			return start...end
 		}
 		else if window >= 45 {
-				// 对于月或3M窗口，改为以“周”为单位的domain
-			let start = cal.date(byAdding: .weekOfYear, value: -13, to: now)!
-			let end = cal.date(byAdding: .weekOfYear, value: 2, to: now)!
+			// 对于3M窗口，改为以“周”为单位的domain
+			let weekCal = WeekAlignmentService.weeklyCalendar(from: cal)
+			let start = WeekAlignmentService.weekAlignedStart(for: window, now: now, calendar: weekCal)
+			let end = WeekAlignmentService.weekAlignedEnd(for: now, calendar: weekCal)
 			return start...end
 		}
 		else {
@@ -184,19 +191,17 @@ struct MoodTrendSection: View {
 			daily[day] = item
 		}
 
-		// 聚合逻辑
 		if windowDays >= 45 {
+			let weekCal = WeekAlignmentService.weeklyCalendar(from: calendar)
 			var weekly: [Date: (sum: Int, count: Int)] = [:]
 			for (day, value) in daily {
-				if let weekStart = calendar.dateInterval(of: .weekOfYear, for: day)?.start {
-					let midpoint = calendar.date(byAdding: .day, value: 3, to: weekStart)!
-								weekly[midpoint, default: (0, 0)].sum += value.sum / max(1, value.count)
-								weekly[midpoint]!.count += 1
-				}
+					let weekStart = WeekAlignmentService.startOfWeek(for: day, calendar: weekCal)
+					weekly[weekStart, default: (0, 0)].sum += value.sum / max(1, value.count)
+					weekly[weekStart]!.count += 1
 			}
 
 			return weekly.map { (key, value) in
-				MoodTrendPoint(date: key, average: Double(value.sum) / Double(max(1, value.count)))
+					MoodTrendPoint(date: key, average: Double(value.sum) / Double(max(1, value.count)))
 			}
 			.sorted(by: { $0.date < $1.date })
 		}
