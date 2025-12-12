@@ -234,27 +234,38 @@ private struct TaskRow: View {
 	}
 }
 	
-	struct RewardToastView: View {
-		let event: RewardEvent
-		
-		var body: some View {
-			
-				VStack(alignment: .leading, spacing: 2) {
-					if let bondingBoost = event.bondingBoost {
-						LumioSay(
-							text: "Bonding +\(bondingBoost)  Xp +\(event.xp) \n",
-							style: FontTheme.subheadline
-						)
-					} else {
-						LumioSay(
-							text: "Energy +\(event.energy)  Xp +\(event.xp) \n",
-							style: FontTheme.subheadline)
-					}
-					if let snack = event.snackName {
-						LumioSay(
-							text: "You got a \(snack) in the bag!",
-							style: FontTheme.subheadline)
-					}
-				}
-			}
-	}
+struct RewardToastView: View {
+        let event: RewardEvent
+
+        var body: some View {
+
+                        VStack(alignment: .leading, spacing: 2) {
+                                LumioSay(
+                                        text: metricsLine,
+                                        style: FontTheme.subheadline
+                                )
+                                if let snack = event.snackName {
+                                        LumioSay(
+                                                text: "You got a \(snack) in the bag!",
+                                                style: FontTheme.subheadline)
+                                }
+                        }
+                }
+
+        private var metricsLine: String {
+                var parts: [String] = []
+                if let bonding = event.bondingBoost {
+                        parts.append("Bonding \(formatted(bonding))")
+                }
+                parts.append("Xp \(formatted(event.xp))")
+                if event.energy != 0 {
+                        parts.append("Energy \(formatted(event.energy))")
+                }
+                return parts.joined(separator: "  ") + " \n"
+        }
+
+        private func formatted(_ value: Int) -> String {
+                let sign = value >= 0 ? "+" : ""
+                return "\(sign)\(value)"
+        }
+}

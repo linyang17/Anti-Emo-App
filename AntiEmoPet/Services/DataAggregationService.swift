@@ -35,17 +35,32 @@ final class DataAggregationService {
 		tasks: [UserTask],
 		sunEvents: [Date: SunTimes]
 	) -> [UserTimeslotSummary] {
-		let startOfDay = calendar.startOfDay(for: date)
-		
-		// Filter data for the specific date
-		let dailyMoods = moodEntries.filter { calendar.isDate($0.date, inSameDayAs: date) }
-		let dailyTasks = tasks.filter { calendar.isDate($0.date, inSameDayAs: date) }
-		
-		// Calculate day length
-		var dayLength: TimeInterval = 0
-		if let sunTime = sunEvents[startOfDay] {
-			dayLength = sunTime.sunset.timeIntervalSince(sunTime.sunrise)
-		}
+                let startOfDay = calendar.startOfDay(for: date)
+
+                // Filter data for the specific date
+                let dailyMoods = moodEntries.filter { calendar.isDate($0.date, inSameDayAs: date) }
+                let dailyTasks = tasks.filter { calendar.isDate($0.date, inSameDayAs: date) }
+
+                // Normalize sunEvents to day keys to avoid mismatches from different time zones
+                let normalizedSunEvents = sunEvents.reduce(into: [Date: SunTimes]()) { partialResult, entry in
+                        let day = calendar.startOfDay(for: entry.key)
+                        partialResult[day] = entry.value
+                }
+
+                // Calculate day length
+                var dayLength: TimeInterval = 0
+                if let sunTime = normalizedSunEvents[startOfDay]
+                        ?? normalizedSunEvents.first(where: { calendar.isDate($0.key, inSameDayAs: startOfDay) })?.value {
+                        let sunrise = sunTime.sunrise
+                        let sunset = sunTime.sunset
+                        if sunset >= sunrise {
+                                dayLength = sunset.timeIntervalSince(sunrise)
+                        } else {
+                                let adjustedSunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
+                                dayLength = adjustedSunset.timeIntervalSince(sunrise)
+                        }
+                        dayLength = max(0, dayLength)
+                }
 		
 		var summaries: [UserTimeslotSummary] = []
 		
