@@ -477,95 +477,83 @@ final class StorageService {
 
         func importHistory(_ export: TaskHistoryExport) {
                 do {
-                        // Reset existing historical records to avoid duplicated aggregates on repeated imports
-                        try clearHistoryData()
+                        let calendar = TimeZoneManager.shared.calendar
+                        let existingTasks = try context.fetch(FetchDescriptor<UserTask>())
+                        let taskIDs = Set(existingTasks.map(\.id))
 
-                        for record in export.tasks {
-                                let descriptor = FetchDescriptor<UserTask>()
-                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
-                                if let task = existing {
-                                        task.title = record.title
-                                        task.weatherType = WeatherType(rawValue: record.weather) ?? task.weatherType
-                                        task.category = TaskCategory(rawValue: record.category) ?? task.category
-                                        task.energyReward = record.energyReward
-                                        task.date = record.date
-                                        task.status = TaskStatus(rawValue: record.status) ?? task.status
-                                        task.isArchived = record.isArchived
-                                        task.completedAt = record.completedAt
-                                        task.isOnboarding = record.isOnboarding
-                                } else {
-                                        let task = UserTask(
-                                                id: record.id,
-                                                title: record.title,
-                                                weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
-                                                category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
-                                                energyReward: record.energyReward,
-                                                date: record.date,
-                                                status: TaskStatus(rawValue: record.status) ?? .pending,
-                                                isArchived: record.isArchived,
-                                                completedAt: record.completedAt,
-                                                isOnboarding: record.isOnboarding
-                                        )
-                                        context.insert(task)
-                                }
+                        for record in export.tasks where !taskIDs.contains(record.id) {
+                                let task = UserTask(
+                                        id: record.id,
+                                        title: record.title,
+                                        weatherType: WeatherType(rawValue: record.weather) ?? .sunny,
+                                        category: TaskCategory(rawValue: record.category) ?? .indoorDigital,
+                                        energyReward: record.energyReward,
+                                        date: record.date,
+                                        status: TaskStatus(rawValue: record.status) ?? .pending,
+                                        isArchived: record.isArchived,
+                                        completedAt: record.completedAt,
+                                        isOnboarding: record.isOnboarding
+                                )
+                                context.insert(task)
                         }
 
-                        for record in export.moods {
-                                let descriptor = FetchDescriptor<MoodEntry>()
-                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
-                                if let mood = existing {
-                                        mood.date = record.date
-                                        mood.value = record.value
-                                        mood.source = record.source
-                                        mood.delta = record.delta
-                                        mood.relatedTaskCategory = record.relatedTaskCategory
-                                        mood.relatedWeather = record.relatedWeather
-                                } else {
-                                        let mood = MoodEntry(
-                                                id: record.id,
-                                                date: record.date,
-                                                value: record.value,
-                                                source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
-                                                delta: record.delta,
-                                                relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
-                                                relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
-                                        )
-                                        context.insert(mood)
-                                }
+                        let existingMoods = try context.fetch(FetchDescriptor<MoodEntry>())
+                        let moodIDs = Set(existingMoods.map(\.id))
+                        for record in export.moods where !moodIDs.contains(record.id) {
+                                let mood = MoodEntry(
+                                        id: record.id,
+                                        date: record.date,
+                                        value: record.value,
+                                        source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
+                                        delta: record.delta,
+                                        relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
+                                        relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
+                                )
+                                context.insert(mood)
                         }
 
-                        for record in export.energyEvents {
-                                let descriptor = FetchDescriptor<EnergyEvent>()
-                                let existing = try context.fetch(descriptor).first { $0.id == record.id }
-                                if let event = existing {
-                                        event.date = record.date
-                                        event.delta = record.delta
-                                        event.relatedTaskId = record.relatedTaskId
-                                } else {
-                                        let event = EnergyEvent(
-                                                id: record.id,
-                                                date: record.date,
-                                                delta: record.delta,
-                                                relatedTaskId: record.relatedTaskId
-                                        )
-                                        context.insert(event)
-                                }
+                        let existingEvents = try context.fetch(FetchDescriptor<EnergyEvent>())
+                        let eventIDs = Set(existingEvents.map(\.id))
+                        for record in export.energyEvents where !eventIDs.contains(record.id) {
+                                let event = EnergyEvent(
+                                        id: record.id,
+                                        date: record.date,
+                                        delta: record.delta,
+                                        relatedTaskId: record.relatedTaskId
+                                )
+                                context.insert(event)
                         }
 
                         if let stats = fetchStats() {
                                 let importedTotalEnergy = export.stats?.totalEnergy ?? export.energyEvents.reduce(0) { $0 + $1.delta }
-                                stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
-                                stats.completedTasksCount = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
-                                stats.lastActiveDate = export.rangeEnd
+                                if stats.totalEnergy < importedTotalEnergy {
+                                        stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
+                                }
+                                let importedCompleted = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
+                                if stats.completedTasksCount < importedCompleted {
+                                        stats.completedTasksCount = importedCompleted
+                                }
+                                stats.lastActiveDate = max(stats.lastActiveDate, export.rangeEnd)
 
-                                let historySnapshot = EnergyHistoryEntry(date: export.rangeEnd, totalEnergy: stats.totalEnergy)
-                                addEnergyHistoryEntry(historySnapshot)
+                                let descriptor = FetchDescriptor<EnergyHistoryEntry>()
+                                let existingHistory = try context.fetch(descriptor)
+                                let hasSnapshot = existingHistory.contains { calendar.isDate($0.date, inSameDayAs: export.rangeEnd) }
+                                if !hasSnapshot {
+                                        let historySnapshot = EnergyHistoryEntry(date: export.rangeEnd, totalEnergy: stats.totalEnergy)
+                                        context.insert(historySnapshot)
+                                }
                         }
 
                         if let pet = fetchPet() {
                                 if let bondingScore = export.pet?.bondingScore {
                                         let clamped = min(100, max(15, bondingScore))
-                                        pet.bondingScore = clamped
+                                        pet.bondingScore = max(pet.bondingScore, clamped)
+                                }
+                                if let level = export.pet?.level {
+                                        pet.level = max(pet.level, max(1, level))
+                                }
+                                if let xp = export.pet?.xp {
+                                        pet.xp = max(pet.xp, max(0, xp))
                                 }
                                 if let level = export.pet?.level {
                                         pet.level = max(1, level)
@@ -579,29 +567,14 @@ final class StorageService {
                                 try syncInventory(with: inventory)
                         }
 
+                        if let inventory = export.inventory {
+                                try syncInventory(with: inventory)
+                        }
+
                         saveContext(reason: "import history")
                 } catch {
                         logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
                 }
-        }
-
-        private func clearHistoryData() throws {
-                let taskDescriptor = FetchDescriptor<UserTask>()
-                try context.fetch(taskDescriptor).forEach { context.delete($0) }
-
-                let moodDescriptor = FetchDescriptor<MoodEntry>()
-                try context.fetch(moodDescriptor).forEach { context.delete($0) }
-
-                let energyDescriptor = FetchDescriptor<EnergyEvent>()
-                try context.fetch(energyDescriptor).forEach { context.delete($0) }
-
-                let historyDescriptor = FetchDescriptor<EnergyHistoryEntry>()
-                try context.fetch(historyDescriptor).forEach { context.delete($0) }
-
-                let inventoryDescriptor = FetchDescriptor<InventoryEntry>()
-                try context.fetch(inventoryDescriptor).forEach { context.delete($0) }
-
-                saveContext(reason: "clear history before import")
         }
 
         private func syncInventory(with records: [InventoryRecord]) throws {
@@ -610,16 +583,12 @@ final class StorageService {
                 let existingEntries = try context.fetch(FetchDescriptor<InventoryEntry>())
                 let existingMap = Dictionary(uniqueKeysWithValues: existingEntries.map { ($0.sku, $0) })
 
-                // Remove any inventory entries not present in the export and update existing quantities
                 for (sku, entry) in existingMap {
                         if let quantity = exported[sku] {
-                                entry.quantity = max(0, quantity)
-                        } else {
-                                context.delete(entry)
+                                entry.quantity = max(entry.quantity, max(0, quantity))
                         }
                 }
 
-                // Insert any missing SKUs
                 for (sku, quantity) in exported where existingMap[sku] == nil {
                         let entry = InventoryEntry(sku: sku, quantity: max(0, quantity))
                         context.insert(entry)
