@@ -477,6 +477,9 @@ final class StorageService {
 
         func importHistory(_ export: TaskHistoryExport) {
                 do {
+                        // Reset existing historical records to avoid duplicated aggregates on repeated imports
+                        try clearHistoryData()
+
                         for record in export.tasks {
                                 let descriptor = FetchDescriptor<UserTask>()
                                 let existing = try context.fetch(descriptor).first { $0.id == record.id }
@@ -550,7 +553,7 @@ final class StorageService {
                         }
 
                         if let stats = fetchStats() {
-                                let importedTotalEnergy = export.energyEvents.reduce(0) { $0 + $1.delta }
+                                let importedTotalEnergy = export.stats?.totalEnergy ?? export.energyEvents.reduce(0) { $0 + $1.delta }
                                 stats.totalEnergy = EnergyEngine.clamp(importedTotalEnergy)
                                 stats.completedTasksCount = export.tasks.filter { $0.status == TaskStatus.completed.rawValue }.count
                                 stats.lastActiveDate = export.rangeEnd
@@ -559,16 +562,67 @@ final class StorageService {
                                 addEnergyHistoryEntry(historySnapshot)
                         }
 
-                        if let bondingScore = export.petBondingScore {
-                                if let pet = fetchPet() {
+                        if let pet = fetchPet() {
+                                if let bondingScore = export.pet?.bondingScore {
                                         let clamped = min(100, max(15, bondingScore))
                                         pet.bondingScore = clamped
                                 }
+                                if let level = export.pet?.level {
+                                        pet.level = max(1, level)
+                                }
+                                if let xp = export.pet?.xp {
+                                        pet.xp = max(0, xp)
+                                }
+                        }
+
+                        if let inventory = export.inventory {
+                                try syncInventory(with: inventory)
                         }
 
                         saveContext(reason: "import history")
                 } catch {
                         logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
+                }
+        }
+
+        private func clearHistoryData() throws {
+                let taskDescriptor = FetchDescriptor<UserTask>()
+                try context.fetch(taskDescriptor).forEach { context.delete($0) }
+
+                let moodDescriptor = FetchDescriptor<MoodEntry>()
+                try context.fetch(moodDescriptor).forEach { context.delete($0) }
+
+                let energyDescriptor = FetchDescriptor<EnergyEvent>()
+                try context.fetch(energyDescriptor).forEach { context.delete($0) }
+
+                let historyDescriptor = FetchDescriptor<EnergyHistoryEntry>()
+                try context.fetch(historyDescriptor).forEach { context.delete($0) }
+
+                let inventoryDescriptor = FetchDescriptor<InventoryEntry>()
+                try context.fetch(inventoryDescriptor).forEach { context.delete($0) }
+
+                saveContext(reason: "clear history before import")
+        }
+
+        private func syncInventory(with records: [InventoryRecord]) throws {
+                let exported = Dictionary(uniqueKeysWithValues: records.map { ($0.sku, $0.quantity) })
+
+                let existingEntries = try context.fetch(FetchDescriptor<InventoryEntry>())
+                let existingMap = Dictionary(uniqueKeysWithValues: existingEntries.map { ($0.sku, $0) })
+
+                // Remove any inventory entries not present in the export and update existing quantities
+                for (sku, entry) in existingMap {
+                        if let quantity = exported[sku] {
+                                entry.quantity = max(0, quantity)
+                        } else {
+                                context.delete(entry)
+                        }
+                }
+
+                // Insert any missing SKUs
+                for (sku, quantity) in exported where existingMap[sku] == nil {
+                        let entry = InventoryEntry(sku: sku, quantity: max(0, quantity))
+                        context.insert(entry)
                 }
         }
 

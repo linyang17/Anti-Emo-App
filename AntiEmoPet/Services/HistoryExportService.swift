@@ -30,6 +30,21 @@ struct EnergyEventRecord: Codable, Sendable {
         let relatedTaskId: UUID?
 }
 
+struct InventoryRecord: Codable, Sendable {
+        let sku: String
+        let quantity: Int
+}
+
+struct PetSnapshot: Codable, Sendable {
+        let bondingScore: Int
+        let level: Int
+        let xp: Int
+}
+
+struct StatsSnapshot: Codable, Sendable {
+        let totalEnergy: Int
+}
+
 struct TaskHistoryExport: Codable, Sendable {
         let exportedAt: Date
         let rangeStart: Date
@@ -37,7 +52,9 @@ struct TaskHistoryExport: Codable, Sendable {
         let tasks: [TaskHistoryRecord]
         let moods: [MoodHistoryRecord]
         let energyEvents: [EnergyEventRecord]
-        let petBondingScore: Int?
+        let inventory: [InventoryRecord]?
+        let pet: PetSnapshot?
+        let stats: StatsSnapshot?
 }
 
 struct HistoryExportService {
@@ -71,7 +88,9 @@ struct HistoryExportService {
                 tasks: [UserTask],
                 moods: [MoodEntry],
                 energyEvents: [EnergyEvent],
-                petBondingScore: Int?,
+                inventory: [InventoryEntry],
+                pet: Pet?,
+                stats: UserStats?,
                 range: ClosedRange<Date>
         ) throws -> URL {
                 let taskRecords = tasks.map { task in
@@ -110,6 +129,20 @@ struct HistoryExportService {
                         )
                 }
 
+                let inventoryRecords = inventory.map { entry in
+                        InventoryRecord(sku: entry.sku, quantity: entry.quantity)
+                }
+
+                let petSnapshot = pet.map { pet in
+                        PetSnapshot(
+                                bondingScore: pet.bondingScore,
+                                level: pet.level,
+                                xp: pet.xp
+                        )
+                }
+
+                let statsSnapshot = stats.map { StatsSnapshot(totalEnergy: $0.totalEnergy) }
+
                 let exportedAt = Date()
                 let rangeStart = tasks.map(\.date).min() ?? exportedAt
                 let rangeEnd = tasks.map(\.date).max() ?? exportedAt
@@ -121,7 +154,9 @@ struct HistoryExportService {
                         tasks: taskRecords,
                         moods: moodRecords,
                         energyEvents: energyRecords,
-                        petBondingScore: petBondingScore
+                        inventory: inventoryRecords,
+                        pet: petSnapshot,
+                        stats: statsSnapshot
                 )
 
                 let formatter = ISO8601DateFormatter()

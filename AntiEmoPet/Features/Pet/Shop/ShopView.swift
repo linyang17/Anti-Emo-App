@@ -4,10 +4,10 @@ import SwiftUI
 struct ShopView: View {
 	@EnvironmentObject private var appModel: AppViewModel
 	@StateObject private var viewModel = ShopViewModel()
-	@State private var alertMessage: String?
-	@State private var selectedCategory: ItemType = .decor
-	@State private var pendingItem: Item?
-	@State private var purchaseToast: ShopToast?
+        @State private var alertMessage: String?
+        @State private var selectedCategory: ItemType = .decor
+        @State private var pendingItem: Item?
+        @State private var purchaseReward: RewardEvent?
 
 	private let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 14), count: 3)
 
@@ -312,38 +312,27 @@ struct ShopView: View {
                         pendingItem = nil
                         return
                 }
-                if appModel.purchase(item: item) {
+                if let reward = appModel.purchase(item: item) {
                         appModel.equip(item: item)
-                        showToast(for: item)
-			pendingItem = nil
-		} else {
-			alertMessage = "You don't have enough energy, try to complete more tasks!"
-		}
-	}
-
-        private func showToast(for item: Item) {
-                var msg: String
-                if item.type == .snack {
-                        msg = "XP + 1 · Bonding + \(item.bondingBoost)"
+                        showToast(for: reward)
+                        pendingItem = nil
+                } else {
+                        alertMessage = "You don't have enough energy, try to complete more tasks!"
+                }
         }
-		else {
-			msg = "Energy -\(item.costEnergy) · XP + 10 · Bonding + \(item.bondingBoost)"
-		}
-		
-		let toast = ShopToast(
-			message: msg
-		)
-		withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-			purchaseToast = toast
-		}
-		DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-			if purchaseToast?.id == toast.id {
-				withAnimation(.easeInOut(duration: 0.25)) {
-					purchaseToast = nil
-				}
-			}
-		}
-	}
+
+        private func showToast(for reward: RewardEvent) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                        purchaseReward = reward
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                        if purchaseReward?.id == reward.id {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                        purchaseReward = nil
+                                }
+                        }
+                }
+        }
 
         private func isOwned(_ item: Item) -> Bool {
                 appModel.inventory.first(where: { $0.sku == item.sku })?.quantity ?? 0 > 0
@@ -359,22 +348,15 @@ struct ShopView: View {
                 return item.assetName.isEmpty ? nil : item.assetName
         }
 
-	@ViewBuilder
-	private var toastView: some View {
-                if let toast = purchaseToast {
-                        Text(toast.message)
-                                .appFont(FontTheme.footnote)
-                                .fontWeight(.semibold)
+        @ViewBuilder
+        private var toastView: some View {
+                if let reward = purchaseReward {
+                        RewardToastView(event: reward)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .padding(.top, 20)
                                 .transition(.move(edge: .top).combined(with: .opacity))
-		}
-	}
-}
-
-private struct ShopToast: Identifiable {
-	let id = UUID()
-	let message: String
+                }
+        }
 }

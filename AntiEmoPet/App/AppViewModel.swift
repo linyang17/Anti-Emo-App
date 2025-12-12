@@ -509,19 +509,22 @@ AppClock.debugNow = Calendar.current.date(
 			dailyMetricsCache = makeDailyActivityMetrics()
 	}
 
-	func purchase(item: Item) -> Bool {
-		guard let stats = userStats else { return false }
-		let success = rewardEngine.purchase(item: item, stats: stats)
-		guard success else { return false }
-		incrementInventory(for: item)
-		petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: item.bondingBoost)
-		
-		storage.persist()
-		objectWillChange.send()
-		analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
-		logTodayEnergySnapshot()
-		return true
-	}
+        func purchase(item: Item) -> RewardEvent? {
+                guard let stats = userStats else { return nil }
+                let success = rewardEngine.purchase(item: item, stats: stats)
+                guard success else { return nil }
+                incrementInventory(for: item)
+                petEngine.applyPurchaseReward(xpGain: 10, bondingBoost: item.bondingBoost)
+
+                let reward = RewardEvent(energy: -item.costEnergy, xp: 10, bondingBoost: item.bondingBoost)
+                presentReward(reward)
+
+                storage.persist()
+                objectWillChange.send()
+                analytics.log(event: "shop_purchase", metadata: ["sku": item.sku])
+                logTodayEnergySnapshot()
+                return reward
+        }
 
 		func updateProfile(
 				nickname: String,
@@ -614,13 +617,17 @@ AppClock.debugNow = Calendar.current.date(
 		UIApplication.shared.open(url)
 	}
 
-	func persistState() {
-		storage.persist()
-	}
+        func persistState() {
+                storage.persist()
+        }
 
-	func consumeRewardBanner() {
-		rewardBanner = nil
-	}
+        func presentReward(_ event: RewardEvent) {
+                rewardBanner = event
+        }
+
+        func consumeRewardBanner() {
+                rewardBanner = nil
+        }
 	private func showPettingNotice(_ message: String) {
 		pettingNoticeTask?.cancel()
 		pettingNotice = message
@@ -1192,19 +1199,21 @@ AppClock.debugNow = Calendar.current.date(
 						}
 		}
 
-		func exportTaskHistory(days: Int = 90) -> URL? {
-				let range = historyRange(forDays: days)
-				let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
-				let moods = moodEntries.filter { range.contains($0.date) }
-				let events = energyEvents.filter { range.contains($0.date) }
-				return try? historyExporter.export(
-						tasks: tasks,
-						moods: moods,
-						energyEvents: events,
-						petBondingScore: pet?.bondingScore,
-						range: range
-				)
-		}
+                func exportTaskHistory(days: Int = 90) -> URL? {
+                                let range = historyRange(forDays: days)
+                                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
+                                let moods = moodEntries.filter { range.contains($0.date) }
+                                let events = energyEvents.filter { range.contains($0.date) }
+                                return try? historyExporter.export(
+                                                tasks: tasks,
+                                                moods: moods,
+                                                energyEvents: events,
+                                                inventory: inventory,
+                                                pet: pet,
+                                                stats: userStats,
+                                                range: range
+                                )
+                }
 
 		func importTaskHistory(from url: URL) -> Bool {
 				do {
@@ -1233,11 +1242,15 @@ AppClock.debugNow = Calendar.current.date(
 				return start...now
 		}
 
-		private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
-			guard let stats = userStats else { return }
-			let cal = TimeZoneManager.shared.calendar
-			let todayStart = cal.startOfDay(for: AppClock.now)
-			let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+                private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
+                        guard let stats = userStats else { return }
+                        let persistedSunEvents = storage.fetchSunEvents()
+                        if !persistedSunEvents.isEmpty {
+                                sunEvents = persistedSunEvents
+                        }
+                        let cal = TimeZoneManager.shared.calendar
+                        let todayStart = cal.startOfDay(for: AppClock.now)
+                        let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
 
 			// If user opted out of sharing, do not upload. Mark through yesterday to avoid retry loops.
 			let lastSuccessfulKey = "summaryUpload.lastSuccessfulDay"
@@ -1612,13 +1625,19 @@ extension AppViewModel {
 		let currentDayKey = dayKey(for: currentDate)
 
 		// 检查是否跨日（dayKey变更）
-		let lastDayKey = UserDefaults.standard.string(forKey: "lastObservedDayKey")
-		if lastDayKey != currentDayKey {
-			logger.info("Detected day change → generating new schedule for \(currentDayKey)")
-			ensureSlotScheduleExists(for: currentDate)
-			await queuePreviousDaySummaryIfNeeded(reference: currentDate)
-			UserDefaults.standard.set(currentDayKey, forKey: "lastObservedDayKey")
-		}
+                let lastDayKey = UserDefaults.standard.string(forKey: "lastObservedDayKey")
+                if lastDayKey != currentDayKey {
+                        logger.info("Detected day change → generating new schedule for \(currentDayKey)")
+                        ensureSlotScheduleExists(for: currentDate)
+                        await queuePreviousDaySummaryIfNeeded(reference: currentDate)
+                        UserDefaults.standard.set(currentDayKey, forKey: "lastObservedDayKey")
+                }
+
+                let yesterdayKey = dayKey(for: calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: currentDate)) ?? currentDate)
+                let lastUploadedKey = UserDefaults.standard.string(forKey: "summaryUpload.lastSuccessfulDay")
+                if lastUploadedKey != yesterdayKey {
+                        await queuePreviousDaySummaryIfNeeded(reference: currentDate)
+                }
 
 		// Changed block as per instructions
 		if currentSlot != lastObservedSlot {

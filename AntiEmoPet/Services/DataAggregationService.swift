@@ -41,11 +41,11 @@ final class DataAggregationService {
 		let dailyMoods = moodEntries.filter { calendar.isDate($0.date, inSameDayAs: date) }
 		let dailyTasks = tasks.filter { calendar.isDate($0.date, inSameDayAs: date) }
 		
-		// Calculate day length
-		var dayLength: TimeInterval = 0
-		if let sunTime = sunEvents[startOfDay] {
-			dayLength = sunTime.sunset.timeIntervalSince(sunTime.sunrise)
-		}
+                // Calculate day length
+                var dayLength: TimeInterval = 0
+                if let sunTime = sunEvents[startOfDay] ?? sunEvents.first(where: { calendar.isDate($0.key, inSameDayAs: startOfDay) })?.value {
+                        dayLength = max(0, sunTime.sunset.timeIntervalSince(sunTime.sunrise))
+                }
 		
 		var summaries: [UserTimeslotSummary] = []
 		
