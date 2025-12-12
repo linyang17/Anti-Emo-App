@@ -17,54 +17,93 @@ struct UserIDManager {
 
 // MARK: 构造请求并发送
 
-struct SummarySlot: Codable {
-	let time_slot: String
-	let timeslot_weather: String?
-	let day_length_min: Int?
-	let avg_mood: Double?
-	let task_feedback: [String: [Int]]?
-	let energy_delta_sum: Int?
-	let tasks_published: Int?
-	let tasks_completed: Int?
+/// Edge Function expects { "summaries": [ ... ] }
+struct SummaryDailyRequest: Codable {
+	let summaries: [UserTimeslotSummaryDTO]
 }
 
-struct SummaryDailyPayload: Codable {
-	let user_id: String
-	let profile: Profile?
-	let target_date: String
-	let mood_entries: Int
-	let slots: [SummarySlot]
+/// DTO that matches the Edge Function schema (date as yyyy-MM-dd, dayLength in seconds)
+struct UserTimeslotSummaryDTO: Codable {
+	let userId: String
+	let countryRegion: String
 
-	struct Profile: Codable {
-		let gender: String?
-		let age_group: String?
-		let country_region: String?
-		let timezone: String
+	let date: String            // yyyy-MM-dd (startOfDay)
+	let dayLength: Int          // seconds
+	let timeSlot: String
+
+	let timeslotWeather: String?
+
+	let countMood: Int
+	let avgMood: Double
+	let totalEnergyGain: Int
+	let moodDeltaAfterTasks: Double
+
+	let tasksSummary: [String: [Int]]
+
+	init(from summary: UserTimeslotSummary) {
+		self.userId = summary.userId
+		self.countryRegion = summary.countryRegion
+		self.date = DateFormatters.localDayString(from: summary.date)
+		self.dayLength = max(0, Int(summary.dayLength.rounded()))
+		self.timeSlot = summary.timeSlot
+		self.timeslotWeather = summary.timeslotWeather
+		self.countMood = max(0, summary.countMood)
+		self.avgMood = summary.avgMood
+		self.totalEnergyGain = summary.totalEnergyGain
+		self.moodDeltaAfterTasks = summary.moodDeltaAfterTasks
+		self.tasksSummary = summary.tasksSummary
 	}
 }
 
-//MARK: 上传到 SUPABASE
+enum DateFormatters {
+	/// Formats a Date into yyyy-MM-dd in the user's current time zone.
+	static func localDayString(from date: Date) -> String {
+		let formatter = DateFormatter()
+		formatter.calendar = Calendar.current
+		formatter.timeZone = TimeZone.current
+		formatter.dateFormat = "yyyy-MM-dd"
+		return formatter.string(from: date)
+	}
+}
 
 final class DataUploadService {
 	static let shared = DataUploadService()
-	private init() {}
+	init() {}
 
-	func uploadDailySummary(
-		targetDate: String,
-		moodEntries: Int,
-		slots: [SummarySlot],
-		profile: SummaryDailyPayload.Profile,
+	/// Users do not interact with this; it runs automatically in the background.
+	func uploadTimeslotSummaries(
+		_ summaries: [UserTimeslotSummary],
 		completion: ((Bool) -> Void)? = nil
 	) {
-		let url = SUPABASEConfig.supabaseSummaryDailyURL   // 从 Info.plist 读取
+		guard !summaries.isEmpty else {
+			completion?(true)
+			return
+		}
 
-		let payload = SummaryDailyPayload(
-			user_id: UserIDManager.current,
-			profile: profile,
-			target_date: targetDate,
-			mood_entries: moodEntries,
-			slots: slots
-		)
+		let url = SUPABASEConfig.supabaseSummaryDailyURL
+
+		// Ensure summaries carry the current anonymous user id (safety net)
+		let currentUserId = UserIDManager.current
+		let normalized: [UserTimeslotSummary] = summaries.map { s in
+			if s.userId == currentUserId { return s }
+			// If upstream accidentally passed a different userId, prefer the local persisted one.
+			return UserTimeslotSummary(
+				userId: currentUserId,
+				countryRegion: s.countryRegion,
+				date: s.date,
+				dayLength: s.dayLength,
+				timeSlot: s.timeSlot,
+				timeslotWeather: s.timeslotWeather,
+				countMood: s.countMood,
+				avgMood: s.avgMood,
+				totalEnergyGain: s.totalEnergyGain,
+				moodDeltaAfterTasks: s.moodDeltaAfterTasks,
+				tasksSummary: s.tasksSummary
+			)
+		}
+
+		let dto = normalized.map { UserTimeslotSummaryDTO(from: $0) }
+		let payload = SummaryDailyRequest(summaries: dto)
 
 		var request = URLRequest(url: url)
 		request.httpMethod = "POST"

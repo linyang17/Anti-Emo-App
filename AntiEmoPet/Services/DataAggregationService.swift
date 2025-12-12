@@ -53,11 +53,6 @@ final class DataAggregationService {
 			// Filter by slot
 			let slotMoods = dailyMoods.filter { TimeSlot.from(date: $0.date, using: calendar) == slot }
 			let slotTasks = dailyTasks.filter {
-				// Assuming task date is creation time, use that for slot grouping
-				// Or use completedAt if status is completed?
-				// For aggregation, usually we look at when the activity happened.
-				// Tasks have `date` (creation) and `completedAt`.
-				// PRD says "tasks completed".
 				guard let completedAt = $0.completedAt else { return false }
 				return TimeSlot.from(date: completedAt, using: calendar) == slot
 			}

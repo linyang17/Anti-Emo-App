@@ -23,3 +23,22 @@ enum WeekAlignmentService {
 				return calendar.date(byAdding: .weekOfYear, value: 2, to: currentWeekStart) ?? now
 		}
 }
+
+
+enum AppClock {
+
+	/// Debug 模式可覆盖“现在”
+	static var debugNow: Date?
+
+	static var now: Date {
+		#if DEBUG
+		return debugNow ?? Date()
+		#else
+		return Date()
+		#endif
+	}
+
+	static func todayStart(using calendar: Calendar) -> Date {
+		calendar.startOfDay(for: now)
+	}
+}
