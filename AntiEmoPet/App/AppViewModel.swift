@@ -447,21 +447,24 @@ AppClock.debugNow = Calendar.current.date(
 	}
 
 	//MARK: Mood impact feedback
-	func submitMoodFeedback(delta: Int, for task: TaskCategory) {
-			let lastValue: Int = {
-					let sorted = moodEntries.sorted { $0.date < $1.date }
-					return sorted.last?.value ?? 50
-			}()
-			let entry = MoodEntry(
-					date: Date(),
-					value: max(10, min(100, lastValue + delta)),
-					source: .afterTask,
-					delta: delta,
-					relatedTaskCategory: task,
-					relatedWeather: weather
-			)
-	storage.saveMoodEntry(entry)
-	moodEntries = storage.fetchMoodEntries()
+        func submitMoodFeedback(delta: Int, for task: TaskCategory) {
+                        let lastValue: Int = {
+                                        let sorted = moodEntries.sorted { $0.date < $1.date }
+                                        return sorted.last?.value ?? 50
+                        }()
+                        let entryDate = Date()
+                        let dayLength = dayLengthMinutes(for: entryDate)
+                        let entry = MoodEntry(
+                                        date: entryDate,
+                                        value: max(10, min(100, lastValue + delta)),
+                                        source: .afterTask,
+                                        delta: delta,
+                                        relatedTaskCategory: task,
+                                        relatedWeather: weather,
+                                        relatedDayLength: dayLength
+                        )
+        storage.saveMoodEntry(entry)
+        moodEntries = storage.fetchMoodEntries()
 	
 	// Link mood entry to the task if available
 	if let pendingTask = pendingMoodFeedbackTask {
@@ -638,22 +641,26 @@ AppClock.debugNow = Calendar.current.date(
 	}
 
 	// MARK: mood entry
-	func addMoodEntry(
-		value: Int,
-		source: MoodEntry.MoodSource = .appOpen,
-		delta: Int? = nil,
-		relatedTaskCategory: TaskCategory? = nil,
-		relatedWeather: WeatherType? = nil
-	) {
-				let entry = MoodEntry(
-						value: value,
-						source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
-						delta: delta,
-						relatedTaskCategory: relatedTaskCategory,
-						relatedWeather: relatedWeather ?? weather
-				)
-				storage.saveMoodEntry(entry)
-				moodEntries = storage.fetchMoodEntries()
+        func addMoodEntry(
+                value: Int,
+                source: MoodEntry.MoodSource = .appOpen,
+                delta: Int? = nil,
+                relatedTaskCategory: TaskCategory? = nil,
+                relatedWeather: WeatherType? = nil
+        ) {
+                                let entryDate = Date()
+                                let dayLength = dayLengthMinutes(for: entryDate)
+                                let entry = MoodEntry(
+                                                date: entryDate,
+                                                value: value,
+                                                source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
+                                                delta: delta,
+                                                relatedTaskCategory: relatedTaskCategory,
+                                                relatedWeather: relatedWeather ?? weather,
+                                                relatedDayLength: dayLength
+                                )
+                                storage.saveMoodEntry(entry)
+                                moodEntries = storage.fetchMoodEntries()
 		
 				refreshMoodLoggingState()
 
@@ -1422,11 +1429,11 @@ AppClock.debugNow = Calendar.current.date(
 				}
 		}
 
-	private func refreshWeather(using location: CLLocation?) async {
-		let locality = locationService.lastKnownCity
-		let report = await weatherService.fetchWeather(for: location, locality: locality)
-		weatherReport = report
-		if !report.sunEvents.isEmpty {
+        private func refreshWeather(using location: CLLocation?) async {
+                let locality = locationService.lastKnownCity
+                let report = await weatherService.fetchWeather(for: location, locality: locality)
+                weatherReport = report
+                if !report.sunEvents.isEmpty {
 			storage.saveSunEvents(report.sunEvents)
 			let merged = storage.fetchSunEvents()
 			sunEvents = merged
@@ -1437,8 +1444,24 @@ AppClock.debugNow = Calendar.current.date(
 			storage.persist()
 		}
 		
-		logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
-	}
+                logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
+        }
+
+        private func dayLengthMinutes(for date: Date) -> Int? {
+                let calendar = TimeZoneManager.shared.calendar
+                let day = calendar.startOfDay(for: date)
+                guard let sun = sunEvents[day] ?? weatherReport?.sunEvents[day] else { return nil }
+
+                var sunset = sun.sunset
+                if sunset < sun.sunrise {
+                        sunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
+                }
+
+                let duration = sunset.timeIntervalSince(sun.sunrise)
+                guard duration > 0 else { return nil }
+
+                return Int(duration / 60)
+        }
 
 	private func bindLocationUpdates() {
 		locationService.$lastRegionComponents

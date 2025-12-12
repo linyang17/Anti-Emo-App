@@ -49,7 +49,9 @@ final class DataAggregationService {
 
                 // Calculate day length
                 var dayLength: TimeInterval = 0
-                if let sunTime = normalizedSunEvents[startOfDay]
+                if let recordedMinutes = dailyMoods.compactMap({ $0.relatedDayLength }).first {
+                        dayLength = TimeInterval(recordedMinutes * 60)
+                } else if let sunTime = normalizedSunEvents[startOfDay]
                         ?? normalizedSunEvents.first(where: { calendar.isDate($0.key, inSameDayAs: startOfDay) })?.value {
                         let sunrise = sunTime.sunrise
                         let sunset = sunTime.sunset
