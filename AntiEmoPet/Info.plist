@@ -17,6 +17,8 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>952314080520-nqq9qun51pss9flvv4btsmc9jtdmo6fm.apps.googleusercontent.com</string>
+	<key>SUPABASE_SUMMARY_DAILY_URL</key>
+	<string>https://pyladtocbhhizzmxtaoc.supabase.co/functions/v1/summary_daily</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>ABeeZee-Regular.ttf</string>

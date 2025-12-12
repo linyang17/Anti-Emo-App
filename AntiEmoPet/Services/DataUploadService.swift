@@ -1,74 +1,116 @@
 import Foundation
 
-struct QueuedSummary: Codable, Identifiable {
-    let id: UUID
-    let date: Date
-    var attempts: Int
-    let payload: [UserTimeslotSummary]
+// MARK: 生成+持久化匿名 user_id
+
+struct UserIDManager {
+	private static let key = "AntiEmoUserID"
+
+	static var current: String {
+		if let existing = UserDefaults.standard.string(forKey: key) {
+			return existing
+		}
+		let newID = UUID().uuidString
+		UserDefaults.standard.set(newID, forKey: key)
+		return newID
+	}
 }
 
-@MainActor
+// MARK: 构造请求并发送
+
+struct SummarySlot: Codable {
+	let time_slot: String
+	let timeslot_weather: String?
+	let day_length_min: Int?
+	let avg_mood: Double?
+	let task_feedback: [String: [Int]]?
+	let energy_delta_sum: Int?
+	let tasks_published: Int?
+	let tasks_completed: Int?
+}
+
+struct SummaryDailyPayload: Codable {
+	let user_id: String
+	let profile: Profile?
+	let target_date: String
+	let mood_entries: Int
+	let slots: [SummarySlot]
+
+	struct Profile: Codable {
+		let gender: String?
+		let age_group: String?
+		let country_region: String?
+		let timezone: String
+	}
+}
+
+//MARK: 上传到 SUPABASE
+
 final class DataUploadService {
-    private let queueKey = "lumio.upload.queue"
+	static let shared = DataUploadService()
+	private init() {}
 
-    func enqueue(date: Date, summaries: [UserTimeslotSummary]) {
-        guard !summaries.isEmpty else { return }
-        var queue = loadQueue()
-        let entry = QueuedSummary(id: UUID(), date: date, attempts: 0, payload: summaries)
-        queue.append(entry)
-        saveQueue(queue)
-    }
+	func uploadDailySummary(
+		targetDate: String,
+		moodEntries: Int,
+		slots: [SummarySlot],
+		profile: SummaryDailyPayload.Profile,
+		completion: ((Bool) -> Void)? = nil
+	) {
+		let url = SUPABASEConfig.supabaseSummaryDailyURL   // 从 Info.plist 读取
 
-    func processQueue(sharingEnabled: Bool, uploader: SummaryUploader = SummaryUploader()) async {
-        guard sharingEnabled else { return }
+		let payload = SummaryDailyPayload(
+			user_id: UserIDManager.current,
+			profile: profile,
+			target_date: targetDate,
+			mood_entries: moodEntries,
+			slots: slots
+		)
 
-		let queue = loadQueue()
-        guard !queue.isEmpty else { return }
+		var request = URLRequest(url: url)
+		request.httpMethod = "POST"
+		request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        var retained: [QueuedSummary] = []
-        for var job in queue {
-            job.attempts += 1
-            let success = await uploader.upload(summaries: job.payload)
-            if !success {
-                retained.append(job)
-            }
-        }
+		do {
+			request.httpBody = try JSONEncoder().encode(payload)
+		} catch {
+			print("Encode payload error:", error)
+			completion?(false)
+			return
+		}
 
-        saveQueue(retained)
-    }
+		URLSession.shared.dataTask(with: request) { data, response, error in
+			if let error = error {
+				print("Upload summary error:", error)
+				completion?(false)
+				return
+			}
 
-    func loadQueue() -> [QueuedSummary] {
-        guard
-            let data = UserDefaults.standard.data(forKey: queueKey),
-            let decoded = try? JSONDecoder().decode([QueuedSummary].self, from: data)
-        else { return [] }
-        return decoded
-    }
+			guard let data = data else {
+				completion?(false)
+				return
+			}
 
-    private func saveQueue(_ queue: [QueuedSummary]) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(queue) else { return }
-        UserDefaults.standard.set(data, forKey: queueKey)
-    }
+			let ok =
+				(try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["ok"]
+				as? Bool ?? false
+
+			completion?(ok)
+		}.resume()
+	}
 }
 
-struct SummaryUploader {
-    func upload(summaries: [UserTimeslotSummary]) async -> Bool {
-        guard !summaries.isEmpty else { return true }
+//MARK: 读取 URL
+enum SUPABASEConfig {
 
-        // Placeholder uploader: persist payload to a temporary file to simulate network success.
-        // Future implementations can swap this with a real HTTP client while reusing the queue logic.
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(summaries)
-            let filename = "timeslot_summary_\(Int(Date().timeIntervalSince1970)).json"
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-            try data.write(to: url, options: .atomic)
-            return true
-        } catch {
-            return false
-        }
-    }
+	static var supabaseSummaryDailyURL: URL {
+		guard
+			let urlString = Bundle.main.object(
+				forInfoDictionaryKey: "SUPABASE_SUMMARY_DAILY_URL"
+			) as? String,
+			let url = URL(string: urlString)
+		else {
+			fatalError("❌ Missing or invalid SUPABASE_SUMMARY_DAILY_URL in Info.plist")
+		}
+		return url
+	}
 }
