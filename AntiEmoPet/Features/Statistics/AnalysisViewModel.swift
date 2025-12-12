@@ -228,10 +228,17 @@ final class AnalysisViewModel: ObservableObject {
         var dailyData: [Int: Double] = [:] // daylength (min) : avg mood
 
         for (day, dailyEntries) in dayGroups {
-            guard let sun = dayLength[day] else { continue }
-            let duration = sun.sunset.timeIntervalSince(sun.sunrise)
-            
-            let minutes = Int(duration / 60)
+            let minutes: Int?
+            if let recorded = dailyEntries.compactMap({ $0.relatedDayLength }).first {
+                minutes = recorded
+            } else if let sun = dayLength[day] {
+                let duration = sun.sunset.timeIntervalSince(sun.sunrise)
+                minutes = Int(duration / 60)
+            } else {
+                minutes = nil
+            }
+
+            guard let minutes else { continue }
             let dailySum = dailyEntries.reduce(0) { $0 + $1.value }
             let dailyAvg = Double(dailySum) / Double(dailyEntries.count)
             

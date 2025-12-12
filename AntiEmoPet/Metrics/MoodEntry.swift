@@ -14,19 +14,21 @@ final class MoodEntry: Identifiable, Codable {
     @Attribute(.unique) var id: UUID
     var date: Date
     var value: Int
-	var source: String = MoodSource.manual.rawValue   // default to manual
+        var source: String = MoodSource.manual.rawValue   // default to manual
     var delta: Int?  // 完成任务后的情绪变化
     var relatedTaskCategory: String?  // TaskCategory.rawValue
     var relatedWeather: String?  // WeatherType.rawValue
+    var relatedDayLength: Int? // minutes from sunrise to sunset
 
     init(
         id: UUID = UUID(),
         date: Date = .now,
         value: Int,
-		source: MoodSource = .manual,
+                source: MoodSource = .manual,
         delta: Int? = nil,
         relatedTaskCategory: TaskCategory? = nil,
-        relatedWeather: WeatherType? = nil
+        relatedWeather: WeatherType? = nil,
+        relatedDayLength: Int? = nil
     ) {
         self.id = id
         self.date = date
@@ -35,6 +37,7 @@ final class MoodEntry: Identifiable, Codable {
         self.delta = delta
         self.relatedTaskCategory = relatedTaskCategory?.rawValue
         self.relatedWeather = relatedWeather?.rawValue
+        self.relatedDayLength = relatedDayLength
     }
     
     // MARK: - Computed Properties for Type Safety
@@ -63,42 +66,46 @@ final class MoodEntry: Identifiable, Codable {
 		case id
 		case date
 		case value
-		case source
-		case delta
-		case relatedTaskCategory
-		case relatedWeather
-	}
+                case source
+                case delta
+                case relatedTaskCategory
+                case relatedWeather
+                case relatedDayLength
+        }
 
 	convenience init(from decoder: Decoder) throws {
 		let container = try decoder.container(keyedBy: CodingKeys.self)
 		let id = try container.decode(UUID.self, forKey: .id)
 		let date = try container.decode(Date.self, forKey: .date)
-		let value = try container.decode(Int.self, forKey: .value)
-		let source = try container.decode(MoodSource.self, forKey: .source)
-		let delta = try container.decodeIfPresent(Int.self, forKey: .delta)
-		let relatedTaskCategory = try container.decodeIfPresent(TaskCategory.self, forKey: .relatedTaskCategory)
-		let relatedWeather = try container.decodeIfPresent(WeatherType.self, forKey: .relatedWeather)
-		self.init(
-			id: id,
-			date: date,
-			value: value,
-			source: source,
-			delta: delta,
-			relatedTaskCategory: relatedTaskCategory,
-			relatedWeather: relatedWeather
-		)
-	}
+                let value = try container.decode(Int.self, forKey: .value)
+                let source = try container.decode(MoodSource.self, forKey: .source)
+                let delta = try container.decodeIfPresent(Int.self, forKey: .delta)
+                let relatedTaskCategory = try container.decodeIfPresent(TaskCategory.self, forKey: .relatedTaskCategory)
+                let relatedWeather = try container.decodeIfPresent(WeatherType.self, forKey: .relatedWeather)
+                let relatedDayLength = try container.decodeIfPresent(Int.self, forKey: .relatedDayLength)
+                self.init(
+                        id: id,
+                        date: date,
+                        value: value,
+                        source: source,
+                        delta: delta,
+                        relatedTaskCategory: relatedTaskCategory,
+                        relatedWeather: relatedWeather,
+                        relatedDayLength: relatedDayLength
+                )
+        }
 
 	func encode(to encoder: Encoder) throws {
 		var container = encoder.container(keyedBy: CodingKeys.self)
 		try container.encode(id, forKey: .id)
 		try container.encode(date, forKey: .date)
 		try container.encode(value, forKey: .value)
-		try container.encode(source, forKey: .source)
-		try container.encodeIfPresent(delta, forKey: .delta)
-		try container.encodeIfPresent(relatedTaskCategory, forKey: .relatedTaskCategory)
-		try container.encodeIfPresent(relatedWeather, forKey: .relatedWeather)
-	}
+                try container.encode(source, forKey: .source)
+                try container.encodeIfPresent(delta, forKey: .delta)
+                try container.encodeIfPresent(relatedTaskCategory, forKey: .relatedTaskCategory)
+                try container.encodeIfPresent(relatedWeather, forKey: .relatedWeather)
+                try container.encodeIfPresent(relatedDayLength, forKey: .relatedDayLength)
+        }
 }
 
 public enum MoodLevel: String, Codable, CaseIterable, Sendable {

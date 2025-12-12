@@ -507,7 +507,8 @@ final class StorageService {
                                         source: MoodEntry.MoodSource(rawValue: record.source) ?? .manual,
                                         delta: record.delta,
                                         relatedTaskCategory: record.relatedTaskCategory.flatMap(TaskCategory.init(rawValue:)),
-                                        relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:))
+                                        relatedWeather: record.relatedWeather.flatMap(WeatherType.init(rawValue:)),
+                                        relatedDayLength: record.relatedDayLength
                                 )
                                 context.insert(mood)
                         }
