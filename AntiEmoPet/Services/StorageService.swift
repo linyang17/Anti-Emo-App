@@ -555,6 +555,16 @@ final class StorageService {
                                 if let xp = export.pet?.xp {
                                         pet.xp = max(pet.xp, max(0, xp))
                                 }
+                                if let level = export.pet?.level {
+                                        pet.level = max(1, level)
+                                }
+                                if let xp = export.pet?.xp {
+                                        pet.xp = max(0, xp)
+                                }
+                        }
+
+                        if let inventory = export.inventory {
+                                try syncInventory(with: inventory)
                         }
 
                         if let inventory = export.inventory {
