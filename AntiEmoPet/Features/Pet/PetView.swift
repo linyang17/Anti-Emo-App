@@ -310,7 +310,7 @@ struct PetView: View {
 			y: taskOffset.height + (taskBreathUp ? -15 : 15)
 		)
 		// 轻微缩放“呼吸”效果
-		.scaleEffect(taskBreathUp ? 1 : 0.88)
+		.scaleEffect(taskBreathUp ? 1 : 0.8)
 		.onAppear {
 			startTaskFloating()
 		}
@@ -365,12 +365,12 @@ struct PetView: View {
 					.environmentObject(appModel)
 				} label: {
 						HStack(alignment: .center, spacing: 12) {
-							Text("Talk to Lumio...")
-									.foregroundStyle(.white.opacity(0.75))
+							Text("Share your feelings and thoughts")
+								.foregroundStyle(.white.opacity(0.85))
 							Spacer(minLength: 0)
 							Image(systemName: "paperplane.fill")
 									.appFont(FontTheme.headline)
-									.foregroundStyle(.white.opacity(0.75))
+									.foregroundStyle(.white.opacity(0.85))
 								}
 								.padding(.vertical, 10)
 								.padding(.horizontal, 14)
@@ -424,9 +424,9 @@ struct PetView: View {
 			// 循环随机改变基础偏移量，实现“缓慢随机游走”
 			while !Task.isCancelled {
 				let newX = CGFloat.random(in: -.w(0.25)...0)
-				let newY = CGFloat.random(in: -.h(0.06)...0)
+				let newY = CGFloat.random(in: -.h(0.08)...0)
 
-				withAnimation(.easeInOut(duration: 10)) {
+				withAnimation(.easeInOut(duration: 15)) {
 					taskOffset = CGSize(width: newX, height: newY)
 				}
 				try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -505,7 +505,7 @@ struct PetView: View {
 
 				chatEntryBar
 						.padding(.horizontal, .w(0.08))
-						.padding(.bottom, .h(0.02))
+						.padding(.bottom, .h(0.025))
 						.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 				}
 				.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -527,12 +527,12 @@ struct PetView: View {
             }
            .frame(maxWidth: 360)
            .offset(y: -UIScreen.main.bounds.height * 0.1)
-           .transition(.scale(scale: 0.92).combined(with: .opacity))
+           .transition(.scale(scale: 0.9).combined(with: .opacity))
            .zIndex(10)
    }
 
    if appModel.showMoodChatPrompt {
-           Color.black.opacity(0.15)
+			Color.clear
 				  .ignoresSafeArea()
 				  .zIndex(14)
 
@@ -546,8 +546,8 @@ struct PetView: View {
            )
            .frame(maxWidth: 320)
            .padding(.horizontal)
-           .offset(y: UIScreen.main.bounds.height * 0.14)
-           .transition(.scale(scale: 0.95).combined(with: .opacity))
+           .offset(y: -UIScreen.main.bounds.height * 0.15)
+           .transition(.scale(scale: 0.9).combined(with: .opacity))
            .zIndex(15)
    }
 

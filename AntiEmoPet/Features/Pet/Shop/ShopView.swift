@@ -22,7 +22,7 @@ struct ShopView: View {
 		.overlay(alignment: .top) { toastView }
                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: pendingItem?.id)
                 .onAppear {
-                                selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .snack
+						selectedCategory = viewModel.availableCategories(in: appModel.shopItems).first ?? .snack
                 }
                 .onDisappear {
                         appModel.previewPetAsset = nil

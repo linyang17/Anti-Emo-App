@@ -5,17 +5,16 @@ struct MoodChatPromptView: View {
         let onConfirm: () -> Void
 
         var body: some View {
-                VStack(spacing: 18) {
-                        Spacer().frame(height: 4)
-                        Text("Wanna talk about it more?")
-                                .appFont(FontTheme.title3)
+                VStack(spacing: 24) {
+                        Text("Wanna talk about it with Lumio?")
+								.appFont(FontTheme.headline)
                                 .foregroundStyle(.white)
                                 .multilineTextAlignment(.center)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 12)
 
                         HStack(spacing: 16) {
                                 Button(action: onMaybeLater) {
-                                        Text("Maybe later")
+                                        Text("Later")
                                                 .appFont(FontTheme.subheadline)
                                                 .foregroundStyle(.white.opacity(0.85))
                                                 .padding(.horizontal, 22)
@@ -28,9 +27,9 @@ struct MoodChatPromptView: View {
                                 .buttonStyle(.plain)
 
                                 Button(action: onConfirm) {
-                                        Text("Ok")
+                                        Text("Sure")
                                                 .appFont(FontTheme.subheadline)
-                                                .foregroundStyle(.black)
+                                                .foregroundStyle(.brown)
                                                 .padding(.horizontal, 28)
                                                 .padding(.vertical, 10)
                                                 .background(
@@ -43,12 +42,6 @@ struct MoodChatPromptView: View {
                 }
                 .padding(22)
                 .frame(maxWidth: .infinity)
-                .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(
-                                        LinearGradient(colors: [Color(red: 0.17, green: 0.42, blue: 0.2), Color(red: 0.12, green: 0.29, blue: 0.18)], startPoint: .top, endPoint: .bottom)
-                                )
-                                .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 8)
-                )
+				.background(FrostedCapsule(opacity: 0.8))
         }
 }
