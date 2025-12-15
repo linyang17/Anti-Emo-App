@@ -67,12 +67,15 @@ final class TaskGeneratorService {
 				continue
 			}
 			let scheduled = makeSchedule(for: interval, windows: windows, defaultWeather: report?.currentWeather ?? .sunny)
+			let sunEvent = report?.sunEvents
+			let dayLength = dayLengthMinutes(for: date, sunEvents: sunEvent)
 			let task = UserTask(
 				title: template.title,
 				weatherType: scheduled.weather,
 				category: template.category,
 				energyReward: template.energyReward,
-				date: scheduled.date
+				date: scheduled.date,
+				relatedDayLength: dayLength
 			)
 			tasks.append(task)
 		}
@@ -81,7 +84,7 @@ final class TaskGeneratorService {
 	}
 
 
-	func makeOnboardingTasks(for date: Date, weather: WeatherType) -> [UserTask] {
+	func makeOnboardingTasks(for date: Date, weather: WeatherType, dayLen: Int) -> [UserTask] {
         let titles = [
             "Say hello to Lumio, drag up and down to play together",
             "Check out shop panel by clicking the gift box",
@@ -95,7 +98,8 @@ final class TaskGeneratorService {
                 category: .indoorDigital,
                 energyReward: 5,
                 date: calendar.date(byAdding: .minute, value: index * 10, to: baseDate) ?? baseDate,
-                isOnboarding: true
+				relatedDayLength: dayLen,
+				isOnboarding: true
             )
         }
     }

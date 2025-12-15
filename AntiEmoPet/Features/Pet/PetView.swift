@@ -570,7 +570,7 @@ struct PetView: View {
 				.transition(.opacity)
 				.zIndex(29)
 			MoodFeedbackOverlayView(
-				taskCategory: task.category
+				task: task
 			)
 			.frame(maxWidth: 360)
 			.offset(y: -UIScreen.main.bounds.height * 0.1)

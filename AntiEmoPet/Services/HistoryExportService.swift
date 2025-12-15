@@ -11,7 +11,7 @@ struct TaskHistoryRecord: Codable, Sendable {
         let completedAt: Date?
         let isArchived: Bool
         let isOnboarding: Bool
-        let relatedDayLength: Int?
+        let relatedDayLength: Int
 }
 
 struct MoodHistoryRecord: Codable, Sendable {
@@ -22,7 +22,7 @@ struct MoodHistoryRecord: Codable, Sendable {
         let delta: Int?
         let relatedTaskCategory: String?
         let relatedWeather: String?
-        let relatedDayLength: Int?
+        let relatedDayLength: Int
 }
 
 struct EnergyEventRecord: Codable, Sendable {
@@ -120,7 +120,7 @@ struct HistoryExportService {
                                 delta: mood.delta,
                                 relatedTaskCategory: mood.relatedTaskCategory,
                                 relatedWeather: mood.relatedWeather,
-                                relatedDayLength: mood.relatedDayLength
+								relatedDayLength: mood.relatedDayLength
                         )
                 }
 

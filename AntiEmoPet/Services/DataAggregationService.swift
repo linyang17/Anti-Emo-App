@@ -1,15 +1,14 @@
 import Foundation
 
 struct UserTimeslotSummary: Codable, Sendable {
-        // User Info
-        let userId: String
-        let countryRegion: String
-
-        // Time Info
-        let date: Date
-        /// Day length in minutes from sunrise to sunset
-        let dayLength: Int
-        let timeSlot: String // "morning", etc.
+	// User Info
+	let userId: String
+	let countryRegion: String
+	
+	// Time Info
+	let date: Date
+	let dayLength: Int // minutes
+	let timeSlot: String // "morning", etc.
 	
 	// Weather
 	let timeslotWeather: String? // WeatherType.rawValue
@@ -33,39 +32,23 @@ final class DataAggregationService {
 		region: String,
 		date: Date,
 		moodEntries: [MoodEntry],
-		tasks: [UserTask],
-		sunEvents: [Date: SunTimes]
+		tasks: [UserTask]
 	) -> [UserTimeslotSummary] {
-                let startOfDay = calendar.startOfDay(for: date)
+		
+		let startOfDay = calendar.startOfDay(for: date)
 
-                // Filter data for the specific date
-                let dailyMoods = moodEntries.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                let dailyTasks = tasks.filter { calendar.isDate($0.date, inSameDayAs: date) }
+		// Filter data for the specific date
+		let dailyMoods = moodEntries.filter { calendar.isDate($0.date, inSameDayAs: date) }
+		let dailyTasks = tasks.filter { calendar.isDate($0.date, inSameDayAs: date) }
+		
 
-                // Normalize sunEvents to day keys to avoid mismatches from different time zones
-                let normalizedSunEvents = sunEvents.reduce(into: [Date: SunTimes]()) { partialResult, entry in
-                        let day = calendar.startOfDay(for: entry.key)
-                        partialResult[day] = entry.value
-                }
-
-                // Calculate day length
-                var dayLength = 0
-                if let recordedMinutes = dailyTasks.compactMap({ $0.relatedDayLength }).first {
-                        dayLength = recordedMinutes
-                } else if let recordedMinutes = dailyMoods.compactMap({ $0.relatedDayLength }).first {
-                        dayLength = recordedMinutes
-                } else if let sunTime = normalizedSunEvents[startOfDay]
-                        ?? normalizedSunEvents.first(where: { calendar.isDate($0.key, inSameDayAs: startOfDay) })?.value {
-                        let sunrise = sunTime.sunrise
-                        let sunset = sunTime.sunset
-                        if sunset >= sunrise {
-                                dayLength = Int(sunset.timeIntervalSince(sunrise) / 60)
-                        } else {
-                                let adjustedSunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
-                                dayLength = Int(adjustedSunset.timeIntervalSince(sunrise) / 60)
-                        }
-                        dayLength = max(0, dayLength)
-                }
+		// Calculate day length
+		var dayLength = 0
+		if let recordedMinutes = dailyTasks.compactMap({ $0.relatedDayLength }).first {
+				dayLength = recordedMinutes
+		} else if let recordedMinutes = dailyMoods.compactMap({ $0.relatedDayLength }).first {
+				dayLength = recordedMinutes
+		}
 		
 		var summaries: [UserTimeslotSummary] = []
 		

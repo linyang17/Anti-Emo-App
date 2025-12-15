@@ -132,13 +132,7 @@ final class AppViewModel: ObservableObject {
 	}
 	
 	/// Full load for users who have completed onboarding
-	func load() async {
-		
-#if DEBUG
-AppClock.debugNow = Calendar.current.date(
-	from: DateComponents(year: 2025, month: 12, day: 7, hour: 23, minute: 58)
-)
-#endif
+	func load() async {		
 		
 			if isLoadingData { return }
 			isLoadingData = true
@@ -155,10 +149,20 @@ AppClock.debugNow = Calendar.current.date(
 			scheduleTaskNotifications()
 			
 			// onboarding阶段没有数据缓存
-					showOnboarding = !(userStats?.isOnboard ?? false)
+			showOnboarding = !(userStats?.isOnboard ?? false)
 			guard !showOnboarding else {
 				await initLoad()
 				await fetchInitialWeather()
+				let dayLen = dayLengthMinutes(for: Date(), sunEvents: sunEvents)
+				print("date: \(Date()), weather: \(weather), day lentgh: \(dayLen)")
+				
+				// Generate tutorial tasks once upon finishing onboarding
+				let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather, dayLen: dayLen)
+				storage.save(tasks: onboardingTasks)
+				// Explicitly set todayTasks to the newly generated onboarding tasks
+				todayTasks = onboardingTasks
+				
+				storage.persist()
 				return
 			}
 			
@@ -192,11 +196,11 @@ AppClock.debugNow = Calendar.current.date(
 				_ = await locationService.requestLocationOnce()
 		}
 
-				await refreshWeather(using: locationService.lastKnownLocation)
+		await refreshWeather(using: locationService.lastKnownLocation)
 
-				startSlotMonitor()
+		startSlotMonitor()
 
-				await queuePreviousDaySummaryIfNeeded(reference: Date())
+		await queuePreviousDaySummaryIfNeeded(reference: AppClock.now)
 
 				// Check sleep reminder and mood capture
 				if !showSleepReminder {
@@ -208,6 +212,7 @@ AppClock.debugNow = Calendar.current.date(
 				if userStats!.totalDays > 1 {
 						applyDailyBondingDecayIfNeeded()
 				}
+		
 		recordMoodOnLaunch()
 		
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
@@ -216,7 +221,7 @@ AppClock.debugNow = Calendar.current.date(
 	}
 	
 		private func fetchInitialWeather() async {
-						// Request location once when app opens
+				// Request location once when app opens
 				if let stats = userStats, stats.shareLocationAndWeather {
 						let granted = await requestWeatherAccess()
 						if granted {
@@ -247,16 +252,16 @@ AppClock.debugNow = Calendar.current.date(
 
 		// MARK: - Task Management
 
-				/// 检查当前时段是否已记录情绪，如果没有则显示弹窗
-				func checkAndShowMoodCapture() {
-						refreshMoodLoggingState()
-						moodCaptureSource = .appOpen
-						let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-						// Night 时段不需要强制情绪记录
-						guard currentSlot != .night else {
-								showMoodCapture = false
-								shouldForceMoodCapture = false
-				return
+		/// 检查当前时段是否已记录情绪，如果没有则显示弹窗
+		func checkAndShowMoodCapture() {
+			refreshMoodLoggingState()
+			moodCaptureSource = .appOpen
+			let currentSlot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
+			// Night 时段不需要强制情绪记录
+			guard currentSlot != .night else {
+					showMoodCapture = false
+					shouldForceMoodCapture = false
+			return
 			}
 			guard !hasLoggedMoodThisSlot else {
 				showMoodCapture = false
@@ -278,7 +283,7 @@ AppClock.debugNow = Calendar.current.date(
 				addMoodEntry(value: value, source: source)
 				showMoodCapture = false
 				shouldForceMoodCapture = false
-								hasLoggedMoodThisSlot = true
+				hasLoggedMoodThisSlot = true
 
 				if source == .manual {
 						pendingComfortMoodValue = value
@@ -353,22 +358,12 @@ AppClock.debugNow = Calendar.current.date(
 
 			todayTasks[index] = task
 			storage.persist()
-			// Only fetch tasks for the current slot to keep view clean, but include onboarding tasks
+			
 			let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 			refreshDisplayedTasks(for: slot, on: Date())
 			objectWillChange.send()
 		}
 
-	func refreshCurrentSlotTasks(retaining retained: UserTask? = nil) async {
-		guard canRefreshCurrentSlot else { return }
-		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		await evaluateBondingPenalty(for: slot)
-		await refreshTasks(retaining: retained)
-		markCurrentSlotRefreshed()
-		markSlotTasksGenerated(slot, on: Date())
-		updateTaskRefreshEligibility()
-		checkSlotGenerationTrigger()
-	}
 	
 	// MARK: Start + complete tasks
 	func startTask(_ task: UserTask) {
@@ -417,7 +412,6 @@ AppClock.debugNow = Calendar.current.date(
                 }
 
                 task.status = .completed
-                ensureDayLength(for: task)
                 task.completedAt = Date()
 		
 				let rewards = rewardEngine.applyTaskReward(for: task, stats: stats, catalog: shopItems)
@@ -448,42 +442,42 @@ AppClock.debugNow = Calendar.current.date(
 	}
 
 	//MARK: Mood impact feedback
-        func submitMoodFeedback(delta: Int, for task: TaskCategory) {
-                        let lastValue: Int = {
-                                        let sorted = moodEntries.sorted { $0.date < $1.date }
-                                        return sorted.last?.value ?? 50
-                        }()
-                        let entryDate = Date()
-                        let pendingDayLength = pendingMoodFeedbackTask.flatMap { ensureDayLength(for: $0) }
-                        let dayLength = pendingDayLength ?? dayLengthMinutes(for: pendingMoodFeedbackTask?.date ?? entryDate)
-                        let entry = MoodEntry(
-                                        date: entryDate,
-                                        value: max(10, min(100, lastValue + delta)),
-                                        source: .afterTask,
-                                        delta: delta,
-                                        relatedTaskCategory: task,
-                                        relatedWeather: weather,
-                                        relatedDayLength: dayLength
-                        )
-        storage.saveMoodEntry(entry)
-        moodEntries = storage.fetchMoodEntries()
-	
-	// Link mood entry to the task if available
-	if let pendingTask = pendingMoodFeedbackTask {
-		pendingTask.moodEntryId = entry.id
-		storage.persist()
-	}
-	
-	analytics.log(event: "mood_feedback_after_task", metadata: [
-		"delta": "\(delta)",
-		"category": task.rawValue,
-		"weather": weather.rawValue
-	])
-	
-	pendingMoodFeedbackTask = nil
-	
-	// Check if we should show onboarding celebration
-	checkAndShowOnboardingCelebration()
+	func submitMoodFeedback(delta: Int, for task: UserTask) {
+		let lastValue: Int = {
+						let sorted = moodEntries.sorted { $0.date < $1.date }
+						return sorted.last?.value ?? 50
+		}()
+		let entryDate = Date()
+		let entry = MoodEntry(
+						date: entryDate,
+						value: max(10, min(100, lastValue + delta)),
+						source: .afterTask,
+						delta: delta,
+						relatedTaskCategory: task.category,
+						relatedWeather: weather,
+						relatedDayLength: task.relatedDayLength
+		)
+
+		storage.saveMoodEntry(entry)
+		moodEntries = storage.fetchMoodEntries()
+		
+		// Link mood entry to the task if available
+		if let pendingTask = pendingMoodFeedbackTask {
+			pendingTask.moodEntryId = entry.id
+			storage.persist()
+		}
+		
+		analytics.log(event: "mood_feedback_after_task", metadata: [
+			"delta": "\(delta)",
+			"category": "\(task.category)",
+			"weather": weather.rawValue,
+			"daylightMin": "\(entry.relatedDayLength)"
+		])
+		
+		pendingMoodFeedbackTask = nil
+		
+		// Check if we should show onboarding celebration
+		checkAndShowOnboardingCelebration()
 }
 	
 // MARK: Pet actions
@@ -567,15 +561,7 @@ AppClock.debugNow = Calendar.current.date(
 			let fallbackComponents = RegionComponents(locality: finalRegion, administrativeArea: "", country: "")
 			applyRegionComponents(fallbackComponents)
 		}
-		
-                // Generate tutorial tasks once upon finishing onboarding
-                let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather)
-                ensureDayLength(for: onboardingTasks)
-                storage.save(tasks: onboardingTasks)
-		
-		// Explicitly set todayTasks to the newly generated onboarding tasks
-		todayTasks = onboardingTasks
-		
+	
 		storage.persist()
 		showOnboarding = false
 		
@@ -651,19 +637,19 @@ AppClock.debugNow = Calendar.current.date(
                 relatedTaskCategory: TaskCategory? = nil,
                 relatedWeather: WeatherType? = nil
         ) {
-                                let entryDate = Date()
-                                let dayLength = dayLengthMinutes(for: entryDate)
-                                let entry = MoodEntry(
-                                                date: entryDate,
-                                                value: value,
-                                                source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
-                                                delta: delta,
-                                                relatedTaskCategory: relatedTaskCategory,
-                                                relatedWeather: relatedWeather ?? weather,
-                                                relatedDayLength: dayLength
-                                )
-                                storage.saveMoodEntry(entry)
-                                moodEntries = storage.fetchMoodEntries()
+				let entryDate = Date()
+				let dayLength = dayLengthMinutes(for: entryDate, sunEvents: sunEvents)
+				let entry = MoodEntry(
+								date: entryDate,
+								value: value,
+								source: MoodEntry.MoodSource(rawValue: source.rawValue) ?? .appOpen,
+								delta: delta,
+								relatedTaskCategory: relatedTaskCategory,
+								relatedWeather: relatedWeather ?? weather,
+								relatedDayLength: dayLength
+				)
+				storage.saveMoodEntry(entry)
+				moodEntries = storage.fetchMoodEntries()
 		
 				refreshMoodLoggingState()
 
@@ -741,7 +727,7 @@ AppClock.debugNow = Calendar.current.date(
 
 		func currentTaskStreak(on date: Date = Date()) -> Int {
 				let calendar = TimeZoneManager.shared.calendar
-				let recentTasks = storage.fetchTasks(since: 30, excludingCompleted: false, includeArchived: true, includeOnboarding: false)
+				let recentTasks = storage.fetchTasks(since: 30, excludingCompleted: false, includeArchived: true, includeOnboarding: true)
 				let grouped = Dictionary(grouping: recentTasks) { calendar.startOfDay(for: $0.date) }
 				let sortedDays = grouped.keys.sorted(by: >)
 				guard var cursor = sortedDays.first else { return 0 }
@@ -854,7 +840,7 @@ AppClock.debugNow = Calendar.current.date(
 				guard UserDefaults.standard.string(forKey: streakAwardedKey) != dkey else { return }
 
 				let calendar = TimeZoneManager.shared.calendar
-				let tasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+				let tasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
 				guard !tasks.isEmpty else { return }
 				let completed = tasks.allSatisfy { $0.status == .completed }
 				guard completed else { return }
@@ -989,7 +975,7 @@ AppClock.debugNow = Calendar.current.date(
 
 		private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
 				// 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
-				let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+				let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
 
 				logger.info("[AppViewModel] generateTasksForSlot: preparing \(slot.rawValue) tasks at \(date)")
 
@@ -1033,7 +1019,7 @@ AppClock.debugNow = Calendar.current.date(
 				return slotNotificationPreferences[slot] ?? true
 		}
 	
-	// New helper method inserted as per instructions
+	// Show onboarding tasks until all done
 	private func refreshDisplayedTasks(for slot: TimeSlot, on date: Date) {
 		// Always base onboarding visibility on today's onboarding tasks
 		let todayAll = storage.fetchTasks(for: date)
@@ -1052,9 +1038,9 @@ AppClock.debugNow = Calendar.current.date(
 		}
 
 			// Otherwise, show current slot tasks (non-onboarding)
-			let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: false)
+			let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
 			if slotTasks.isEmpty, !hasGeneratedSlotTasks(slot, on: date), let previous = previousSlot(for: slot) {
-					let previousSlotTasks = storage.fetchTasks(in: previous, on: date, includeOnboarding: false)
+					let previousSlotTasks = storage.fetchTasks(in: previous, on: date, includeOnboarding: true)
 					if !previousSlotTasks.isEmpty {
 							todayTasks = previousSlotTasks
 							return
@@ -1174,7 +1160,7 @@ AppClock.debugNow = Calendar.current.date(
 
 			// Evaluate yesterday's completion
 			let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-			let tasks = storage.fetchTasks(for: yesterday, includeArchived: true, includeOnboarding: false)
+			let tasks = storage.fetchTasks(for: yesterday, includeArchived: true, includeOnboarding: true)
 			let didComplete = tasks.contains { $0.status == .completed }
 			if !didComplete {
 				petEngine.handleAction(.penalty)
@@ -1200,7 +1186,7 @@ AppClock.debugNow = Calendar.current.date(
 
 		func taskHistorySections(days: Int = 30) -> [TaskHistorySection] {
 				let cal = TimeZoneManager.shared.calendar
-				let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
+				let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: true)
 				let grouped = Dictionary(grouping: tasks) { cal.startOfDay(for: $0.date) }
 				return grouped.keys
 						.sorted(by: >)
@@ -1211,7 +1197,7 @@ AppClock.debugNow = Calendar.current.date(
 
                 func exportTaskHistory(days: Int = 90) -> URL? {
                                 let range = historyRange(forDays: days)
-                                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: false)
+                                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: true)
                                 let moods = moodEntries.filter { range.contains($0.date) }
                                 let events = energyEvents.filter { range.contains($0.date) }
                                 return try? historyExporter.export(
@@ -1252,15 +1238,15 @@ AppClock.debugNow = Calendar.current.date(
 				return start...now
 		}
 
-                private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
-                        guard let stats = userStats else { return }
-                        let persistedSunEvents = storage.fetchSunEvents()
-                        if !persistedSunEvents.isEmpty {
-                                sunEvents = persistedSunEvents
-                        }
-                        let cal = TimeZoneManager.shared.calendar
-                        let todayStart = cal.startOfDay(for: AppClock.now)
-                        let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+		private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
+				guard let stats = userStats else { return }
+				let persistedSunEvents = storage.fetchSunEvents()
+				if !persistedSunEvents.isEmpty {
+						sunEvents = persistedSunEvents
+				}
+				let cal = TimeZoneManager.shared.calendar
+				let todayStart = cal.startOfDay(for: AppClock.now)
+				let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
 
 			// If user opted out of sharing, do not upload. Mark through yesterday to avoid retry loops.
 			let lastSuccessfulKey = "summaryUpload.lastSuccessfulDay"
@@ -1297,7 +1283,7 @@ AppClock.debugNow = Calendar.current.date(
 				let cursorKey = dayKey(for: cursor)
 
 				// Fetch data for this day.
-				let tasks = storage.fetchTasks(for: cursor, includeArchived: true, includeOnboarding: false)
+				let tasks = storage.fetchTasks(for: cursor, includeArchived: true, includeOnboarding: true)
 				let moods = storage.fetchMoodEntries().filter { cal.isDate($0.date, inSameDayAs: cursor) }
 
 				// If no data for the day, skip and mark as processed.
@@ -1313,8 +1299,7 @@ AppClock.debugNow = Calendar.current.date(
 					region: stats.region,
 					date: cursor,
 					moodEntries: moods,
-					tasks: tasks,
-					sunEvents: sunEvents
+					tasks: tasks
 				)
 
 				// Upload. If it fails (e.g., offline), stop and retry next time.
@@ -1322,6 +1307,8 @@ AppClock.debugNow = Calendar.current.date(
 				if ok {
 					UserDefaults.standard.set(cursorKey, forKey: lastSuccessfulKey)
 					logger.info("Uploaded summary for \(cursorKey, privacy: .public)")
+					logger.info("\(self.sunEvents)")
+					logger.info("\(summaries)")
 					cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
 				} else {
 					logger.error("Failed to upload summary for \(cursorKey, privacy: .public); will retry later.")
@@ -1380,52 +1367,6 @@ AppClock.debugNow = Calendar.current.date(
 		return granted
 	}
 
-	func refreshTasks(retaining retained: UserTask? = nil) async {
-		let retainIDs: Set<UUID>
-		if let retained {
-			retainIDs = [retained.id]
-		} else {
-			retainIDs = []
-		}
-		var reservedTitles: Set<String> = []
-		if let retained {
-			reservedTitles.insert(retained.title)
-		}
-
-		if let retained {
-				retained.status = .pending
-				retained.completedAt = nil
-		}
-				storage.archiveTasks(for: Date(), excluding: retainIDs, includeCompleted: false)
-		
-		// Ensure templates are loaded
-		storage.bootstrapIfNeeded()
-		let now = Date()
-		let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
-		
-                var generated = taskGenerator.generateTasks(
-                        for: slot,
-                        date: now,
-                        report: weatherReport,
-                        reservedTitles: reservedTitles
-		)
-		if generated.isEmpty {
-			// Retry with fresh bootstrap
-			storage.bootstrapIfNeeded()
-                                generated = taskGenerator
-                                        .generateTasks(
-                                                for: slot,
-                                                date: now,
-                                                report: weatherReport,
-                                                reservedTitles: reservedTitles
-                                        )
-                }
-                ensureDayLength(for: generated)
-                storage.save(tasks: generated)
-                refreshDisplayedTasks(for: slot, on: now)
-                scheduleTaskNotifications()
-        }
-
 		func scheduleTaskNotifications() {
 				guard userStats?.notificationsEnabled == true else { return }
 				Task {
@@ -1451,36 +1392,7 @@ AppClock.debugNow = Calendar.current.date(
                 logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
         }
 
-        private func dayLengthMinutes(for date: Date) -> Int? {
-                let calendar = TimeZoneManager.shared.calendar
-                let day = calendar.startOfDay(for: date)
-                guard let sun = sunEvents[day] ?? weatherReport?.sunEvents[day] else { return nil }
 
-                var sunset = sun.sunset
-                if sunset < sun.sunrise {
-                        sunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
-                }
-
-                let duration = sunset.timeIntervalSince(sun.sunrise)
-                guard duration > 0 else { return nil }
-
-                return Int(duration / 60)
-        }
-
-        @discardableResult
-        private func ensureDayLength(for task: UserTask) -> Int? {
-                if let recorded = task.relatedDayLength {
-                        return recorded
-                }
-
-                let minutes = dayLengthMinutes(for: task.date)
-                task.relatedDayLength = minutes
-                return minutes
-        }
-
-        private func ensureDayLength(for tasks: [UserTask]) {
-                tasks.forEach { _ = ensureDayLength(for: $0) }
-        }
 
 	private func bindLocationUpdates() {
 		locationService.$lastRegionComponents
@@ -1592,7 +1504,7 @@ AppClock.debugNow = Calendar.current.date(
 		// After celebration, remove today's onboarding tasks and show current slot tasks
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 		storage.deleteOnboardingTasks(for: Date())
-		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: false)
+		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
 	}
 	
 		private func applyRegionComponents(_ components: RegionComponents) {
@@ -1661,7 +1573,7 @@ extension AppViewModel {
 	/// 每个时段定时触发检查，驱动任务生成与刷新逻辑。
 	@MainActor
 	private func handleSlotMonitorTick() async {
-		let currentDate = Date()
+		let currentDate = AppClock.now
 		let calendar = TimeZoneManager.shared.calendar
 		let currentSlot = TimeSlot.from(date: currentDate, using: calendar)
 		let currentDayKey = dayKey(for: currentDate)
@@ -1741,9 +1653,9 @@ extension AppViewModel {
 	
 	// MARK: - Cached Data Loading
 private func loadCachedData() async {
-				let fetchedSunEvents: [Date: SunTimes] = storage.fetchSunEvents()
-				let fetchedShopItems: [Item] = storage.fetchShopItems()
-				let fetchedInventory: [InventoryEntry] = storage.fetchInventory()
+		let fetchedSunEvents: [Date: SunTimes] = storage.fetchSunEvents()
+		let fetchedShopItems: [Item] = storage.fetchShopItems()
+		let fetchedInventory: [InventoryEntry] = storage.fetchInventory()
 
 		shopItems = fetchedShopItems
 		sunEvents = fetchedSunEvents

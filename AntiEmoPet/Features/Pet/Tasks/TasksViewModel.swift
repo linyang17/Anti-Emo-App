@@ -14,13 +14,4 @@ final class TasksViewModel: ObservableObject {
         "⚡️ \(task.energyReward)"
     }
 
-    func forceRefresh(appModel: AppViewModel) async {
-        guard !isRefreshing else { return }
-        guard appModel.canRefreshCurrentSlot else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
-        let pending = appModel.todayTasks.filter { $0.status != .completed }
-        let retained = pending.randomElement()
-        await appModel.refreshCurrentSlotTasks(retaining: retained)
-    }
 }

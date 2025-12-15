@@ -4,7 +4,7 @@ import SwiftData
 /// 任务完成后强制情绪反馈视图
 struct MoodFeedbackOverlayView: View {
 	@EnvironmentObject private var appModel: AppViewModel
-	let taskCategory: TaskCategory
+	let task: UserTask
 
 	@State private var selectedOption: FeedbackOption?
 
@@ -55,7 +55,7 @@ struct MoodFeedbackOverlayView: View {
 								DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 										appModel.submitMoodFeedback(
 														delta: option.rawValue,
-														for: taskCategory
+														for: task
 												)
 											}
 										}

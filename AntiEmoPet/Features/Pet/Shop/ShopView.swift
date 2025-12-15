@@ -312,25 +312,11 @@ struct ShopView: View {
                         pendingItem = nil
                         return
                 }
-                if let reward = appModel.purchase(item: item) {
+			if appModel.purchase(item: item) != nil {
                         appModel.equip(item: item)
-                        showToast(for: reward)
                         pendingItem = nil
                 } else {
                         alertMessage = "You don't have enough energy, try to complete more tasks!"
-                }
-        }
-
-        private func showToast(for reward: RewardEvent) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-                        purchaseReward = reward
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                        if purchaseReward?.id == reward.id {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                        purchaseReward = nil
-                                }
-                        }
                 }
         }
 

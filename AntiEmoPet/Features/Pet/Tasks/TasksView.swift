@@ -81,41 +81,10 @@ struct TasksView: View {
                         .appFont(FontTheme.body)
                         .foregroundStyle(.secondary)
                 }
-
-#if !DEBUG
-                refreshControl
-#endif
             }
         }
     }
 
-#if !DEBUG
-    @ViewBuilder
-    private var refreshControl: some View {
-        if viewModel.isRefreshing {
-            ProgressView()
-        } else if appModel.canRefreshCurrentSlot {
-            Button {
-                Task(priority: .userInitiated) {
-                    await viewModel.forceRefresh(appModel: appModel)
-                }
-            } label: {
-                Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
-                    .padding(12)
-            }
-            .appFont(FontTheme.body)
-        } else if allTasksCompleted {
-            Text(appModel.hasUsedRefreshThisSlot ? "You've refreshed, \n come back in the next session" : "All completed!")
-                .appFont(FontTheme.caption)
-                .foregroundStyle(.secondary)
-        } else {
-            Text("Refresh")
-                .appFont(FontTheme.body)
-                .foregroundStyle(.secondary)
-                .padding(12)
-        }
-    }
-#endif
     
     private var allTasksCompleted: Bool {
         !appModel.todayTasks.isEmpty && appModel.todayTasks.allSatisfy { $0.status == .completed }

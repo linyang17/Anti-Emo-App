@@ -14,21 +14,21 @@ final class MoodEntry: Identifiable, Codable {
     @Attribute(.unique) var id: UUID
     var date: Date
     var value: Int
-        var source: String = MoodSource.manual.rawValue   // default to manual
+	var source: String = MoodSource.manual.rawValue   // default to manual
     var delta: Int?  // 完成任务后的情绪变化
     var relatedTaskCategory: String?  // TaskCategory.rawValue
     var relatedWeather: String?  // WeatherType.rawValue
-    var relatedDayLength: Int? // minutes from sunrise to sunset
+    var relatedDayLength: Int // minutes from sunrise to sunset
 
     init(
         id: UUID = UUID(),
         date: Date = .now,
         value: Int,
-                source: MoodSource = .manual,
+		source: MoodSource = .manual,
         delta: Int? = nil,
         relatedTaskCategory: TaskCategory? = nil,
         relatedWeather: WeatherType? = nil,
-        relatedDayLength: Int? = nil
+        relatedDayLength: Int = 0
     ) {
         self.id = id
         self.date = date
@@ -82,7 +82,7 @@ final class MoodEntry: Identifiable, Codable {
                 let delta = try container.decodeIfPresent(Int.self, forKey: .delta)
                 let relatedTaskCategory = try container.decodeIfPresent(TaskCategory.self, forKey: .relatedTaskCategory)
                 let relatedWeather = try container.decodeIfPresent(WeatherType.self, forKey: .relatedWeather)
-                let relatedDayLength = try container.decodeIfPresent(Int.self, forKey: .relatedDayLength)
+                let relatedDayLength = try container.decode(Int.self, forKey: .relatedDayLength)
                 self.init(
                         id: id,
                         date: date,

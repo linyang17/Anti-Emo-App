@@ -58,6 +58,22 @@ struct WeatherReport: Sendable {
         let day = calendar.startOfDay(for: date)
         return sunEvents[day]
     }
+	
 }
 
 
+func dayLengthMinutes(for date: Date, sunEvents: [Date: SunTimes]?) -> Int {
+	let calendar = TimeZoneManager.shared.calendar
+	let day = calendar.startOfDay(for: date)
+	guard let sun = sunEvents?[day] else {
+		return 0
+	}
+
+	var sunset = sun.sunset
+	if sunset < sun.sunrise {
+		sunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
+	}
+
+	let duration = sunset.timeIntervalSince(sun.sunrise)
+	return Int(duration / 60)
+}

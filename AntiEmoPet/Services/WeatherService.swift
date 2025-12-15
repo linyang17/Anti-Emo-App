@@ -28,6 +28,8 @@ private struct SunEventSnapshot: Codable {
 	let sunset: Date
 }
 
+
+
 // MARK: - WeatherService (MainActor)
 @MainActor
 final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
@@ -81,6 +83,7 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 		isAuthorized = manager.authorizationStatus == .authorizedWhenInUse ||
 					   manager.authorizationStatus == .authorizedAlways
 	}
+	
 
 	// MARK: - Fetch Weather
 	func fetchWeather(for location: CLLocation?, locality: String?) async -> WeatherReport {
@@ -90,29 +93,30 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 			return fb
 		}
 
-                guard isAuthorized else {
-                        log.warning("⚠️ Weather fetch attempted before authorization.")
-                        let fb = fallbackReport(locality: locality)
-                        currentWeatherReport = fb
-                        return fb
-                }
+			guard isAuthorized else {
+					log.warning("⚠️ Weather fetch attempted before authorization.")
+					let fb = fallbackReport(locality: locality)
+					currentWeatherReport = fb
+					return fb
+			}
 
-                if let failure = lastFailureAt, Date().timeIntervalSince(failure) < failureCooldown {
-                        log.warning("⚠️ WeatherKit fetch skipped after recent failure; using cache or fallback.")
-                        if let snapshot = restoreFromDisk(),
-                           Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
-                                currentWeatherReport = snapshot
-                                return snapshot
-                        }
-                        let fb = fallbackReport(locality: locality)
-                        currentWeatherReport = fb
-                        return fb
-                }
+			if let failure = lastFailureAt, Date().timeIntervalSince(failure) < failureCooldown {
+					log.warning("⚠️ WeatherKit fetch skipped after recent failure; using cache or fallback.")
+					if let snapshot = restoreFromDisk(),
+					   Date().timeIntervalSince(snapshot.sunEvents.first?.value.sunrise ?? .distantPast) < snapshotValidity {
+							currentWeatherReport = snapshot
+							return snapshot
+					}
+					let fb = fallbackReport(locality: locality)
+					currentWeatherReport = fb
+					return fb
+			}
 
-                // Cache policy
-                if let last = lastFetchedCoordinate,
-                   let lastAt = lastFetchAt {
-                        let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude)
+			// Cache policy
+			if let last = lastFetchedCoordinate,
+			   let lastAt = lastFetchAt {
+					let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude)
+					
 			let withinDistance = location.distance(from: lastLoc) <= distanceThreshold
 			let withinTTL = Date().timeIntervalSince(lastAt) < cacheTTL
 
@@ -125,19 +129,19 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 		// Fetch from WeatherKit
 		do {
 			let weather = try await weatherService.weather(for: location)
-                        let current = WeatherType(from: weather.currentWeather)
-                        let temperature = weather.currentWeather.temperature.converted(to: .celsius).value
-                        let windows = buildWindows(weather: weather)
-                        let sunEvents = buildSunEvents(weather: weather)
+				let current = WeatherType(from: weather.currentWeather)
+				let temperature = weather.currentWeather.temperature.converted(to: .celsius).value
+				let windows = buildWindows(weather: weather)
+				let sunEvents = buildSunEvents(weather: weather)
 
-                        let report = WeatherReport(
-                                location: location,
-                                locality: locality,
-                                currentWeather: current,
-                                currentTemperature: temperature,
-                                windows: windows,
-                                sunEvents: sunEvents
-                        )
+				let report = WeatherReport(
+						location: location,
+						locality: locality,
+						currentWeather: current,
+						currentTemperature: temperature,
+						windows: windows,
+						sunEvents: sunEvents
+				)
 
 				currentWeatherReport = report
 				lastFetchAt = Date()

@@ -76,17 +76,6 @@ final class EnergyStatisticsViewModel: ObservableObject {
 		let trend = calculateTrend(from: metrics, and: dailyEnergyAdds)
 		let comment = generateComment(for: trend, metrics: metrics, days: days)
 		let taskTypeCounts = taskCategoryCompletionRatio(tasks: tasks)
-		
-#if DEBUG
-for task in tasks {
-	logger.debug("TASK status = \(task.status.rawValue, privacy: .public) reward: \(task.energyReward) completed: \(String(describing: task.completedAt), privacy: .public)")
-}
-logger.debug("Daily energy adds: \(dailyEnergyAdds, privacy: .public)")
-logger.debug("Today add: \(todayAdd)")
-logger.debug("Average week add: \(averageAddWeek)")
-logger.debug("Start date: \(startDate, privacy: .public)")
-logger.debug("Today key: \(calendar.startOfDay(for: now), privacy: .public)")
-#endif
 
 	return EnergySummary(
 			todayAdd: todayAdd,
