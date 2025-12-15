@@ -411,13 +411,14 @@ AppClock.debugNow = Calendar.current.date(
 	func completeTask(_ task: UserTask) {
 		guard let stats = userStats else { return }
 		guard task.status.isCompletable else { return }
-		if task.status == .started, let canComplete = task.canCompleteAfter, Date() < canComplete {
-			// 未到buffer时间,不能完成
-			return
-		}
-		
-		task.status = .completed
-		task.completedAt = Date()
+                if task.status == .started, let canComplete = task.canCompleteAfter, Date() < canComplete {
+                        // 未到buffer时间,不能完成
+                        return
+                }
+
+                task.status = .completed
+                ensureDayLength(for: task)
+                task.completedAt = Date()
 		
 				let rewards = rewardEngine.applyTaskReward(for: task, stats: stats, catalog: shopItems)
 				petEngine.handleAction(.taskComplete)   // award bonding + xp
@@ -453,7 +454,8 @@ AppClock.debugNow = Calendar.current.date(
                                         return sorted.last?.value ?? 50
                         }()
                         let entryDate = Date()
-                        let dayLength = dayLengthMinutes(for: entryDate)
+                        let pendingDayLength = pendingMoodFeedbackTask.flatMap { ensureDayLength(for: $0) }
+                        let dayLength = pendingDayLength ?? dayLengthMinutes(for: pendingMoodFeedbackTask?.date ?? entryDate)
                         let entry = MoodEntry(
                                         date: entryDate,
                                         value: max(10, min(100, lastValue + delta)),
@@ -566,9 +568,10 @@ AppClock.debugNow = Calendar.current.date(
 			applyRegionComponents(fallbackComponents)
 		}
 		
-		// Generate tutorial tasks once upon finishing onboarding
-		let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather)
-		storage.save(tasks: onboardingTasks)
+                // Generate tutorial tasks once upon finishing onboarding
+                let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather)
+                ensureDayLength(for: onboardingTasks)
+                storage.save(tasks: onboardingTasks)
 		
 		// Explicitly set todayTasks to the newly generated onboarding tasks
 		todayTasks = onboardingTasks
@@ -1400,27 +1403,28 @@ AppClock.debugNow = Calendar.current.date(
 		let now = Date()
 		let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
 		
-		var generated = taskGenerator.generateTasks(
-			for: slot,
-			date: now,
-			report: weatherReport,
-			reservedTitles: reservedTitles
+                var generated = taskGenerator.generateTasks(
+                        for: slot,
+                        date: now,
+                        report: weatherReport,
+                        reservedTitles: reservedTitles
 		)
 		if generated.isEmpty {
 			// Retry with fresh bootstrap
 			storage.bootstrapIfNeeded()
-			generated = taskGenerator
-				.generateTasks(
-					for: slot,
-					date: now,
-					report: weatherReport,
-					reservedTitles: reservedTitles
-				)
-		}
-		storage.save(tasks: generated)
-		refreshDisplayedTasks(for: slot, on: now)
-		scheduleTaskNotifications()
-	}
+                                generated = taskGenerator
+                                        .generateTasks(
+                                                for: slot,
+                                                date: now,
+                                                report: weatherReport,
+                                                reservedTitles: reservedTitles
+                                        )
+                }
+                ensureDayLength(for: generated)
+                storage.save(tasks: generated)
+                refreshDisplayedTasks(for: slot, on: now)
+                scheduleTaskNotifications()
+        }
 
 		func scheduleTaskNotifications() {
 				guard userStats?.notificationsEnabled == true else { return }
@@ -1461,6 +1465,21 @@ AppClock.debugNow = Calendar.current.date(
                 guard duration > 0 else { return nil }
 
                 return Int(duration / 60)
+        }
+
+        @discardableResult
+        private func ensureDayLength(for task: UserTask) -> Int? {
+                if let recorded = task.relatedDayLength {
+                        return recorded
+                }
+
+                let minutes = dayLengthMinutes(for: task.date)
+                task.relatedDayLength = minutes
+                return minutes
+        }
+
+        private func ensureDayLength(for tasks: [UserTask]) {
+                tasks.forEach { _ = ensureDayLength(for: $0) }
         }
 
 	private func bindLocationUpdates() {

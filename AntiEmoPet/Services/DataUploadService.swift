@@ -22,13 +22,13 @@ struct SummaryDailyRequest: Codable {
 	let summaries: [UserTimeslotSummaryDTO]
 }
 
-/// DTO that matches the Edge Function schema (date as yyyy-MM-dd, dayLength in seconds)
+/// DTO that matches the Edge Function schema (date as yyyy-MM-dd, dayLength in minutes)
 struct UserTimeslotSummaryDTO: Codable {
-	let userId: String
-	let countryRegion: String
+        let userId: String
+        let countryRegion: String
 
-	let date: String            // yyyy-MM-dd (startOfDay)
-	let dayLength: Int          // seconds
+        let date: String            // yyyy-MM-dd (startOfDay)
+        let dayLength: Int          // minutes
 	let timeSlot: String
 
 	let timeslotWeather: String?
@@ -41,10 +41,10 @@ struct UserTimeslotSummaryDTO: Codable {
 	let tasksSummary: [String: [Int]]
 
 	init(from summary: UserTimeslotSummary) {
-		self.userId = summary.userId
-		self.countryRegion = summary.countryRegion
-		self.date = DateFormatters.localDayString(from: summary.date)
-		self.dayLength = max(0, Int(summary.dayLength.rounded()))
+                self.userId = summary.userId
+                self.countryRegion = summary.countryRegion
+                self.date = DateFormatters.localDayString(from: summary.date)
+                self.dayLength = max(0, summary.dayLength)
 		self.timeSlot = summary.timeSlot
 		self.timeslotWeather = summary.timeslotWeather
 		self.countMood = max(0, summary.countMood)

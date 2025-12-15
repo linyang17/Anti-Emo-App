@@ -91,11 +91,12 @@ final class UserTask: Identifiable {
     var energyReward: Int = 0
     var date: Date
     var status: TaskStatus
-	var isArchived: Bool = false
+        var isArchived: Bool = false
     var startedAt: Date?  // 任务开始时间
     var canCompleteAfter: Date?  // 可以完成的最早时间（buffer 时间后）
     var completedAt: Date?
     var moodEntryId: UUID? // 关联完成后的情绪记录
+        var relatedDayLength: Int? // minutes from sunrise to sunset
     var isOnboarding: Bool = false
 
     init(
@@ -111,6 +112,7 @@ final class UserTask: Identifiable {
         canCompleteAfter: Date? = nil,
         completedAt: Date? = nil,
         moodEntryId: UUID? = nil,
+                relatedDayLength: Int? = nil,
         isOnboarding: Bool = false
     ) {
         self.id = id
@@ -125,6 +127,7 @@ final class UserTask: Identifiable {
         self.canCompleteAfter = canCompleteAfter
         self.completedAt = completedAt
         self.moodEntryId = moodEntryId
+                self.relatedDayLength = relatedDayLength
         self.isOnboarding = isOnboarding
     }
 }

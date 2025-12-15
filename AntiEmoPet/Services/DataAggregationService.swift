@@ -1,14 +1,15 @@
 import Foundation
 
 struct UserTimeslotSummary: Codable, Sendable {
-	// User Info
-	let userId: String
-	let countryRegion: String
-	
-	// Time Info
-	let date: Date
-	let dayLength: TimeInterval // seconds
-	let timeSlot: String // "morning", etc.
+        // User Info
+        let userId: String
+        let countryRegion: String
+
+        // Time Info
+        let date: Date
+        /// Day length in minutes from sunrise to sunset
+        let dayLength: Int
+        let timeSlot: String // "morning", etc.
 	
 	// Weather
 	let timeslotWeather: String? // WeatherType.rawValue
@@ -48,18 +49,20 @@ final class DataAggregationService {
                 }
 
                 // Calculate day length
-                var dayLength: TimeInterval = 0
-                if let recordedMinutes = dailyMoods.compactMap({ $0.relatedDayLength }).first {
-                        dayLength = TimeInterval(recordedMinutes * 60)
+                var dayLength = 0
+                if let recordedMinutes = dailyTasks.compactMap({ $0.relatedDayLength }).first {
+                        dayLength = recordedMinutes
+                } else if let recordedMinutes = dailyMoods.compactMap({ $0.relatedDayLength }).first {
+                        dayLength = recordedMinutes
                 } else if let sunTime = normalizedSunEvents[startOfDay]
                         ?? normalizedSunEvents.first(where: { calendar.isDate($0.key, inSameDayAs: startOfDay) })?.value {
                         let sunrise = sunTime.sunrise
                         let sunset = sunTime.sunset
                         if sunset >= sunrise {
-                                dayLength = sunset.timeIntervalSince(sunrise)
+                                dayLength = Int(sunset.timeIntervalSince(sunrise) / 60)
                         } else {
                                 let adjustedSunset = calendar.date(byAdding: .day, value: 1, to: sunset) ?? sunset
-                                dayLength = adjustedSunset.timeIntervalSince(sunrise)
+                                dayLength = Int(adjustedSunset.timeIntervalSince(sunrise) / 60)
                         }
                         dayLength = max(0, dayLength)
                 }

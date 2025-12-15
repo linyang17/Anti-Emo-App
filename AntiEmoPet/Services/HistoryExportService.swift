@@ -11,6 +11,7 @@ struct TaskHistoryRecord: Codable, Sendable {
         let completedAt: Date?
         let isArchived: Bool
         let isOnboarding: Bool
+        let relatedDayLength: Int?
 }
 
 struct MoodHistoryRecord: Codable, Sendable {
@@ -105,7 +106,8 @@ struct HistoryExportService {
                                 date: task.date,
                                 completedAt: task.completedAt,
                                 isArchived: task.isArchived,
-                                isOnboarding: task.isOnboarding
+                                isOnboarding: task.isOnboarding,
+                                relatedDayLength: task.relatedDayLength
                         )
                 }
 

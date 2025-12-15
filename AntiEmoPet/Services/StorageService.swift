@@ -492,6 +492,7 @@ final class StorageService {
                                         status: TaskStatus(rawValue: record.status) ?? .pending,
                                         isArchived: record.isArchived,
                                         completedAt: record.completedAt,
+                                        relatedDayLength: record.relatedDayLength,
                                         isOnboarding: record.isOnboarding
                                 )
                                 context.insert(task)
