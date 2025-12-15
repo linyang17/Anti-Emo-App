@@ -119,34 +119,11 @@ final class StorageService {
 		}
 	}
 
-	func fetchTasks(for date: Date, includeArchived: Bool = false, includeOnboarding: Bool = true) -> [UserTask] {
-		do {
-			let calendar = TimeZoneManager.shared.calendar
-			let start = calendar.startOfDay(for: date)
-			guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
-
-						let predicate = #Predicate<UserTask> { task in
-								task.date >= start && task.date < end
-										&& (includeArchived || task.isArchived == false)
-										&& (includeOnboarding || task.isOnboarding == false)
-						}
-
-			let descriptor = FetchDescriptor<UserTask>(
-				predicate: predicate,
-				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
-			)
-			return try context.fetch(descriptor)
-		} catch {
-			logger.error("Failed to fetch tasks: \(error.localizedDescription, privacy: .public)")
-			return []
-		}
-	}
 
 	/// Fetch tasks from the recent N days (inclusive of today).
-	func fetchTasks(since days: Int, excludingCompleted: Bool = false, includeArchived: Bool = false, includeOnboarding: Bool = true) -> [UserTask] {
+	func fetchTasks(periodDays: Int, fromDate: Date = Date(), excludingCompleted: Bool = false, includeArchived: Bool = true, includeOnboarding: Bool = true) -> [UserTask] {
 		let calendar = TimeZoneManager.shared.calendar
-		let now = Date()
-		let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now)
+		let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(max(1, periodDays) - 1), to: fromDate) ?? fromDate)
 
 		do {
 			let completed = TaskStatus.completed
@@ -156,13 +133,13 @@ final class StorageService {
 					task.date >= start
 							&& task.status != completed
 							&& (includeArchived || task.isArchived == false)
-							&& (includeOnboarding || task.isOnboarding == false)
+							//&& (includeOnboarding || task.isOnboarding == false)
 				}
 			} else {
 				predicate = #Predicate<UserTask> { task in
 					task.date >= start
 							&& (includeArchived || task.isArchived == false)
-							&& (includeOnboarding || task.isOnboarding == false)
+							//&& (includeOnboarding || task.isOnboarding == false)
 				}
 			}
 
@@ -350,32 +327,32 @@ final class StorageService {
 				}
 		}
 
-	func fetchTasks(in slot: TimeSlot, on date: Date, includeOnboarding: Bool = true) -> [UserTask] {
+	func fetchSlotTasks(in slot: TimeSlot, on date: Date, includeOnboarding: Bool = true) -> [UserTask] {
 		let calendar = TimeZoneManager.shared.calendar
 		let startOfDay = calendar.startOfDay(for: date)
 		let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
 		
 		do {
 			// Fetch slot tasks
-						var slotTasks: [UserTask] = []
-						if let interval = slotInterval(for: slot, on: date) {
-								let start = interval.start
-								let end = interval.end
-								let predicate = #Predicate<UserTask> { task in
-										task.date >= start && task.date < end && task.isArchived == false
-								}
-				let descriptor = FetchDescriptor<UserTask>(
-					predicate: predicate,
-					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
-				)
-				slotTasks = try context.fetch(descriptor)
+			var slotTasks: [UserTask] = []
+			if let interval = slotInterval(for: slot, on: date) {
+					let start = interval.start
+					let end = interval.end
+					let predicate = #Predicate<UserTask> { task in
+							task.date >= start && task.date < end && task.isArchived == false
+					}
+			let descriptor = FetchDescriptor<UserTask>(
+				predicate: predicate,
+				sortBy: [SortDescriptor(\UserTask.date, order: .forward)]
+			)
+			slotTasks = try context.fetch(descriptor)
 			}
 			
 			// If includeOnboarding is true, also fetch onboarding tasks for the day
-						if includeOnboarding {
-								let onboardingPredicate = #Predicate<UserTask> { task in
-										task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
-								}
+			if includeOnboarding {
+					let onboardingPredicate = #Predicate<UserTask> { task in
+							task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
+					}
 				let onboardingDescriptor = FetchDescriptor<UserTask>(
 					predicate: onboardingPredicate,
 					sortBy: [SortDescriptor(\UserTask.date, order: .forward)]

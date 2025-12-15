@@ -365,7 +365,7 @@ struct PetView: View {
 					.environmentObject(appModel)
 				} label: {
 						HStack(alignment: .center, spacing: 12) {
-							Text("Share your feelings and thoughts")
+							Text("Share your feeling/thoughts")
 								.foregroundStyle(.white.opacity(0.85))
 							Spacer(minLength: 0)
 							Image(systemName: "paperplane.fill")

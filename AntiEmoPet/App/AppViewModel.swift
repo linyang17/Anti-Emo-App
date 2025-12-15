@@ -152,17 +152,7 @@ final class AppViewModel: ObservableObject {
 			showOnboarding = !(userStats?.isOnboard ?? false)
 			guard !showOnboarding else {
 				await initLoad()
-				await fetchInitialWeather()
-				let dayLen = dayLengthMinutes(for: Date(), sunEvents: sunEvents)
-				print("date: \(Date()), weather: \(weather), day lentgh: \(dayLen)")
-				
-				// Generate tutorial tasks once upon finishing onboarding
-				let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather, dayLen: dayLen)
-				storage.save(tasks: onboardingTasks)
-				// Explicitly set todayTasks to the newly generated onboarding tasks
-				todayTasks = onboardingTasks
-				
-				storage.persist()
+				//await fetchInitialWeather()
 				return
 			}
 			
@@ -197,6 +187,19 @@ final class AppViewModel: ObservableObject {
 		}
 
 		await refreshWeather(using: locationService.lastKnownLocation)
+		
+		let dayLen = dayLengthMinutes(for: Date(), sunEvents: sunEvents)
+		print("date: \(Date()), weather: \(weather), day lentgh: \(dayLen)")
+		
+		if userStats?.hasShownOnboardingCelebration == false {
+			// Generate tutorial tasks once upon finishing onboarding
+			let onboardingTasks = taskGenerator.makeOnboardingTasks(for: Date(), weather: weather, dayLen: dayLen)
+			storage.save(tasks: onboardingTasks)
+			// Explicitly set todayTasks to the newly generated onboarding tasks
+			todayTasks = onboardingTasks
+			
+			storage.persist()
+		}
 
 		startSlotMonitor()
 
@@ -727,7 +730,7 @@ final class AppViewModel: ObservableObject {
 
 		func currentTaskStreak(on date: Date = Date()) -> Int {
 				let calendar = TimeZoneManager.shared.calendar
-				let recentTasks = storage.fetchTasks(since: 30, excludingCompleted: false, includeArchived: true, includeOnboarding: true)
+				let recentTasks = storage.fetchTasks(periodDays: 30, fromDate: date)
 				let grouped = Dictionary(grouping: recentTasks) { calendar.startOfDay(for: $0.date) }
 				let sortedDays = grouped.keys.sorted(by: >)
 				guard var cursor = sortedDays.first else { return 0 }
@@ -840,7 +843,7 @@ final class AppViewModel: ObservableObject {
 				guard UserDefaults.standard.string(forKey: streakAwardedKey) != dkey else { return }
 
 				let calendar = TimeZoneManager.shared.calendar
-				let tasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
+				let tasks = storage.fetchSlotTasks(in: slot, on: date, includeOnboarding: true)
 				guard !tasks.isEmpty else { return }
 				let completed = tasks.allSatisfy { $0.status == .completed }
 				guard completed else { return }
@@ -968,32 +971,31 @@ final class AppViewModel: ObservableObject {
 				.sorted { $0.1 < $1.1 }
 
 				for (slot, triggerDate) in pendingSlots where date >= triggerDate && !hasGeneratedSlotTasks(slot, on: date) {
-						logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed at \(triggerDate)")
+						logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed for \(triggerDate)")
 						generateTasksForSlot(slot, reference: date, notify: shouldNotify(for: slot))
 				}
 		}
 
 		private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
 				// 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
-				let existingTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
-
-				logger.info("[AppViewModel] generateTasksForSlot: preparing \(slot.rawValue) tasks at \(date)")
-
+				let existingTasks = storage.fetchSlotTasks(in: slot, on: date, includeOnboarding: true)
 				guard existingTasks.isEmpty else {
-						logger.info("[AppViewModel] fetchTasks: \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
+						logger.info("[generateTasksForSlot] \(slot.rawValue) slot already has \(existingTasks.count) tasks. Skipping generation.")
 						markSlotTasksGenerated(slot, on: date)
 						scheduleTaskNotifications()
 						refreshDisplayedTasks(for: slot, on: date)
 						return
 				}
 		
-			storage.archiveUncompletedTasks(before: slot, on: date)
+				storage.archiveUncompletedTasks(before: slot, on: date)
 
-		let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
-		guard !generated.isEmpty else {
-			logger.warning("[AppViewModel] generateTasksForSlot: no tasks generated for slot \(slot.rawValue).")
-			return
-		}
+				let generated = taskGenerator.generateTasks(for: slot, date: date, report: weatherReport)
+				logger.info("[generateTasksForSlot] preparing \(slot.rawValue) tasks at \(date)")
+					
+				guard !generated.isEmpty else {
+					logger.warning("[generateTasksForSlot] no tasks generated for slot \(slot.rawValue).")
+					return
+				}
 
 				storage.save(tasks: generated)
 
@@ -1001,11 +1003,12 @@ final class AppViewModel: ObservableObject {
 				markSlotTasksGenerated(slot, on: date)
 
 				if notify, shouldNotify(for: slot) {
-								notificationService.notifyTasksUnlocked(for: slot, allowedSlots: enabledNotificationSlots)
+					// TODO: check the notifivation service. target for only notify at the scheduled time, regardless of app open or not
+					notificationService.notifyTasksUnlocked(for: slot, allowedSlots: enabledNotificationSlots)
+					scheduleTaskNotifications()
 				}
-				scheduleTaskNotifications()
-				analytics.log(event: "tasks_generated_slot", metadata: ["slot": slot.rawValue])
-				logger.info("[AppViewModel] generateTasksForSlot: \(generated.count) new tasks generated for \(slot.rawValue)")
+			
+				analytics.log(event: "generateTasksForSlot", metadata: ["slot": slot.rawValue, "count": "\(generated.count)"])
 
 		if slot != .night && !hasLoggedMoodThisSlot && !showOnboarding {
 			checkAndShowMoodCapture()
@@ -1022,7 +1025,7 @@ final class AppViewModel: ObservableObject {
 	// Show onboarding tasks until all done
 	private func refreshDisplayedTasks(for slot: TimeSlot, on date: Date) {
 		// Always base onboarding visibility on today's onboarding tasks
-		let todayAll = storage.fetchTasks(for: date)
+		let todayAll = storage.fetchTasks(periodDays: 1, fromDate: date)
 		let onboardingTasks = todayAll.filter { $0.isOnboarding }
 		if !onboardingTasks.isEmpty {
 			let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
@@ -1038,9 +1041,9 @@ final class AppViewModel: ObservableObject {
 		}
 
 			// Otherwise, show current slot tasks (non-onboarding)
-			let slotTasks = storage.fetchTasks(in: slot, on: date, includeOnboarding: true)
+			let slotTasks = storage.fetchSlotTasks(in: slot, on: date, includeOnboarding: true)
 			if slotTasks.isEmpty, !hasGeneratedSlotTasks(slot, on: date), let previous = previousSlot(for: slot) {
-					let previousSlotTasks = storage.fetchTasks(in: previous, on: date, includeOnboarding: true)
+					let previousSlotTasks = storage.fetchSlotTasks(in: previous, on: date, includeOnboarding: true)
 					if !previousSlotTasks.isEmpty {
 							todayTasks = previousSlotTasks
 							return
@@ -1160,7 +1163,12 @@ final class AppViewModel: ObservableObject {
 
 			// Evaluate yesterday's completion
 			let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-			let tasks = storage.fetchTasks(for: yesterday, includeArchived: true, includeOnboarding: true)
+			let tasks = storage.fetchTasks(
+				periodDays: 1,
+				fromDate: yesterday,
+				includeArchived: true,
+				includeOnboarding: true
+			)
 			let didComplete = tasks.contains { $0.status == .completed }
 			if !didComplete {
 				petEngine.handleAction(.penalty)
@@ -1180,13 +1188,13 @@ final class AppViewModel: ObservableObject {
 		}
 
 		/// Fetch cached tasks for the latest `days` to power analytics without mutating state.
-		func tasksSince(days: Int, includeArchived: Bool = true, includeOnboarding: Bool = false) -> [UserTask] {
-				storage.fetchTasks(since: days, includeArchived: includeArchived, includeOnboarding: includeOnboarding)
+		func tasksSince(days: Int, includeArchived: Bool = true, includeOnboarding: Bool = true) -> [UserTask] {
+				storage.fetchTasks(periodDays: days, includeArchived: includeArchived, includeOnboarding: includeOnboarding)
 		}
 
 		func taskHistorySections(days: Int = 30) -> [TaskHistorySection] {
 				let cal = TimeZoneManager.shared.calendar
-				let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: true)
+				let tasks = storage.fetchTasks(periodDays: days, includeArchived: true, includeOnboarding: true)
 				let grouped = Dictionary(grouping: tasks) { cal.startOfDay(for: $0.date) }
 				return grouped.keys
 						.sorted(by: >)
@@ -1195,21 +1203,21 @@ final class AppViewModel: ObservableObject {
 						}
 		}
 
-                func exportTaskHistory(days: Int = 90) -> URL? {
-                                let range = historyRange(forDays: days)
-                                let tasks = storage.fetchTasks(since: days, includeArchived: true, includeOnboarding: true)
-                                let moods = moodEntries.filter { range.contains($0.date) }
-                                let events = energyEvents.filter { range.contains($0.date) }
-                                return try? historyExporter.export(
-                                                tasks: tasks,
-                                                moods: moods,
-                                                energyEvents: events,
-                                                inventory: inventory,
-                                                pet: pet,
-                                                stats: userStats,
-                                                range: range
-                                )
-                }
+		func exportTaskHistory(days: Int = 90) -> URL? {
+						let range = historyRange(forDays: days)
+						let tasks = storage.fetchTasks(periodDays: days, includeArchived: true, includeOnboarding: true)
+						let moods = moodEntries.filter { range.contains($0.date) }
+						let events = energyEvents.filter { range.contains($0.date) }
+						return try? historyExporter.export(
+										tasks: tasks,
+										moods: moods,
+										energyEvents: events,
+										inventory: inventory,
+										pet: pet,
+										stats: userStats,
+										range: range
+						)
+		}
 
 		func importTaskHistory(from url: URL) -> Bool {
 				do {
@@ -1223,7 +1231,7 @@ final class AppViewModel: ObservableObject {
 						dailyMetricsCache = makeDailyActivityMetrics()
 
 						let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-						todayTasks = storage.fetchTasks(in: slot, on: Date())
+						todayTasks = storage.fetchSlotTasks(in: slot, on: Date())
 						return true
 				} catch {
 						logger.error("Failed to import history: \(error.localizedDescription, privacy: .public)")
@@ -1283,7 +1291,7 @@ final class AppViewModel: ObservableObject {
 				let cursorKey = dayKey(for: cursor)
 
 				// Fetch data for this day.
-				let tasks = storage.fetchTasks(for: cursor, includeArchived: true, includeOnboarding: true)
+				let tasks = storage.fetchTasks(periodDays: 1, fromDate: cursor, includeArchived: true, includeOnboarding: true)
 				let moods = storage.fetchMoodEntries().filter { cal.isDate($0.date, inSameDayAs: cursor) }
 
 				// If no data for the day, skip and mark as processed.
@@ -1307,7 +1315,6 @@ final class AppViewModel: ObservableObject {
 				if ok {
 					UserDefaults.standard.set(cursorKey, forKey: lastSuccessfulKey)
 					logger.info("Uploaded summary for \(cursorKey, privacy: .public)")
-					logger.info("\(self.sunEvents)")
 					logger.info("\(summaries)")
 					cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
 				} else {
@@ -1379,18 +1386,20 @@ final class AppViewModel: ObservableObject {
                 let report = await weatherService.fetchWeather(for: location, locality: locality)
                 weatherReport = report
                 if !report.sunEvents.isEmpty {
-			storage.saveSunEvents(report.sunEvents)
-			let merged = storage.fetchSunEvents()
-			sunEvents = merged
-		}
+					storage.saveSunEvents(report.sunEvents)
+					let merged = storage.fetchSunEvents()
+					sunEvents = merged
+				}
+			
+				let dayLen = dayLengthMinutes(for: Date(), sunEvents: report.sunEvents)
 		
-		if let city = report.locality, !(city.isEmpty), locationService.lastKnownCity.isEmpty {
-			userStats?.region = city
-			storage.persist()
+				if let city = report.locality, !(city.isEmpty), locationService.lastKnownCity.isEmpty {
+					userStats?.region = city
+					storage.persist()
+				}
+				
+				logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), day length: \(dayLen), for city: \(self.locationService.lastKnownCity)")
 		}
-		
-                logger.info("[AppViewModel] fetch weather: \(self.weatherReport?.currentWeather.rawValue ?? "nil"), for city: \(self.locationService.lastKnownCity)")
-        }
 
 
 
@@ -1473,7 +1482,7 @@ final class AppViewModel: ObservableObject {
 
 	func checkAndShowOnboardingCelebration() {
 		// Must have onboarding tasks today
-		let todayTasksAll = storage.fetchTasks(for: Date())
+		let todayTasksAll = storage.fetchTasks(periodDays: 1, fromDate: Date())
 		let onboardingTasks = todayTasksAll.filter { $0.isOnboarding }
 		guard !onboardingTasks.isEmpty else { return }
 		
@@ -1504,7 +1513,7 @@ final class AppViewModel: ObservableObject {
 		// After celebration, remove today's onboarding tasks and show current slot tasks
 		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
 		storage.deleteOnboardingTasks(for: Date())
-		todayTasks = storage.fetchTasks(in: slot, on: Date(), includeOnboarding: true)
+		todayTasks = storage.fetchSlotTasks(in: slot, on: Date(), includeOnboarding: true)
 	}
 	
 		private func applyRegionComponents(_ components: RegionComponents) {
