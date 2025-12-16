@@ -958,23 +958,36 @@ final class AppViewModel: ObservableObject {
 	}
 	
 
-		private func checkSlotGenerationTrigger(reference date: Date = Date()) {
-				let schedule = loadSlotSchedule()
-				let dkey = dayKey(for: date)
-				guard let slotMap = schedule[dkey] else { return }
-				_ = scheduleFormatter(slotmap: slotMap)
+        private func checkSlotGenerationTrigger(reference date: Date = Date()) {
+                let schedule = loadSlotSchedule()
+                let dkey = dayKey(for: date)
+                guard let slotMap = schedule[dkey] else { return }
+                _ = scheduleFormatter(slotmap: slotMap)
 
-				let pendingSlots: [(TimeSlot, Date)] = slotMap.compactMap { raw, epoch in
-						guard let slot = TimeSlot(rawValue: raw) else { return nil }
-						return (slot, Date(timeIntervalSince1970: epoch))
-				}
-				.sorted { $0.1 < $1.1 }
+                let pendingSlots: [(TimeSlot, Date)] = slotMap.compactMap { raw, epoch in
+                        guard let slot = TimeSlot(rawValue: raw) else { return nil }
+                        return (slot, Date(timeIntervalSince1970: epoch))
+                }
+                .sorted { $0.1 < $1.1 }
 
-				for (slot, triggerDate) in pendingSlots where date >= triggerDate && !hasGeneratedSlotTasks(slot, on: date) {
-						logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed for \(triggerDate)")
-						generateTasksForSlot(slot, reference: date, notify: shouldNotify(for: slot))
-				}
-		}
+                let currentSlot = TimeSlot.from(date: date, using: TimeZoneManager.shared.calendar)
+                let slotOrder: [TimeSlot] = [.morning, .afternoon, .evening, .night]
+                let currentIndex = slotOrder.firstIndex(of: currentSlot) ?? slotOrder.endIndex
+
+                for (slot, triggerDate) in pendingSlots where date >= triggerDate && !hasGeneratedSlotTasks(slot, on: date) {
+                        guard let slotIndex = slotOrder.firstIndex(of: slot) else { continue }
+
+                        if slotIndex < currentIndex {
+                                logger.info("[checkSlotGenerationTrigger]: skipping backfilled generation for \(slot.rawValue);")
+                                markSlotTasksGenerated(slot, on: date)
+                                continue
+                        }
+
+                        guard slot == currentSlot else { continue }
+                        logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed for \(triggerDate)")
+                        generateTasksForSlot(slot, reference: date, notify: shouldNotify(for: slot))
+                }
+        }
 
 		private func generateTasksForSlot(_ slot: TimeSlot, reference date: Date = Date(), notify: Bool = true) {
 				// 检查当前时段是否已有任务。如果有任务就只打印日志，不再继续生成；如果没有，则执行删除旧任务 + 新任务生成的流程。
@@ -1246,12 +1259,21 @@ final class AppViewModel: ObservableObject {
 				return start...now
 		}
 
-		private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
-				guard let stats = userStats else { return }
-				let persistedSunEvents = storage.fetchSunEvents()
-				if !persistedSunEvents.isEmpty {
-						sunEvents = persistedSunEvents
-				}
+                private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
+                                guard let stats = userStats else { return }
+                                // Skip uploads immediately after onboarding (no prior-day data exists yet)
+                                if stats.totalDays <= 1 {
+                                                logger.info("Skipped summary upload on first day post-onboarding.")
+                                                let cal = TimeZoneManager.shared.calendar
+                                                let todayStart = cal.startOfDay(for: AppClock.now)
+                                                let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+                                                UserDefaults.standard.set(dayKey(for: yesterday), forKey: "summaryUpload.lastSuccessfulDay")
+                                                return
+                                }
+                                let persistedSunEvents = storage.fetchSunEvents()
+                                if !persistedSunEvents.isEmpty {
+                                                sunEvents = persistedSunEvents
+                                }
 				let cal = TimeZoneManager.shared.calendar
 				let todayStart = cal.startOfDay(for: AppClock.now)
 				let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
@@ -1505,16 +1527,24 @@ final class AppViewModel: ObservableObject {
 		}
 	}
 	
-	func dismissOnboardingCelebration() {
-		showOnboardingCelebration = false
-		// Persist one-time flag
-		userStats?.hasShownOnboardingCelebration = true
-		storage.persist()
-		// After celebration, remove today's onboarding tasks and show current slot tasks
-		let slot = TimeSlot.from(date: Date(), using: TimeZoneManager.shared.calendar)
-		storage.deleteOnboardingTasks(for: Date())
-		todayTasks = storage.fetchSlotTasks(in: slot, on: Date(), includeOnboarding: true)
-	}
+        func dismissOnboardingCelebration() {
+                showOnboardingCelebration = false
+                // Persist one-time flag
+                userStats?.hasShownOnboardingCelebration = true
+                storage.persist()
+                // After celebration, remove today's onboarding tasks and show current slot tasks
+                let now = Date()
+                let slot = TimeSlot.from(date: now, using: TimeZoneManager.shared.calendar)
+                storage.archiveOnboardingTasks(for: now)
+                let slotTasks = storage.fetchSlotTasks(in: slot, on: now, includeOnboarding: true)
+
+                if slotTasks.isEmpty {
+                        ensureSlotScheduleExists(for: now, slot: slot)
+                        generateTasksForSlot(slot, reference: now, notify: false)
+                } else {
+                        todayTasks = slotTasks
+                }
+        }
 	
 		private func applyRegionComponents(_ components: RegionComponents) {
 				guard let stats = userStats else { return }

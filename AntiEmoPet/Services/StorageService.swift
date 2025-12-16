@@ -376,23 +376,41 @@ final class StorageService {
 		}
 	}
 
-	func deleteOnboardingTasks(for date: Date) {
-		do {
-			let calendar = TimeZoneManager.shared.calendar
-			let start = calendar.startOfDay(for: date)
-			let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+        func deleteOnboardingTasks(for date: Date) {
+                do {
+                        let calendar = TimeZoneManager.shared.calendar
+                        let start = calendar.startOfDay(for: date)
+                        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
 			let predicate = #Predicate<UserTask> { task in
 				task.date >= start && task.date < end && task.isOnboarding == true
 			}
 			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
 			let targets = try context.fetch(descriptor)
-			guard !targets.isEmpty else { return }
-			targets.forEach { context.delete($0) }
-			saveContext(reason: "delete onboarding tasks for day")
-		} catch {
-			logger.error("Failed to delete onboarding tasks: \(error.localizedDescription, privacy: .public)")
-		}
-	}
+                        guard !targets.isEmpty else { return }
+                        targets.forEach { context.delete($0) }
+                        saveContext(reason: "delete onboarding tasks for day")
+                } catch {
+                        logger.error("Failed to delete onboarding tasks: \(error.localizedDescription, privacy: .public)")
+                }
+        }
+
+        func archiveOnboardingTasks(for date: Date) {
+                do {
+                        let calendar = TimeZoneManager.shared.calendar
+                        let start = calendar.startOfDay(for: date)
+                        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
+                        let predicate = #Predicate<UserTask> { task in
+                                task.date >= start && task.date < end && task.isOnboarding == true
+                        }
+                        let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+                        let targets = try context.fetch(descriptor)
+                        guard !targets.isEmpty else { return }
+                        targets.forEach { $0.isArchived = true }
+                        saveContext(reason: "archive onboarding tasks for day")
+                } catch {
+                        logger.error("Failed to archive onboarding tasks: \(error.localizedDescription, privacy: .public)")
+                }
+        }
 
 	private func slotInterval(for slot: TimeSlot, on date: Date) -> DateInterval? {
 		let calendar = TimeZoneManager.shared.calendar
