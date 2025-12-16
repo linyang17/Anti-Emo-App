@@ -99,33 +99,30 @@ final class AnalysisViewModel: ObservableObject {
 	
 	
 	// MARK: 完成不同类型任务对情绪影响
-	private func taskImpactData(entries: [MoodEntry]) -> [TaskCategory: Double] {
-		guard !entries.isEmpty else { return [:] }
+        private func taskImpactData(entries: [MoodEntry]) -> [TaskCategory: Double] {
+                guard !entries.isEmpty else { return [:] }
 
-		// 只保留任务完成后的情绪记录
-		let afterTaskEntries = entries.filter { $0.source == MoodEntry.MoodSource.afterTask.rawValue }
+                var accumulator: [TaskCategory: (sum: Int, count: Int)] = [:]
 
-		var accumulator: [TaskCategory: (sum: Int, count: Int)] = [:]
+                for entry in entries {
+                        guard
+                                let categoryRaw = entry.relatedTaskCategory,
+                                let category = TaskCategory(rawValue: categoryRaw),
+                                let delta = entry.delta
+                        else { continue }
 
-		for entry in afterTaskEntries {
-			guard
-				let categoryRaw = entry.relatedTaskCategory,
-				let category = TaskCategory(rawValue: categoryRaw),
-				let delta = entry.delta
-			else { continue }
+                        var bucket = accumulator[category] ?? (0, 0)
+                        bucket.sum += delta
+                        bucket.count += 1
+                        accumulator[category] = bucket
+                }
 
-			var bucket = accumulator[category] ?? (0, 0)
-			bucket.sum += delta
-			bucket.count += 1
-			accumulator[category] = bucket
-		}
-
-		return accumulator.reduce(into: [:]) { result, element in
-			let (category, bucket) = element
-			guard bucket.count > 0 else { return }
-			result[category] = Double(bucket.sum) / Double(bucket.count)
-		}
-	}
+                return accumulator.reduce(into: [:]) { result, element in
+                        let (category, bucket) = element
+                        guard bucket.count > 0 else { return }
+                        result[category] = Double(bucket.sum) / Double(bucket.count)
+                }
+        }
 
 	//MARK: TODO: 情绪与日照时长关联度分析：
     private func daylightCorrelationText(slotAverages: [TimeSlot: Double]) -> String {
