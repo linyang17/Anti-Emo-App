@@ -166,7 +166,7 @@ struct StatsRhythmSection: View {
 				}
 			}
 			.chartYAxis {
-				AxisMarks(position: .leading) { value in
+				AxisMarks(position: .leading, values: .stride(by: 1)) { value in
 					if let delta = value.as(Double.self) {
 						AxisGridLine()
 						AxisTick()

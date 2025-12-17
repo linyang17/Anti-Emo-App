@@ -96,7 +96,7 @@ struct ChatView: View {
 								if viewModel.currentInput.isEmpty {
 										Text("Text here")
 												.foregroundStyle(.secondary)
-												.padding(.horizontal, 18)
+												.padding(.horizontal, 16)
 												.allowsHitTesting(false)
 								}
 						}

@@ -84,7 +84,7 @@ final class ChatViewModel: ObservableObject {
                 messages.append(Message(role: .pet, content: reply))
                 incrementUsage()
             } catch {
-                messages.append(Message(role: .pet, content: "Lumio is having trouble replying right now, but I'm still here.", isSystem: true))
+                messages.append(Message(role: .pet, content: "Lumio is currently away and will get back to you later.", isSystem: true))
             }
             analytics.log(event: "chat_message")
         }
