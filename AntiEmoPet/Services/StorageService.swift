@@ -351,7 +351,7 @@ final class StorageService {
 			// If includeOnboarding is true, also fetch onboarding tasks for the day
 			if includeOnboarding {
 					let onboardingPredicate = #Predicate<UserTask> { task in
-							task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true
+							task.date >= startOfDay && task.date < endOfDay && task.isOnboarding == true && task.isArchived == false
 					}
 				let onboardingDescriptor = FetchDescriptor<UserTask>(
 					predicate: onboardingPredicate,
@@ -859,4 +859,3 @@ enum DefaultSeeds {
 				}
 		}
 }
-
