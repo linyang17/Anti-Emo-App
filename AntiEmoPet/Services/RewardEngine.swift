@@ -39,7 +39,6 @@ final class RewardEngine {
 
     func evaluateAllClear(tasks: [UserTask], stats: UserStats) -> Bool {
         guard tasks.allSatisfy({ $0.status == .completed }) else { return false }
-        stats.totalDays += 1
         return true
     }
 

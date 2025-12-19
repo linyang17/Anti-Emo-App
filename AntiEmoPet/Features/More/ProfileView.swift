@@ -17,7 +17,7 @@ struct ProfileView: View {
 				
                 Section("Log") {
                         Label("You've met Lumio for: \(stats.totalDays) days", systemImage: "flame")
-                        Label("Current streak: \(appModel.currentTaskStreak()) days", systemImage: "calendar")
+                        Label("Current streak: \(stats.streakDays) days", systemImage: "calendar")
                         Label("Total tasks completed：\(stats.completedTasksCount)", systemImage: "checkmark.circle")
 						
 						NavigationLink(destination: TaskHistoryView().environmentObject(appModel)) {
@@ -38,4 +38,3 @@ private extension UserStats {
 		return combined.isEmpty ? region : combined
 	}
 }
-

@@ -196,7 +196,7 @@ struct PetView: View {
 								Spacer(minLength: 50)
 			}
 			.overlay(alignment: .top) {
-				pettingNoticeOverlay()
+				noticeOverlay()
 					.padding(.top, .h(0.05))
 			}
 		} else {
@@ -472,15 +472,26 @@ struct PetView: View {
 	}
 
 	@ViewBuilder
-	private func pettingNoticeOverlay() -> some View {
-		if let notice = appModel.pettingNotice {
-			Text(notice)
-				.appFont(FontTheme.subheadline)
-				.padding(12)
-				.background(.ultraThinMaterial, in: Capsule())
-				.shadow(radius: 6)
-				.transition(.move(edge: .top).combined(with: .opacity))
+	private func noticeOverlay() -> some View {
+		let notices = [appModel.streakNotice, appModel.pettingNotice].compactMap { $0 }
+		if notices.isEmpty {
+			EmptyView()
+		} else {
+			VStack(spacing: 8) {
+				ForEach(Array(notices.enumerated()), id: \.offset) { item in
+					noticeCapsule(text: item.element)
+				}
+			}
+			.transition(.move(edge: .top).combined(with: .opacity))
 		}
+	}
+
+	private func noticeCapsule(text: String) -> some View {
+		Text(text)
+			.appFont(FontTheme.subheadline)
+			.padding(12)
+			.background(.ultraThinMaterial, in: Capsule())
+			.shadow(radius: 6)
 	}
 
 	

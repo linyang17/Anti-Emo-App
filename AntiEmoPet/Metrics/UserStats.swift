@@ -27,7 +27,10 @@ final class UserStats: Identifiable {
 	
 	var totalEnergy: Int = 0
 	var totalDays: Int = 0
+	var onboardingDate: Date?
 	var lastActiveDate: Date = Date()
+	var streakDays: Int = 0
+	var lastStreakDate: Date?
 	var completedTasksCount: Int = 0
 	var nickname: String = ""
 	var region: String = ""

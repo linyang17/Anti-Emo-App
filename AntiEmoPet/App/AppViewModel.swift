@@ -44,6 +44,7 @@ final class AppViewModel: ObservableObject {
 	@Published private(set) var canRefreshCurrentSlot = false
 	@Published private(set) var hasUsedRefreshThisSlot = false
 	@Published var pettingNotice: String?
+	@Published var streakNotice: String?
 	lazy var petEngine = PetEngine(pet: nil)
 
 	let locationService = LocationService()
@@ -65,7 +66,6 @@ final class AppViewModel: ObservableObject {
 	private let penaltyRecordsKey = "taskSlotPenaltyRecords"
 	private let pettingLimitKey = "dailyPettingLimit"
 	private let slotNotificationPreferenceKey = "slotNotificationPreferences"
-	private let streakAwardedKey = "streak.lastAwardedDay"
 	private let onboardingSummarySkipKeyPrefix = "summaryUpload.initialSkipHandled"
 	private var lastObservedSlot: TimeSlot?
 	private var isLoadingData = false
@@ -76,6 +76,7 @@ final class AppViewModel: ObservableObject {
 	private typealias SlotPenaltyMap = [String: [String: Bool]]
 	private var slotMonitorTask: Task<Void, Never>?
 	private var pettingNoticeTask: Task<Void, Never>?
+	private var streakNoticeTask: Task<Void, Never>?
 	private let isoDayFormatter: ISO8601DateFormatter = {
 	let formatter = ISO8601DateFormatter()
 	formatter.formatOptions = [.withFullDate]
@@ -99,6 +100,7 @@ final class AppViewModel: ObservableObject {
 	deinit {
 		slotMonitorTask?.cancel()
 		pettingNoticeTask?.cancel()
+		streakNoticeTask?.cancel()
 	}
 
 	// MARK: - Core Properties
@@ -143,6 +145,7 @@ final class AppViewModel: ObservableObject {
 			storage.bootstrapIfNeeded()
 			pet = storage.fetchPet()
 			userStats = storage.fetchStats()
+			refreshTotalDays()
 			self.taskGenerator = TaskGeneratorService(storage: storage, randomizeTime: self.userStats?.randomizeTaskTime ?? false)
 
 			await loadCachedData()
@@ -247,6 +250,7 @@ final class AppViewModel: ObservableObject {
 
 		func refreshIfNeeded() async {
 				logger.info("Refreshing app data…")
+				refreshTotalDays()
 				await load()
 				// 重新检查是否需要显示情绪记录弹窗（可能在后台时日期变化了）
 				if !showOnboarding && !showSleepReminder {
@@ -435,7 +439,7 @@ final class AppViewModel: ObservableObject {
 				analytics.log(event: "task_completed", metadata: ["title": task.title])
 				let slot = TimeSlot.from(date: task.date, using: TimeZoneManager.shared.calendar)
 				incrementTaskCompletion(for: Date(), timeSlot: slot)
-				updateStreakIfEligible(for: slot, on: task.date)
+				updateStreakIfEligible(on: task.date)
 				rewardBanner = RewardEvent(energy: rewards.energy, xp: 1, snackName: snackName)
 				logTodayEnergySnapshot()
 				dailyMetricsCache = makeDailyActivityMetrics()
@@ -558,6 +562,14 @@ final class AppViewModel: ObservableObject {
 		userStats?.birthday = birthday
 		userStats?.accountEmail = accountEmail
 				userStats?.isOnboard = isOnboard
+				if isOnboard {
+						let calendar = TimeZoneManager.shared.calendar
+						let todayStart = calendar.startOfDay(for: Date())
+						if userStats?.onboardingDate == nil {
+								userStats?.onboardingDate = todayStart
+						}
+						refreshTotalDays(reference: todayStart)
+				}
 		
 		if let components = locationService.lastRegionComponents {
 			applyRegionComponents(components)
@@ -632,6 +644,20 @@ final class AppViewModel: ObservableObject {
 			pettingNotice = nil
 		}
 	}
+
+		private func presentStreakBanner(count: Int) {
+				let message = "Streak \(count) days — keep it up!"
+				showStreakNotice(message)
+		}
+
+		private func showStreakNotice(_ message: String) {
+				streakNoticeTask?.cancel()
+				streakNotice = message
+				streakNoticeTask = Task { @MainActor in
+						try? await Task.sleep(nanoseconds: 2_000_000_000)
+						streakNotice = nil
+				}
+		}
 
 	// MARK: mood entry
         func addMoodEntry(
@@ -730,6 +756,9 @@ final class AppViewModel: ObservableObject {
 		}
 
 		func currentTaskStreak(on date: Date = Date()) -> Int {
+				if let streak = userStats?.streakDays, streak > 0 {
+						return streak
+				}
 				let calendar = TimeZoneManager.shared.calendar
 				let recentTasks = storage.fetchTasks(periodDays: 30, fromDate: date)
 				let grouped = Dictionary(grouping: recentTasks) { calendar.startOfDay(for: $0.date) }
@@ -794,6 +823,24 @@ final class AppViewModel: ObservableObject {
 			return isoDayFormatter.string(from: day)
 	}
 
+	private func refreshTotalDays(reference date: Date = Date()) {
+		guard let stats = userStats, stats.isOnboard else { return }
+		let calendar = TimeZoneManager.shared.calendar
+		let todayStart = calendar.startOfDay(for: date)
+
+		if stats.onboardingDate == nil {
+			let legacyDays = max(1, stats.totalDays)
+			stats.onboardingDate = calendar.date(byAdding: .day, value: -(legacyDays - 1), to: todayStart) ?? todayStart
+		}
+
+		guard let onboarding = stats.onboardingDate else { return }
+		let onboardingStart = calendar.startOfDay(for: onboarding)
+		let clampedStart = min(onboardingStart, todayStart)
+		let components = calendar.dateComponents([.day], from: clampedStart, to: todayStart)
+		let elapsed = max(0, components.day ?? 0)
+		stats.totalDays = elapsed + 1
+	}
+
 	private func onboardingSummarySkipKey(for stats: UserStats) -> String {
 		"\(onboardingSummarySkipKeyPrefix).\(stats.id.uuidString)"
 	}
@@ -842,21 +889,31 @@ final class AppViewModel: ObservableObject {
 				UserDefaults.standard.set(outer, forKey: timeSlotKey)
 		}
 
-		private func updateStreakIfEligible(for slot: TimeSlot, on date: Date) {
+		private func updateStreakIfEligible(on date: Date) {
 				guard let stats = userStats else { return }
-				let dkey = dayKey(for: date)
-				guard UserDefaults.standard.string(forKey: streakAwardedKey) != dkey else { return }
-
 				let calendar = TimeZoneManager.shared.calendar
-				let tasks = storage.fetchSlotTasks(in: slot, on: date, includeOnboarding: true)
-				guard !tasks.isEmpty else { return }
-				let completed = tasks.allSatisfy { $0.status == .completed }
-				guard completed else { return }
+				let dayStart = calendar.startOfDay(for: date)
 
-				stats.totalDays += 1
-				stats.lastActiveDate = calendar.startOfDay(for: date)
-				UserDefaults.standard.set(dkey, forKey: streakAwardedKey)
-				analytics.log(event: "streak_up", metadata: ["streak": "\(stats.totalDays)", "slot": slot.rawValue])
+				if let last = stats.lastStreakDate, calendar.isDate(last, inSameDayAs: dayStart) {
+						return
+				}
+
+				let tasks = storage.fetchTasks(
+						periodDays: 1,
+						fromDate: date,
+						includeArchived: true,
+						includeOnboarding: true
+				)
+				let completedCount = tasks.filter { $0.status == .completed }.count
+				guard completedCount >= 3 else { return }
+
+				let yesterday = calendar.date(byAdding: .day, value: -1, to: dayStart) ?? dayStart
+				let isConsecutive = stats.lastStreakDate.map { calendar.isDate($0, inSameDayAs: yesterday) } ?? false
+				stats.streakDays = isConsecutive ? stats.streakDays + 1 : 1
+				stats.lastStreakDate = dayStart
+				stats.lastActiveDate = dayStart
+				presentStreakBanner(count: stats.streakDays)
+				analytics.log(event: "streak_up", metadata: ["streak": "\(stats.streakDays)"])
 		}
 
 	private func updateTaskRefreshEligibility(reference date: Date = Date()) {
@@ -1268,6 +1325,7 @@ final class AppViewModel: ObservableObject {
 
                 private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
                                 guard let stats = userStats else { return }
+				refreshTotalDays(reference: reference)
 				let initialSkipHandled = UserDefaults.standard.bool(forKey: onboardingSummarySkipKey(for: stats))
                                 // Skip uploads immediately after onboarding (no prior-day data exists yet)
 				if stats.isOnboard, stats.totalDays <= 1, !initialSkipHandled {
