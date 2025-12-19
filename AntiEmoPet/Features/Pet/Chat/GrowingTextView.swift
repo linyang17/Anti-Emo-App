@@ -14,7 +14,8 @@ struct GrowingTextView: UIViewRepresentable {
 				view.delegate = context.coordinator
 				view.isScrollEnabled = false
 				view.backgroundColor = .clear
-				view.font = UIFont.preferredFont(forTextStyle: .body)
+				let preferredFont = UIFont(name: "ABeeZee-Regular", size: FontTheme.body.size) ?? UIFont.preferredFont(forTextStyle: .body)
+				view.font = preferredFont
 				view.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
 				view.text = text
 				view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

@@ -66,6 +66,7 @@ final class AppViewModel: ObservableObject {
 	private let pettingLimitKey = "dailyPettingLimit"
 	private let slotNotificationPreferenceKey = "slotNotificationPreferences"
 	private let streakAwardedKey = "streak.lastAwardedDay"
+	private let onboardingSummarySkipKeyPrefix = "summaryUpload.initialSkipHandled"
 	private var lastObservedSlot: TimeSlot?
 	private var isLoadingData = false
 	private var awaitingLocationWeatherRefresh = false
@@ -787,11 +788,15 @@ final class AppViewModel: ObservableObject {
 	private var interactionsKey: String { "dailyPetInteractions" }
 	private var timeSlotKey: String { "dailyTaskTimeSlots" }
 
-		private func dayKey(for date: Date) -> String {
-				let cal = TimeZoneManager.shared.calendar
-				let day = cal.startOfDay(for: date)
-				return isoDayFormatter.string(from: day)
-		}
+	private func dayKey(for date: Date) -> String {
+			let cal = TimeZoneManager.shared.calendar
+			let day = cal.startOfDay(for: date)
+			return isoDayFormatter.string(from: day)
+	}
+
+	private func onboardingSummarySkipKey(for stats: UserStats) -> String {
+		"\(onboardingSummarySkipKeyPrefix).\(stats.id.uuidString)"
+	}
 
 		private func loadSlotNotificationPreferences() -> [TimeSlot: Bool] {
 				let stored = (UserDefaults.standard.dictionary(forKey: slotNotificationPreferenceKey) as? [String: Bool]) ?? [:]
@@ -985,7 +990,9 @@ final class AppViewModel: ObservableObject {
 
                         guard slot == currentSlot else { continue }
                         logger.info("[checkSlotGenerationTrigger]: generating \(slot.rawValue) because trigger passed for \(triggerDate)")
-                        generateTasksForSlot(slot, reference: date, notify: shouldNotify(for: slot))
+			let unlockDelay = date.timeIntervalSince(triggerDate)
+			let shouldSendUnlockNotice = unlockDelay <= 60 && shouldNotify(for: slot)
+                        generateTasksForSlot(slot, reference: date, notify: shouldSendUnlockNotice)
                 }
         }
 
@@ -1038,7 +1045,7 @@ final class AppViewModel: ObservableObject {
 	// Show onboarding tasks until all done
 	private func refreshDisplayedTasks(for slot: TimeSlot, on date: Date) {
 		// Always base onboarding visibility on today's onboarding tasks
-		let todayAll = storage.fetchTasks(periodDays: 1, fromDate: date)
+		let todayAll = storage.fetchTasks(periodDays: 1, fromDate: date, includeArchived: false, includeOnboarding: true)
 		let onboardingTasks = todayAll.filter { $0.isOnboarding }
 		if !onboardingTasks.isEmpty {
 			let allCompleted = onboardingTasks.allSatisfy { $0.status == .completed }
@@ -1261,13 +1268,15 @@ final class AppViewModel: ObservableObject {
 
                 private func queuePreviousDaySummaryIfNeeded(reference: Date = Date()) async {
                                 guard let stats = userStats else { return }
+				let initialSkipHandled = UserDefaults.standard.bool(forKey: onboardingSummarySkipKey(for: stats))
                                 // Skip uploads immediately after onboarding (no prior-day data exists yet)
-                                if stats.totalDays <= 1 {
+				if stats.isOnboard, stats.totalDays <= 1, !initialSkipHandled {
                                                 logger.info("Skipped summary upload on first day post-onboarding.")
                                                 let cal = TimeZoneManager.shared.calendar
                                                 let todayStart = cal.startOfDay(for: AppClock.now)
                                                 let yesterday = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
                                                 UserDefaults.standard.set(dayKey(for: yesterday), forKey: "summaryUpload.lastSuccessfulDay")
+						UserDefaults.standard.set(true, forKey: onboardingSummarySkipKey(for: stats))
                                                 return
                                 }
                                 let persistedSunEvents = storage.fetchSunEvents()
@@ -1711,4 +1720,3 @@ struct TaskHistorySection: Identifiable {
 		let date: Date
 		let tasks: [UserTask]
 }
-

@@ -4,8 +4,14 @@ struct ChatView: View {
 		@EnvironmentObject private var appModel: AppViewModel
 		@StateObject private var viewModel = ChatViewModel()
 		@FocusState private var isInputFocused: Bool
-		@State private var inputHeight: CGFloat = UIFont.preferredFont(forTextStyle: .body).lineHeight * 2
+		@State private var inputHeight: CGFloat = (UIFont(name: "ABeeZee-Regular", size: FontTheme.body.size)?.lineHeight ?? UIFont.preferredFont(forTextStyle: .body).lineHeight) * 2
 		@State private var hasInjectedComfortMessage = false
+		private let calendar = TimeZoneManager.shared.calendar
+		private let dateFormatter: DateFormatter = {
+				let formatter = DateFormatter()
+				formatter.dateStyle = .medium
+				return formatter
+		}()
 
 		let initialComfortMood: Int?
 
@@ -20,7 +26,10 @@ struct ChatView: View {
 						ScrollViewReader { proxy in
 							ScrollView {
 								LazyVStack(alignment: .leading, spacing: 16) {
-									ForEach(viewModel.messages) { message in
+									ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+										if shouldShowDateSeparator(at: index) {
+											ChatDateSeparator(text: formattedDate(message.createdAt))
+										}
 										MessageBubble(message: message)
 										}
 
@@ -35,8 +44,8 @@ struct ChatView: View {
 										.padding(.horizontal)
 										.padding(.top, 12)
 										.padding(.bottom, 8)
-									}
-										.onChange(of: viewModel.messages.count) { oldValue, newValue in
+								}
+								.onChange(of: viewModel.messages.count) { oldValue, newValue in
 												guard newValue != oldValue else { return }
 												if let last = viewModel.messages.last {
 														proxy.scrollTo(last.id, anchor: .bottom)
@@ -73,7 +82,8 @@ struct ChatView: View {
 		}
 
 		private var inputBar: some View {
-				let maxHeight = UIFont.preferredFont(forTextStyle: .body).lineHeight * 1
+				let baseLineHeight = UIFont(name: "ABeeZee-Regular", size: FontTheme.body.size)?.lineHeight ?? UIFont.preferredFont(forTextStyle: .body).lineHeight
+				let maxHeight = baseLineHeight * 1
 
 				return HStack(alignment: .bottom, spacing: 12) {
 						ZStack(alignment: .topLeading) {
@@ -97,6 +107,7 @@ struct ChatView: View {
 										Text("Text here")
 												.foregroundStyle(.secondary)
 												.padding(.horizontal, 16)
+												.appFont(FontTheme.body)
 												.allowsHitTesting(false)
 								}
 						}
@@ -116,6 +127,21 @@ struct ChatView: View {
 										)
 						}
 						.disabled(!viewModel.canSend)
+				}
+		}
+}
+
+private struct ChatDateSeparator: View {
+		let text: String
+
+		var body: some View {
+				HStack {
+						Spacer()
+						Text(text)
+								.appFont(FontTheme.caption)
+								.foregroundStyle(.secondary)
+								.padding(.vertical, 6)
+						Spacer()
 				}
 		}
 }
@@ -141,6 +167,7 @@ private struct MessageBubble: View {
 	
 	private var textbubble: some View {
 			Text(message.content)
+					.appFont(FontTheme.body)
 					.padding(.horizontal, 14)
 					.padding(.vertical, 8)
 					.foregroundColor(isUser ? Color.white : Color.primary)
@@ -167,5 +194,18 @@ private struct MessageBubble: View {
 private extension ChatViewModel {
 		var canSend: Bool {
 				!currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
+		}
+}
+
+private extension ChatView {
+		func formattedDate(_ date: Date) -> String {
+				dateFormatter.string(from: date)
+		}
+
+		func shouldShowDateSeparator(at index: Int) -> Bool {
+				guard index < viewModel.messages.count else { return false }
+				guard index > 0 else { return true }
+				let previous = viewModel.messages[index - 1]
+				return !calendar.isDate(previous.createdAt, inSameDayAs: viewModel.messages[index].createdAt)
 		}
 }
