@@ -154,6 +154,24 @@ final class StorageService {
 		}
 	}
 
+	func firstOnboardingCompletionDate() -> Date? {
+		do {
+			let predicate = #Predicate<UserTask> { task in
+				task.isOnboarding == true && task.status == .completed
+			}
+			let descriptor = FetchDescriptor<UserTask>(predicate: predicate)
+			let onboardingTasks = try context.fetch(descriptor)
+			guard !onboardingTasks.isEmpty else { return nil }
+
+			let calendar = TimeZoneManager.shared.calendar
+			let earliest = onboardingTasks.compactMap { $0.completedAt ?? $0.date }.min()
+			return earliest.map { calendar.startOfDay(for: $0) }
+		} catch {
+			logger.error("Failed to resolve onboarding completion date: \(error.localizedDescription, privacy: .public)")
+			return nil
+		}
+	}
+
 	func save(tasks: [UserTask]) {
 		guard !tasks.isEmpty else { return }
 		tasks.forEach { context.insert($0) }

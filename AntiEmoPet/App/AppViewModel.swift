@@ -420,7 +420,8 @@ final class AppViewModel: ObservableObject {
                 }
 
                 task.status = .completed
-                task.completedAt = Date()
+		let completionDate = Date()
+                task.completedAt = completionDate
 		
 				let rewards = rewardEngine.applyTaskReward(for: task, stats: stats, catalog: shopItems)
 				petEngine.handleAction(.taskComplete)   // award bonding + xp
@@ -438,13 +439,18 @@ final class AppViewModel: ObservableObject {
 
 				analytics.log(event: "task_completed", metadata: ["title": task.title])
 				let slot = TimeSlot.from(date: task.date, using: TimeZoneManager.shared.calendar)
-				incrementTaskCompletion(for: Date(), timeSlot: slot)
+				if task.isOnboarding, stats.onboardingDate == nil {
+					let calendar = TimeZoneManager.shared.calendar
+					stats.onboardingDate = calendar.startOfDay(for: completionDate)
+					refreshTotalDays(reference: completionDate)
+				}
+				incrementTaskCompletion(for: completionDate, timeSlot: slot)
 				updateStreakIfEligible(on: task.date)
 				rewardBanner = RewardEvent(energy: rewards.energy, xp: 1, snackName: snackName)
 				logTodayEnergySnapshot()
 				dailyMetricsCache = makeDailyActivityMetrics()
 		storage.persist()
-		refreshDisplayedTasks(for: slot, on: Date())
+		refreshDisplayedTasks(for: slot, on: completionDate)
 				
 		pendingMoodFeedbackTask = task
 	}
@@ -829,8 +835,12 @@ final class AppViewModel: ObservableObject {
 		let todayStart = calendar.startOfDay(for: date)
 
 		if stats.onboardingDate == nil {
-			let legacyDays = max(1, stats.totalDays)
-			stats.onboardingDate = calendar.date(byAdding: .day, value: -(legacyDays - 1), to: todayStart) ?? todayStart
+			if let onboardingCompletionDate = storage.firstOnboardingCompletionDate() {
+				stats.onboardingDate = calendar.startOfDay(for: onboardingCompletionDate)
+			} else {
+				let legacyDays = max(1, stats.totalDays)
+				stats.onboardingDate = calendar.date(byAdding: .day, value: -(legacyDays - 1), to: todayStart) ?? todayStart
+			}
 		}
 
 		guard let onboarding = stats.onboardingDate else { return }
